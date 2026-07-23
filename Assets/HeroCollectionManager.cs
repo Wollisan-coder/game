@@ -16,7 +16,7 @@ public class HeroCollectionManager : MonoBehaviour
     public List<HeroData> squad = new List<HeroData>();
     public const int MaxSquadSize = 4;
 
-    private void Awake()
+        private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
@@ -24,6 +24,10 @@ public class HeroCollectionManager : MonoBehaviour
 
         InitializeOwnershipIfMissing();
         LoadSquad();
+
+        // ВРЕМЕННО для тесту — розблокувати всіх героїв
+        foreach (var hero in allHeroes)
+            UnlockHero(hero);
     }
 
     private void InitializeOwnershipIfMissing()
@@ -89,4 +93,8 @@ public class HeroCollectionManager : MonoBehaviour
             if (hero != null) squad.Add(hero);
         }
     }
+
+    
+
+
 }
