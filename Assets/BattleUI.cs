@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections.Generic;
 
 public class BattleUI : MonoBehaviour
 {
@@ -17,19 +18,14 @@ public class BattleUI : MonoBehaviour
     public TMP_Text enemyHPText;
 
     [System.Serializable]
-    public class ResourceTextEntry
+    public class HeroResourceUIEntry
     {
-        public ResourceType type;
-        public TMP_Text text;
+        public HeroData heroData;   // який герой відповідає цьому UI-елементу
+        public TMP_Text amountText; // текст з поточним значенням ресурсу
     }
 
-    [Header("Ресурси")]
-    public ResourceTextEntry[] resourceEntries;
-
-    [Header("Навички")]
-    public SkillData[] availableSkills;
-    public Button[] skillButtons;
-    public TMP_Text[] skillButtonLabels;
+    [Header("Ресурси героїв")]
+    public HeroResourceUIEntry[] heroResourceEntries;
 
     private void Start()
     {
@@ -38,7 +34,6 @@ public class BattleUI : MonoBehaviour
 
         battleManager.OnStateChanged += RefreshUI;
 
-        SetupSkillButtons();
         RefreshUI();
     }
 
@@ -46,32 +41,6 @@ public class BattleUI : MonoBehaviour
     {
         if (battleManager != null)
             battleManager.OnStateChanged -= RefreshUI;
-    }
-
-    private void SetupSkillButtons()
-    {
-        for (int i = 0; i < skillButtons.Length; i++)
-        {
-            if (i >= availableSkills.Length)
-            {
-                skillButtons[i].gameObject.SetActive(false);
-                continue;
-            }
-
-            SkillData skill = availableSkills[i];
-            skillButtons[i].onClick.RemoveAllListeners();
-            skillButtons[i].onClick.AddListener(() => OnSkillButtonClicked(skill));
-
-            if (skillButtonLabels != null && i < skillButtonLabels.Length && skillButtonLabels[i] != null)
-                skillButtonLabels[i].text = $"{skill.skillName}\n({skill.cost} {skill.costType})";
-        }
-    }
-
-    private void OnSkillButtonClicked(SkillData skill)
-    {
-        bool success = battleManager.TryUseSkill(skill);
-        if (!success)
-            Debug.Log($"Недостатньо ресурсу для навички {skill.skillName}");
     }
 
     private void RefreshUI()
@@ -85,22 +54,13 @@ public class BattleUI : MonoBehaviour
         enemyHPSlider.value = battleManager.enemyHP;
         enemyHPText.text = $"{battleManager.enemyHP} / {battleManager.enemyMaxHP}";
 
-        foreach (var entry in resourceEntries)
+        foreach (var entry in heroResourceEntries)
         {
-            if (entry.text != null)
-                entry.text.text = $"{entry.type}: {battleManager.resources[(int)entry.type]}";
-        }
+            if (entry.amountText == null || entry.heroData == null) continue;
 
-        UpdateSkillButtonsInteractable();
-    }
-
-    private void UpdateSkillButtonsInteractable()
-    {
-        for (int i = 0; i < skillButtons.Length && i < availableSkills.Length; i++)
-        {
-            SkillData skill = availableSkills[i];
-            bool canAfford = battleManager.resources[(int)skill.costType] >= skill.cost;
-            skillButtons[i].interactable = canAfford;
+            HeroRuntimeState state = battleManager.GetHeroState(entry.heroData);
+            if (state != null)
+                entry.amountText.text = $"{state.currentResource} / {state.data.maxResource}";
         }
     }
 }

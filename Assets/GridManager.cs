@@ -361,4 +361,29 @@ private void OnDrawGizmos()
         }
     }
 }
+
+            // Знищує всі фішки в діапазоні рядів [rowStart, rowEnd] включно (по осі Y сітки)
+        public IEnumerator ExecuteDestroyRowsSkill(int rowStart, int rowEnd)
+        {
+            List<Item> toDestroy = new List<Item>();
+
+            int clampedStart = Mathf.Clamp(rowStart, 0, height - 1);
+            int clampedEnd = Mathf.Clamp(rowEnd, 0, height - 1);
+
+            for (int y = clampedStart; y <= clampedEnd; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    if (grid[x, y] != null)
+                        toDestroy.Add(grid[x, y]);
+                }
+            }
+
+            if (toDestroy.Count > 0)
+            {
+                turnMatchedTypes.Clear();
+                yield return StartCoroutine(ProcessMatches(toDestroy));
+            }
+}  
+
 }    
