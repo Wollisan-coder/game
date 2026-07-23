@@ -12,6 +12,81 @@ public class GridManager : MonoBehaviour
     [Header("Префабы")]
     public GameObject[] itemPrefabs; // Массив 3D-префабов разных типов
 
+    [Header("Бій")]
+    public BattleManager battleManager;
+
+    [Header("Тип 'Red' в масиві itemPrefabs")]
+public int redTypeIndex = 0; // перевір, що Element 0 = RedGem у твоєму масиві
+
+public IEnumerator ExecuteConvertAndDestroySkill(int convertCount)
+{
+    // Збираємо всі не-червоні фішки на полі
+    List<Item> nonRed = new List<Item>();
+    for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+            if (grid[x, y] != null && grid[x, y].type != redTypeIndex)
+                nonRed.Add(grid[x, y]);
+
+    // Перемішуємо список (Fisher-Yates), щоб вибір був випадковим
+    for (int i = nonRed.Count - 1; i > 0; i--)
+    {
+        int r = Random.Range(0, i + 1);
+        (nonRed[i], nonRed[r]) = (nonRed[r], nonRed[i]);
+    }
+
+    int actualCount = Mathf.Min(convertCount, nonRed.Count);
+
+    // Конвертуємо обрані фішки в червоні (пересоздаём на тому ж місці)
+    for (int i = 0; i < actualCount; i++)
+    {
+        Item old = nonRed[i];
+        int x = old.x, y = old.y;
+
+        Destroy(old.gameObject);
+        SpawnItem(x, y, redTypeIndex);
+
+        StartCoroutine(PopInAnimation(grid[x, y].transform));
+    }
+
+    yield return new WaitForSeconds(0.35f);
+
+    // Збираємо всі червоні фішки (і старі, і щойно конвертовані)
+    List<Item> allRed = new List<Item>();
+    for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+            if (grid[x, y] != null && grid[x, y].type == redTypeIndex)
+                allRed.Add(grid[x, y]);
+
+    if (allRed.Count > 0)
+    {
+        turnMatchedTypes.Clear();
+        yield return StartCoroutine(ProcessMatches(allRed));
+    }
+}
+
+private IEnumerator PopInAnimation(Transform t)
+{
+    Vector3 targetScale = t.localScale;
+    t.localScale = Vector3.zero;
+
+    float duration = 0.25f;
+    float elapsed = 0f;
+
+    while (elapsed < duration)
+    {
+        elapsed += Time.deltaTime;
+        float p = elapsed / duration;
+        // невеликий "перескок" через 1 для приємного pop-ефекту
+        float scaleMod = Mathf.Sin(p * Mathf.PI * 0.5f) * 1.1f;
+        t.localScale = targetScale * Mathf.Min(scaleMod, 1f);
+        yield return null;
+    }
+
+    t.localScale = targetScale;
+}
+
+    private Dictionary<int, int> turnMatchedTypes = new Dictionary<int, int>();
+
     private Item[,] grid;
 
     private void Start()
@@ -85,19 +160,15 @@ public class GridManager : MonoBehaviour
 // Обмен двух соседних фишек местами
     public IEnumerator SwapItems(Item a, Item b)
 {
-    // Запам'ятовуємо початкові позиції обох фішок
     int aX = a.x, aY = a.y;
     int bX = b.x, bY = b.y;
 
-    // Обмінюємо в масиві
     grid[aX, aY] = b;
     grid[bX, bY] = a;
 
-    // Оновлюємо логічні координати фішок
     a.x = bX; a.y = bY;
     b.x = aX; b.y = aY;
 
-    // Анімуємо рух у 3D
     a.MoveTo(GetWorldPosition(a.x, a.y));
     b.MoveTo(GetWorldPosition(b.x, b.y));
 
@@ -107,11 +178,11 @@ public class GridManager : MonoBehaviour
 
     if (matches.Count > 0)
     {
-        StartCoroutine(ProcessMatches(matches));
+        turnMatchedTypes.Clear(); // старт обліку нового ходу
+        yield return StartCoroutine(ProcessMatches(matches));
     }
     else
     {
-        // Збігу немає — повертаємо фішки на початкові місця
         grid[aX, aY] = a;
         grid[bX, bY] = b;
 
@@ -200,11 +271,14 @@ public IEnumerator PlayDestroyAnimation()
 
     foreach (var item in matches)
     {
+        if (!turnMatchedTypes.ContainsKey(item.type))
+            turnMatchedTypes[item.type] = 0;
+        turnMatchedTypes[item.type]++;
+
         grid[item.x, item.y] = null;
         animations.Add(StartCoroutine(item.PlayDestroyAnimation()));
     }
 
-    // чекаємо, поки всі анімації знищення завершаться
     foreach (var anim in animations)
         yield return anim;
 
@@ -216,49 +290,75 @@ public IEnumerator PlayDestroyAnimation()
 
     // Логика падения фишек вниз и генерация новых сверху
     private IEnumerator CollapseGrid()
+{
+    for (int x = 0; x < width; x++)
     {
-        for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
         {
-            for (int y = 0; y < height; y++)
+            if (grid[x, y] == null)
             {
+                for (int aboveY = y + 1; aboveY < height; aboveY++)
+                {
+                    if (grid[x, aboveY] != null)
+                    {
+                        grid[x, y] = grid[x, aboveY];
+                        grid[x, y].x = x;
+                        grid[x, y].y = y;
+                        grid[x, aboveY] = null;
+
+                        grid[x, y].MoveTo(GetWorldPosition(x, y));
+                        break;
+                    }
+                }
+
                 if (grid[x, y] == null)
                 {
-                    // Ищем первую фишку выше пустой ячейки
-                    for (int aboveY = y + 1; aboveY < height; aboveY++)
-                    {
-                        if (grid[x, aboveY] != null)
-                        {
-                            grid[x, y] = grid[x, aboveY];
-                            grid[x, y].x = x;
-                            grid[x, y].y = y;
-                            grid[x, aboveY] = null;
+                    int randomType = Random.Range(0, itemPrefabs.Length);
+                    SpawnItem(x, y, randomType);
 
-                            grid[x, y].MoveTo(GetWorldPosition(x, y));
-                            break;
-                        }
-                    }
-
-                    // Если выше ничего не нашлось — спавним новую фишку над полем
-                    if (grid[x, y] == null)
-                    {
-                        int randomType = Random.Range(0, itemPrefabs.Length);
-                        SpawnItem(x, y, randomType);
-                        
-                        // Помещаем ее чуть выше поля для эффекта падения
-                        grid[x, y].transform.position = GetWorldPosition(x, height);
-                        grid[x, y].MoveTo(GetWorldPosition(x, y));
-                    }
+                    grid[x, y].transform.position = GetWorldPosition(x, height);
+                    grid[x, y].MoveTo(GetWorldPosition(x, y));
                 }
             }
         }
+    }
 
-        yield return new WaitForSeconds(0.25f);
+    yield return new WaitForSeconds(0.25f);
 
-        // Каскадные совпадения (цепочки)
-        List<Item> newMatches = FindMatches();
-        if (newMatches.Count > 0)
+    List<Item> newMatches = FindMatches();
+    if (newMatches.Count > 0)
+    {
+        yield return StartCoroutine(ProcessMatches(newMatches));
+    }
+    else
+    {
+        // Каскади завершились — це реальний кінець ходу гравця
+        if (battleManager != null && turnMatchedTypes.Count > 0)
         {
-            yield return StartCoroutine(ProcessMatches(newMatches));
+            battleManager.ResolvePlayerTurn(turnMatchedTypes);
         }
     }
+}
+private void OnDrawGizmos()
+{
+    Gizmos.color = Color.yellow;
+
+    // Рисуем рамку по границе всей сетки
+    Vector3 bottomLeft = GetWorldPosition(0, 0) - new Vector3(cellSize / 2f, 0, cellSize / 2f);
+    Vector3 size = new Vector3(width * cellSize, 0.1f, height * cellSize);
+    Vector3 center = bottomLeft + new Vector3(size.x / 2f, 0, size.z / 2f);
+
+    Gizmos.DrawWireCube(center, size);
+
+    // Дополнительно — сетка по каждой ячейке
+    Gizmos.color = new Color(1f, 1f, 0f, 0.3f);
+    for (int x = 0; x < width; x++)
+    {
+        for (int y = 0; y < height; y++)
+        {
+            Vector3 pos = GetWorldPosition(x, y);
+            Gizmos.DrawWireCube(pos, new Vector3(cellSize * 0.9f, 0.05f, cellSize * 0.9f));
+        }
+    }
+}
 }    

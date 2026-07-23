@@ -7,6 +7,9 @@ public class Item : MonoBehaviour
     public int y;
     public int type;
 
+    [Header("Ефекти")]
+    public GameObject destroyEffectPrefab; // призначити в Inspector на кожному префабі геема
+
     private GridManager gridManager;
     private static Item firstSelected;
     private Coroutine selectAnimCoroutine;
@@ -92,6 +95,31 @@ public class Item : MonoBehaviour
 
     public IEnumerator PlayDestroyAnimation()
     {
+        // Запускаємо частинки перед зникненням
+        if (destroyEffectPrefab != null)
+{
+    GameObject effect = Instantiate(destroyEffectPrefab, transform.position, Quaternion.identity);
+
+    var renderer = GetComponentInChildren<Renderer>();
+    var ps = effect.GetComponent<ParticleSystem>();
+    if (renderer != null && ps != null)
+    {
+        Color gemColor = Color.white;
+
+        if (renderer.material.HasProperty("_Color"))
+            gemColor = renderer.material.color;
+        else if (renderer.material.HasProperty("_BaseColor"))
+            gemColor = renderer.material.GetColor("_BaseColor");
+
+        var main = ps.main;
+        main.startColor = gemColor;
+
+        ps.Play(); // явно запускаємо систему частинок
+    }
+
+    Destroy(effect, 1f);
+}
+
         float duration = 0.25f;
         float t = 0f;
         Vector3 startScale = transform.localScale;
