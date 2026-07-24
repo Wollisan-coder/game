@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 98f2a619572e0984c9fe8cc8f1ab4142, type: 3}
-  m_Name: Hero_Green
+  m_Name: EnemyData
   m_EditorClassIdentifier: Assembly-CSharp::HeroData
-  heroId: Hero_Green
-  heroName: elf
-  resourceType: 2
-  portrait: {fileID: 21300000, guid: 258c70630247e1f45824699f90b3adec, type: 3}
-  themeColor: {r: 0.28025985, g: 0.8867924, b: 0.29050902, a: 1}
-  maxResource: 30
+  heroId: EnemyData
+  heroName: 
+  resourceType: 0
+  portrait: {fileID: 0}
+  themeColor: {r: 1, g: 1, b: 1, a: 1}
+  maxResource: 0
   skills:
-  - {fileID: 11400000, guid: 3daf4277044340f4a975152177d1f991, type: 2}
+  - {fileID: 11400000, guid: c71b92d2e274da7488e180ab5f08fcfc, type: 2}

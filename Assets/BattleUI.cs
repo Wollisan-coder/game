@@ -13,6 +13,9 @@ public class BattleUI : MonoBehaviour
     public TMP_Text playerHPText;
     public TMP_Text playerShieldText;
 
+    [Header("Портрет ворога")]
+    public Image enemyPortrait;
+
     [Header("HP ворога")]
     public Slider enemyHPSlider;
     public TMP_Text enemyHPText;
@@ -33,7 +36,8 @@ public class BattleUI : MonoBehaviour
             battleManager = FindAnyObjectByType<BattleManager>();
 
         battleManager.OnStateChanged += RefreshUI;
-
+if (enemyPortrait != null && battleManager.currentEnemy != null && battleManager.currentEnemy.portrait != null)
+    enemyPortrait.sprite = battleManager.currentEnemy.portrait;
         RefreshUI();
     }
 

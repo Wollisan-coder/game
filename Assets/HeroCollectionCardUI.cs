@@ -27,8 +27,19 @@ public class HeroCollectionCardUI : MonoBehaviour
 
     private void OnSelected()
     {
-        bool added = collectionManager.AddToSquad(heroData);
-        if (!added)
-            Debug.Log("Не вдалося додати героя — загін повний, герой вже в загоні, або не відкритий.");
+        // Якщо зараз активний режим вибору героя для конкретного слота — призначаємо туди
+        if (collectionManager.slotBeingEdited >= 0)
+        {
+            bool assigned = collectionManager.AssignToSlot(heroData);
+            if (assigned)
+            {
+                // Повертаємось до екрану загону після вибору
+                var mainMenu = FindAnyObjectByType<MainMenuUI>();
+                if (mainMenu != null) mainMenu.ShowSquad();
+            }
+            return;
+        }
+
+        Debug.Log("Клікніть на слот у загоні, щоб вибрати героя для нього.");
     }
 }

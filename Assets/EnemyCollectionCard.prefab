@@ -87,9 +87,9 @@ GameObject:
   - component: {fileID: 90394283838590928}
   - component: {fileID: 9147566185358714239}
   - component: {fileID: 4994430450256715070}
-  - component: {fileID: 116227055957828405}
+  - component: {fileID: -7684737277626454164}
   m_Layer: 5
-  m_Name: HeroCollectionCard
+  m_Name: EnemyCollectionCard
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -199,7 +199,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
---- !u!114 &116227055957828405
+--- !u!114 &-7684737277626454164
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -208,9 +208,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 1571851202597904248}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 71e71446570782247a8761b0def10062, type: 3}
+  m_Script: {fileID: 11500000, guid: 93dee4757e8b0694f8730ec45553020b, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HeroCollectionCardUI
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyCollectionCardUI
   portrait: {fileID: 5272480457638122982}
   lockOverlay: {fileID: 7289789918600662024}
   selectButton: {fileID: 4994430450256715070}

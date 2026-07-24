@@ -11,16 +11,18 @@ public class HeroCollectionUI : MonoBehaviour
         PopulateGrid();
     }
 
-    private void PopulateGrid()
-    {
-        foreach (Transform child in gridContainer)
-            Destroy(child.gameObject);
-
-        foreach (var hero in collectionManager.allHeroes)
+            private void PopulateGrid()
         {
-            GameObject cardObj = Instantiate(heroCardUIPrefab, gridContainer);
-            var card = cardObj.GetComponent<HeroCollectionCardUI>();
-            card.Setup(hero, collectionManager);
+            Debug.Log($"Кількість героїв у allHeroes: {collectionManager.allHeroes.Length}");
+
+            foreach (Transform child in gridContainer)
+                Destroy(child.gameObject);
+
+            foreach (var hero in collectionManager.allHeroes)
+            {
+                GameObject cardObj = Instantiate(heroCardUIPrefab, gridContainer);
+                var card = cardObj.GetComponent<HeroCollectionCardUI>();
+                card.Setup(hero, collectionManager);
+            }
         }
-    }
 }

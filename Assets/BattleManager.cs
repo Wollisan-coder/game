@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 
 public class BattleManager : MonoBehaviour
 {
@@ -14,6 +15,11 @@ public class BattleManager : MonoBehaviour
     public int enemyHP;
     public int enemyMinAttack = 5;
     public int enemyMaxAttack = 12;
+    public int enemyShield = 0;
+
+    [Header("Дебафф урону героїв від скіла ворога")]
+    public float heroDamageMultiplier = 1f;
+    public int heroDamageMultiplierTurnsRemaining = 0;
 
     [Header("Герої в бою")]
     public HeroData[] heroRoster; // призначити в Inspector усіх героїв, що беруть участь у бою
@@ -32,12 +38,48 @@ public class BattleManager : MonoBehaviour
     [Header("Посилання на сітку")]
     public GridManager gridManager;
 
+    [Header("Вороги (для цієї сутички)")]
+    public EnemyData[] possibleEnemies;   // наперед заданий пул для випадкового бою
+    public bool forceRandomEnemy = false; // true = ігнорувати вибір з колекції, завжди рандом
+    public EnemyData currentEnemy;        // фактично обраний ворог цього бою
+
     public System.Action OnStateChanged;
 
-    private void Awake()
+
+        private EnemyData ResolveEnemy()
+    {
+        // 1. Конкретний ворог, обраний гравцем у колекції (якщо не форсуємо рандом)
+        if (!forceRandomEnemy &&
+            EnemyCollectionManager.Instance != null &&
+            EnemyCollectionManager.Instance.selectedEnemy != null)
+        {
+            return EnemyCollectionManager.Instance.selectedEnemy;
+        }
+
+        // 2. Інакше — випадковий з наперед заданого масиву
+        if (possibleEnemies != null && possibleEnemies.Length > 0)
+            return possibleEnemies[Random.Range(0, possibleEnemies.Length)];
+
+        return null; // жодного джерела — залишаються значення з інспектора
+    }
+
+
+            private void Awake()
     {
         playerHP = playerMaxHP;
+
+        currentEnemy = ResolveEnemy();
+        if (currentEnemy != null)
+        {
+            enemyMaxHP = currentEnemy.maxHP;
+            enemyMinAttack = currentEnemy.minAttack;
+            enemyMaxAttack = currentEnemy.maxAttack;
+        }
         enemyHP = enemyMaxHP;
+
+        // Беремо тільки реально вибраних героїв (без порожніх слотів null)
+        if (HeroCollectionManager.Instance != null)
+            heroRoster = HeroCollectionManager.Instance.squad.Where(h => h != null).ToArray();
 
         activeHeroes.Clear();
         foreach (var hero in heroRoster)
@@ -46,6 +88,13 @@ public class BattleManager : MonoBehaviour
                 activeHeroes.Add(new HeroRuntimeState(hero));
         }
     }
+
+        public void DealDamageToEnemy(int amount)
+    {
+        int absorbed = Mathf.Min(enemyShield, amount);
+        enemyShield -= absorbed;
+        enemyHP = Mathf.Max(0, enemyHP - (amount - absorbed));
+    } 
 
     public void ResolvePlayerTurn(Dictionary<int, int> matchedTypeCounts)
     {
@@ -67,7 +116,7 @@ public class BattleManager : MonoBehaviour
             else if (type >= 0 && type <= 4) // Red/Blue/Green/Yellow/Violet
             {
                 int baseDamage = count * damagePerGem[type];
-                int finalDamage = Mathf.RoundToInt(baseDamage * damageMultiplier);
+                                int finalDamage = Mathf.RoundToInt(baseDamage * damageMultiplier * heroDamageMultiplier);
                 DealDamageToEnemy(finalDamage);
 
                 // Кожен активний герой цього кольору отримує повну порцію ресурсу
@@ -84,6 +133,12 @@ public class BattleManager : MonoBehaviour
             damageMultiplierTurnsRemaining--;
             if (damageMultiplierTurnsRemaining <= 0)
                 damageMultiplier = 1f;
+        }
+                if (heroDamageMultiplierTurnsRemaining > 0)
+        {
+            heroDamageMultiplierTurnsRemaining--;
+            if (heroDamageMultiplierTurnsRemaining <= 0)
+                heroDamageMultiplier = 1f;
         }
 
         OnStateChanged?.Invoke();
