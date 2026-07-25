@@ -2298,6 +2298,9 @@ MonoBehaviour:
   enemyHP: 0
   enemyMinAttack: 5
   enemyMaxAttack: 12
+  enemyShield: 0
+  heroDamageMultiplier: 1
+  heroDamageMultiplierTurnsRemaining: 0
   heroRoster:
   - {fileID: 11400000, guid: c9402d59fd6cdf347aa97805cae8d399, type: 2}
   - {fileID: 11400000, guid: 859b2a0da13e19d40b1e50265aa9d91a, type: 2}
@@ -2306,15 +2309,36 @@ MonoBehaviour:
   activeHeroes:
   - data: {fileID: 11400000, guid: 859b2a0da13e19d40b1e50265aa9d91a, type: 2}
     currentResource: 0
+    level: 0
+    maxHealth: 0
+    currentHealth: 0
+    blockManaGainThisTurn: 0
   - data: {fileID: 11400000, guid: c9402d59fd6cdf347aa97805cae8d399, type: 2}
     currentResource: 0
+    level: 0
+    maxHealth: 0
+    currentHealth: 0
+    blockManaGainThisTurn: 0
   - data: {fileID: 11400000, guid: e154393c132fd47498367116753919e5, type: 2}
     currentResource: 0
+    level: 0
+    maxHealth: 0
+    currentHealth: 0
+    blockManaGainThisTurn: 0
   - data: {fileID: 11400000, guid: 24899780ddcf1e34aab1e81dd4519569, type: 2}
     currentResource: 0
+    level: 0
+    maxHealth: 0
+    currentHealth: 0
+    blockManaGainThisTurn: 0
   - data: {fileID: 11400000, guid: 50e776ab86d11014cb94a39c0f3cb962, type: 2}
     currentResource: 0
-  damagePerGem: 0400000004000000040000000400000004000000
+    level: 0
+    maxHealth: 0
+    currentHealth: 0
+    blockManaGainThisTurn: 0
+  baseDamagePerGem: 0500000005000000050000000500000005000000
+  aliveDamagePerGem: 0800000008000000080000000800000008000000
   pinkHealPerGem: 3
   damageMultiplier: 1
   damageMultiplierTurnsRemaining: 0
@@ -2785,7 +2809,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0}
   m_AnchorMax: {x: 0.5, y: 0}
-  m_AnchoredPosition: {x: -1100, y: 125}
+  m_AnchoredPosition: {x: -100, y: 600}
   m_SizeDelta: {x: 355, y: 405}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!114 &1746104365
@@ -2823,7 +2847,7 @@ MonoBehaviour:
   m_ChildAlignment: 1
   m_StartCorner: 1
   m_StartAxis: 1
-  m_CellSize: {x: 120, y: 240}
+  m_CellSize: {x: 150, y: 195}
   m_Spacing: {x: 15, y: 15}
   m_Constraint: 2
   m_ConstraintCount: 2

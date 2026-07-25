@@ -6,19 +6,18 @@ public class HeroData : ScriptableObject
     [Header("Ідентифікатор (не змінювати після релізу!)")]
     public string heroId; // унікальний, стабільний ID — не залежить від імені файлу
 
-    [Header("Основна інформація")]
+    [Header("Основні параметри (все в одному блоці)")]
     public string heroName;
-    public ResourceType resourceType;
+    public int maxHealth = 100;         // індивідуальне здоров'я героя (HeroRuntimeState.currentHealth)
+    public int maxResource = 50;        // максимальна манна
+    public float damageMultiplier = 1f; // особистий множник урону цього героя
+    public int weight = 1;              // вага картки — використовується лімітом місткості загону (буде додано пізніше)
+    public SkillData[] skills;          // кількість умінь = довжина масиву, окреме поле не потрібне
 
     [Header("Візуал")]
     public Sprite portrait;
     public Color themeColor = Color.white;
-
-    [Header("Ресурс героя")]
-    public int maxResource = 50;
-
-    [Header("Умінна")]
-    public SkillData[] skills;
+    public ResourceType resourceType;
 
     // Автоматично підставляє heroId = імені файлу при першому створенні,
     // якщо поле ще порожнє — щоб не треба було вручну заповнювати для існуючих героїв

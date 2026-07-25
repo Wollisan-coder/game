@@ -25,8 +25,11 @@ public class BattleManager : MonoBehaviour
     public HeroData[] heroRoster; // призначити в Inspector усіх героїв, що беруть участь у бою
     public List<HeroRuntimeState> activeHeroes = new List<HeroRuntimeState>();
 
-    [Header("Урон за фішку (Red/Blue/Green/Yellow/Violet)")]
-    public int[] damagePerGem = { 4, 4, 4, 4, 4 };
+    [Header("Урон за фішку (базовий — якщо героя цього кольору немає або він загинув)")]
+    public int[] baseDamagePerGem = { 5, 5, 5, 5, 5 };
+
+    [Header("Урон за фішку (якщо герой цього кольору живий)")]
+    public int[] aliveDamagePerGem = { 8, 8, 8, 8, 8 };
 
     [Header("Лікування за фішку Pink")]
     public int pinkHealPerGem = 3;
@@ -45,6 +48,8 @@ public class BattleManager : MonoBehaviour
 
     public System.Action OnStateChanged;
 
+    private HeroRuntimeState lastAttackedHero;
+    private int consecutiveHitsOnLastHero;
 
         private EnemyData ResolveEnemy()
     {
@@ -84,8 +89,16 @@ public class BattleManager : MonoBehaviour
         activeHeroes.Clear();
         foreach (var hero in heroRoster)
         {
-            if (hero != null)
-                activeHeroes.Add(new HeroRuntimeState(hero));
+            if (hero == null) continue;
+
+            int level = 1;
+            if (HeroCollectionManager.Instance != null)
+            {
+                var ownership = HeroCollectionManager.Instance.ownership.Find(o => o.heroId == hero.heroId);
+                if (ownership != null) level = ownership.level;
+            }
+
+            activeHeroes.Add(new HeroRuntimeState(hero, level));
         }
     }
 
@@ -94,7 +107,14 @@ public class BattleManager : MonoBehaviour
         int absorbed = Mathf.Min(enemyShield, amount);
         enemyShield -= absorbed;
         enemyHP = Mathf.Max(0, enemyHP - (amount - absorbed));
-    } 
+    }
+
+    // Базовий урон, якщо живого героя цього кольору немає; підвищений — якщо є
+    private int GetDamagePerGem(int type)
+    {
+        bool hasAliveHeroOfColor = activeHeroes.Any(h => h.currentHealth > 0 && (int)h.data.resourceType == type);
+        return hasAliveHeroOfColor ? aliveDamagePerGem[type] : baseDamagePerGem[type];
+    }
 
     public void ResolvePlayerTurn(Dictionary<int, int> matchedTypeCounts)
     {
@@ -103,30 +123,35 @@ public class BattleManager : MonoBehaviour
             int type = pair.Key;
             int count = pair.Value;
 
-            if (type == 5) // Pink — лікування + мана всім героям 0-4
+            if (type == 5) // Pink — лікування + мана всім живим героям 0-4
             {
                 Heal(count * pinkHealPerGem);
 
                 foreach (var hero in activeHeroes)
                 {
-                    if ((int)hero.data.resourceType <= 4)
+                    if (hero.currentHealth > 0 && !hero.blockManaGainThisTurn && (int)hero.data.resourceType <= 4)
                         hero.currentResource = Mathf.Min(hero.currentResource + count, hero.data.maxResource);
                 }
             }
             else if (type >= 0 && type <= 4) // Red/Blue/Green/Yellow/Violet
             {
-                int baseDamage = count * damagePerGem[type];
-                                int finalDamage = Mathf.RoundToInt(baseDamage * damageMultiplier * heroDamageMultiplier);
+                int baseDamage = count * GetDamagePerGem(type);
+                int finalDamage = Mathf.RoundToInt(baseDamage * damageMultiplier * heroDamageMultiplier);
                 DealDamageToEnemy(finalDamage);
 
-                // Кожен активний герой цього кольору отримує повну порцію ресурсу
+                // Кожен живий активний герой цього кольору отримує повну порцію ресурсу
+                // (окрім тих, хто щойно використав навичку цього ходу — їм мана не нараховується)
                 foreach (var hero in activeHeroes)
                 {
-                    if ((int)hero.data.resourceType == type)
+                    if (hero.currentHealth > 0 && !hero.blockManaGainThisTurn && (int)hero.data.resourceType == type)
                         hero.currentResource = Mathf.Min(hero.currentResource + count, hero.data.maxResource);
                 }
             }
         }
+
+        // Блокування мани діяло рівно один хід — знімаємо його для наступного
+        foreach (var hero in activeHeroes)
+            hero.blockManaGainThisTurn = false;
 
         if (damageMultiplierTurnsRemaining > 0)
         {
@@ -149,7 +174,6 @@ public class BattleManager : MonoBehaviour
             OnEnemyDefeated();
     }
 
-    public void DealDamageToEnemy(int amount) => enemyHP = Mathf.Max(0, enemyHP - amount);
     public void Heal(int amount) => playerHP = Mathf.Min(playerMaxHP, playerHP + amount);
     public void AddShield(int amount) => playerShield += amount;
 
@@ -157,14 +181,111 @@ public class BattleManager : MonoBehaviour
     {
         yield return new WaitForSeconds(0.5f);
 
-        int rawDamage = Random.Range(enemyMinAttack, enemyMaxAttack + 1);
-        int absorbed = Mathf.Min(playerShield, rawDamage);
-        playerShield -= absorbed;
-        playerHP = Mathf.Max(0, playerHP - (rawDamage - absorbed));
+        EnemySkillData skill = PickEnemySkill();
+        if (skill != null)
+            UseEnemySkill(skill);
+        else
+            BasicEnemyAttack(); // якщо скіли не задані — стара проста атака
 
         OnStateChanged?.Invoke();
 
         if (playerHP <= 0)
+            OnPlayerDefeated();
+    }
+
+    private EnemySkillData PickEnemySkill()
+    {
+        if (currentEnemy == null || currentEnemy.skills == null || currentEnemy.skills.Length == 0)
+            return null;
+
+        float totalWeight = currentEnemy.skills.Sum(s => Mathf.Max(0.0001f, s.weight));
+        float roll = Random.Range(0f, totalWeight);
+        float cumulative = 0f;
+
+        foreach (var skill in currentEnemy.skills)
+        {
+            cumulative += Mathf.Max(0.0001f, skill.weight);
+            if (roll <= cumulative)
+                return skill;
+        }
+
+        return currentEnemy.skills[currentEnemy.skills.Length - 1];
+    }
+
+    private void UseEnemySkill(EnemySkillData skill)
+    {
+        switch (skill.effectType)
+        {
+            case EnemySkillEffectType.Damage:
+                // Скіл б'є по випадковому живому герою, але НЕ враховується у забороні "3 рази поспіль"
+                ApplyDamageToHero(GetRandomAliveHero(), Mathf.RoundToInt(skill.effectValue * currentEnemy.damageMultiplier));
+                break;
+
+            case EnemySkillEffectType.ShieldSelf:
+                enemyShield += Mathf.RoundToInt(enemyMaxHP * skill.shieldPercentOfMaxHP);
+                break;
+
+            case EnemySkillEffectType.WeakenHeroes:
+                heroDamageMultiplier = 1f - skill.damageReductionPercent;
+                heroDamageMultiplierTurnsRemaining = skill.debuffDurationTurns;
+                break;
+        }
+    }
+
+    private void BasicEnemyAttack()
+    {
+        int rawDamage = Random.Range(enemyMinAttack, enemyMaxAttack + 1);
+        float multiplier = currentEnemy != null ? currentEnemy.damageMultiplier : 1f;
+        int finalDamage = Mathf.RoundToInt(rawDamage * multiplier);
+
+        ApplyDamageToHero(PickBasicAttackTarget(), finalDamage);
+    }
+
+    // Випадковий живий герой; exclude дозволяє прибрати конкретного героя з вибірки
+    private HeroRuntimeState GetRandomAliveHero(HeroRuntimeState exclude = null)
+    {
+        var candidates = activeHeroes.Where(h => h.currentHealth > 0 && h != exclude).ToList();
+
+        if (candidates.Count == 0)
+            candidates = activeHeroes.Where(h => h.currentHealth > 0).ToList();
+
+        if (candidates.Count == 0) return null; // усі герої загинули
+
+        return candidates[Random.Range(0, candidates.Count)];
+    }
+
+    // Звичайна атака ворога не може влучити в одного героя 3 рази поспіль
+    private HeroRuntimeState PickBasicAttackTarget()
+    {
+        HeroRuntimeState exclude = consecutiveHitsOnLastHero >= 2 ? lastAttackedHero : null;
+        HeroRuntimeState target = GetRandomAliveHero(exclude);
+
+        if (target != null && target == lastAttackedHero)
+            consecutiveHitsOnLastHero++;
+        else
+            consecutiveHitsOnLastHero = 1;
+
+        lastAttackedHero = target;
+        return target;
+    }
+
+    private void ApplyDamageToHero(HeroRuntimeState hero, int rawDamage)
+    {
+        if (hero == null) return; // усі герої загинули — атакувати нікого
+
+        int absorbed = Mathf.Min(playerShield, rawDamage);
+        playerShield -= absorbed;
+        hero.TakeDamage(rawDamage - absorbed);
+
+        if (hero.currentHealth <= 0)
+            OnHeroDefeated(hero);
+    }
+
+    private void OnHeroDefeated(HeroRuntimeState hero)
+    {
+        Debug.Log($"Герой {hero.data.heroName} загинув!");
+
+        if (activeHeroes.All(h => h.currentHealth <= 0))
             OnPlayerDefeated();
     }
 
@@ -174,15 +295,19 @@ public class BattleManager : MonoBehaviour
     // Тепер прив'язано до конкретного героя, а не до глобального ресурсу
     public bool TryUseSkill(HeroRuntimeState hero, SkillData skill)
     {
+        if (hero.currentHealth <= 0)
+            return false;
+
         if (hero.currentResource < skill.cost)
             return false;
 
         hero.currentResource -= skill.cost;
+        hero.blockManaGainThisTurn = true; // цього героя не можна поповнити маною на цьому ході
 
         switch (skill.effectType)
         {
             case SkillEffectType.Damage:
-                DealDamageToEnemy(Mathf.RoundToInt(skill.effectValue * damageMultiplier));
+                DealDamageToEnemy(Mathf.RoundToInt(skill.effectValue * damageMultiplier * hero.data.damageMultiplier));
                 break;
 
             case SkillEffectType.Heal:

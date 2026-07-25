@@ -11,9 +11,13 @@ public class HeroCardUI : MonoBehaviour
 
     [Header("UI елементи")]
     public Image portraitImage;
-    public Image fillImage;
+    public Image fillImage;       // мана
+    public Image healthFillImage; // HP — окремий від мани
     public Button activateButton; // якщо в героя одна основна навичка (skills[0])
     public Image buttonOverlay;
+
+    [Header("Стан загибелі")]
+    public Color deadTintColor = new Color(0.25f, 0.25f, 0.25f, 1f);
 
     [Header("Мигання кнопки активації")]
     public float buttonMinAlpha = 0.05f;
@@ -53,6 +57,8 @@ public class HeroCardUI : MonoBehaviour
 
     private void Update()
     {
+        if (heroState != null && heroState.currentHealth <= 0) return; // мертвий герой — без анімацій
+
         UpdateButtonPulse();
         UpdateManaFill();
     }
@@ -126,19 +132,31 @@ public class HeroCardUI : MonoBehaviour
 
     private void RefreshCard()
     {
-        if (fillImage == null || heroState == null) return;
+        if (heroState == null) return;
 
-        fillImage.fillAmount = heroState.data.maxResource > 0
-            ? (float)heroState.currentResource / heroState.data.maxResource
-            : 0f;
+        bool isDead = heroState.currentHealth <= 0;
+
+        if (fillImage != null)
+            fillImage.fillAmount = heroState.data.maxResource > 0
+                ? (float)heroState.currentResource / heroState.data.maxResource
+                : 0f;
+
+        if (healthFillImage != null)
+            healthFillImage.fillAmount = heroState.maxHealth > 0
+                ? (float)heroState.currentHealth / heroState.maxHealth
+                : 0f;
 
         if (activateButton != null && primarySkill != null)
-            activateButton.interactable = heroState.currentResource >= primarySkill.cost;
+            activateButton.interactable = !isDead && heroState.currentResource >= primarySkill.cost;
+
+        if (portraitImage != null)
+            portraitImage.color = isDead ? deadTintColor : Color.white;
     }
 
     private void OnActivateClicked()
     {
         if (primarySkill == null || heroState == null || battleManager == null) return;
+        if (heroState.currentHealth <= 0) return; // мертвий герой не може використовувати навички
 
         bool success = battleManager.TryUseSkill(heroState, primarySkill);
         if (!success)
