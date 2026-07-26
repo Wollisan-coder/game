@@ -71,6 +71,7 @@ public class BuildingManager : MonoBehaviour
     {
         var data = GetOwnership(building.buildingId);
         if (data == null || !data.isBuilt || PlayerCurrencies.Instance == null) return false;
+        if (data.level >= building.maxLevel) return false;
 
         CollectProduction(building); // забираємо накопичене за старою потужністю/складом, перш ніж вони зміняться
 

@@ -88,19 +88,10 @@ public class CastleUI : MonoBehaviour
         accountText.alignment = TextAlignmentOptions.MidlineRight;
         accountText.color = Color.white;
 
-        // --- Навігація ---
-        var navObj = new GameObject("NavRow", typeof(RectTransform));
-        var navRect = (RectTransform)navObj.transform;
-        navRect.SetParent(panelRect, false);
-        navRect.anchorMin = new Vector2(0, 1);
-        navRect.anchorMax = new Vector2(1, 1);
-        navRect.pivot = new Vector2(0.5f, 1);
-        navRect.sizeDelta = new Vector2(0, 56);
-        navRect.anchoredPosition = new Vector2(0, -70);
-
-        CreateNavButton(navRect, "Squad", new Vector2(0f, 0f), new Vector2(0.2f, 1f), () => { owner?.ShowSquad(); });
-        CreateNavButton(navRect, "Inventory", new Vector2(0.21f, 0f), new Vector2(0.41f, 1f), () => { owner?.ShowItemCollection(); });
-        CreateNavButton(navRect, "Collection", new Vector2(0.42f, 0f), new Vector2(0.62f, 1f), () => { owner?.ShowCollection(); });
+        // --- Навігація — так само, як кнопки внизу SquadPanel: якір (0.5,0), розмір 200x100, y=50 ---
+        CreateNavButton(panelRect, "Squad", new Vector2(-220, 50), () => { owner?.ShowSquad(); });
+        CreateNavButton(panelRect, "Inventory", new Vector2(0, 50), () => { owner?.ShowItemCollection(); });
+        CreateNavButton(panelRect, "Collection", new Vector2(220, 50), () => { owner?.ShowCollection(); });
 
         // --- Сітка будівель ---
         var scrollObj = new GameObject("Scroll View", typeof(RectTransform));
@@ -108,8 +99,8 @@ public class CastleUI : MonoBehaviour
         scrollRect.SetParent(panelRect, false);
         scrollRect.anchorMin = Vector2.zero;
         scrollRect.anchorMax = Vector2.one;
-        scrollRect.offsetMin = new Vector2(16, 16);
-        scrollRect.offsetMax = new Vector2(-16, -136);
+        scrollRect.offsetMin = new Vector2(16, 160);
+        scrollRect.offsetMax = new Vector2(-16, -80);
 
         var scroll = scrollObj.AddComponent<ScrollRect>();
         var scrollImg = scrollObj.AddComponent<Image>();
@@ -151,15 +142,16 @@ public class CastleUI : MonoBehaviour
         panelRoot.SetActive(false);
     }
 
-    private void CreateNavButton(RectTransform parent, string label, Vector2 anchorMin, Vector2 anchorMax, System.Action onClick)
+    private void CreateNavButton(RectTransform parent, string label, Vector2 anchoredPosition, System.Action onClick)
     {
         var btnObj = new GameObject(label, typeof(RectTransform));
         var btnRect = (RectTransform)btnObj.transform;
         btnRect.SetParent(parent, false);
-        btnRect.anchorMin = anchorMin;
-        btnRect.anchorMax = anchorMax;
-        btnRect.offsetMin = Vector2.zero;
-        btnRect.offsetMax = Vector2.zero;
+        btnRect.anchorMin = new Vector2(0.5f, 0f);
+        btnRect.anchorMax = new Vector2(0.5f, 0f);
+        btnRect.pivot = new Vector2(0.5f, 0.5f);
+        btnRect.sizeDelta = new Vector2(200, 100);
+        btnRect.anchoredPosition = anchoredPosition;
 
         var img = btnObj.AddComponent<Image>();
         img.color = ConfirmationDialog.ButtonColor;
@@ -176,7 +168,7 @@ public class CastleUI : MonoBehaviour
         var text = textObj.AddComponent<TextMeshProUGUI>();
         text.text = label;
         text.alignment = TextAlignmentOptions.Center;
-        text.color = ConfirmationDialog.ButtonTextColor;
+        text.color = Color.black; // текст кнопок замку — окремо від глобального ConfirmationDialog.ButtonTextColor
     }
 
     public void Refresh()
@@ -299,6 +291,25 @@ public class CastleUI : MonoBehaviour
                 if (summonUI != null) summonUI.Open(building, canvasRoot, Refresh);
             });
         }
+        else if (building.buildingType == BuildingType.SquadCapacity)
+        {
+            int squadSize = HeroCollectionManager.BaseSquadSize + building.GetSquadCapacityBonus(level);
+            statusText.text = $"Level {level}\nSquad size: {squadSize}";
+
+            if (level < building.maxLevel)
+            {
+                var (wood, stone) = building.GetUpgradeCost(level + 1);
+                CreateActionButton(cardRect, $"Upgrade\n({wood}W/{stone}S)", new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 34), () =>
+                {
+                    manager.UpgradeBuilding(building);
+                    Refresh();
+                });
+            }
+            else
+            {
+                statusText.text += "\nMAX";
+            }
+        }
         else
         {
             float pending = manager.GetPendingAmount(building);
@@ -347,6 +358,6 @@ public class CastleUI : MonoBehaviour
         text.text = label;
         text.fontSize = 12;
         text.alignment = TextAlignmentOptions.Center;
-        text.color = ConfirmationDialog.ButtonTextColor;
+        text.color = Color.black; // текст кнопок замку — окремо від глобального ConfirmationDialog.ButtonTextColor
     }
 }

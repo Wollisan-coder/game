@@ -4,5 +4,6 @@ public enum BuildingType
     StoneProduction,
     ShardProduction,
     Forge,
-    Altar
+    Altar,
+    SquadCapacity
 }

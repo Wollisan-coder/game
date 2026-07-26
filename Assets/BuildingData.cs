@@ -15,6 +15,9 @@ public class BuildingData : ScriptableObject
     [Header("Розблокування")]
     public int requiredAccountLevel = 1;
 
+    [Header("Максимальний рівень будівлі (апгрейд припиняється)")]
+    public int maxLevel = 100;
+
     [Header("Постройка (перше спорудження)")]
     public int buildCostWood = 0;
     public int buildCostStone = 0;
@@ -27,6 +30,9 @@ public class BuildingData : ScriptableObject
     [Header("Призов (лише для Forge/Altar)")]
     public HeroSummonPoolData heroSummonPool; // для Altar
     public ItemSummonPoolData itemSummonPool; // для Forge
+
+    [Header("Місткість загону (лише для SquadCapacity)")]
+    public int baseSquadCapacityBonus = 1; // скільки додаткових слотів дає кожен рівень
 
     private void OnValidate()
     {
@@ -54,4 +60,7 @@ public class BuildingData : ScriptableObject
         int stone = Mathf.RoundToInt(buildCostStone * Mathf.Pow(targetLevel, 1.5f));
         return (wood, stone);
     }
+
+    // Додаткові слоти загону на вказаному рівні (0, якщо ще не збудовано)
+    public int GetSquadCapacityBonus(int level) => baseSquadCapacityBonus * Mathf.Max(0, level);
 }

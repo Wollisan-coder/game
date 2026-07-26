@@ -12,9 +12,26 @@ public class HeroCollectionManager : MonoBehaviour
     [Header("Стан володіння (заповнюється при завантаженні збереження)")]
     public List<HeroOwnershipData> ownership = new List<HeroOwnershipData>();
 
-    [Header("Обраний загін (максимум 4)")]
+    [Header("Обраний загін")]
     public List<HeroData> squad = new List<HeroData>();
-    public const int MaxSquadSize = 4;
+    public const int BaseSquadSize = 4;
+
+    // Базова місткість + бонус від будівлі SquadCapacity (якщо збудована)
+    public int MaxSquadSize => BaseSquadSize + GetSquadCapacityBonus();
+
+    private int GetSquadCapacityBonus()
+    {
+        if (BuildingManager.Instance == null) return 0;
+
+        var building = BuildingManager.Instance.allBuildings
+            .FirstOrDefault(b => b != null && b.buildingType == BuildingType.SquadCapacity);
+        if (building == null) return 0;
+
+        var ownership = BuildingManager.Instance.GetOwnership(building.buildingId);
+        if (ownership == null || !ownership.isBuilt) return 0;
+
+        return building.GetSquadCapacityBonus(ownership.level);
+    }
 
     // Індекс слота, який зараз редагується (-1 = не в режимі вибору)
     public int slotBeingEdited = -1;

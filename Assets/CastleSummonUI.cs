@@ -121,7 +121,7 @@ public class CastleSummonUI : MonoBehaviour
         closeBtnRect.sizeDelta = new Vector2(160, 34);
         closeBtnRect.anchoredPosition = new Vector2(0, 12);
         var closeBtnImg = closeBtnObj.AddComponent<Image>();
-        closeBtnImg.color = new Color(0.3f, 0.3f, 0.3f, 1f);
+        closeBtnImg.color = ConfirmationDialog.ButtonColor;
         var closeBtn = closeBtnObj.AddComponent<Button>();
         closeBtn.onClick.AddListener(Close);
 
@@ -135,7 +135,7 @@ public class CastleSummonUI : MonoBehaviour
         var closeText = closeTextObj.AddComponent<TextMeshProUGUI>();
         closeText.text = "Close";
         closeText.alignment = TextAlignmentOptions.Center;
-        closeText.color = Color.white;
+        closeText.color = Color.black;
 
         overlayRoot.SetActive(false);
     }
@@ -165,7 +165,7 @@ public class CastleSummonUI : MonoBehaviour
         var text = textObj.AddComponent<TextMeshProUGUI>();
         text.fontSize = 15;
         text.alignment = TextAlignmentOptions.Center;
-        text.color = ConfirmationDialog.ButtonTextColor;
+        text.color = Color.black; // текст кнопок замку — окремо від глобального ConfirmationDialog.ButtonTextColor
 
         return text;
     }
