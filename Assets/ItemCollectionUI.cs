@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEngine;
 
 public class ItemCollectionUI : MonoBehaviour
@@ -17,7 +18,11 @@ public class ItemCollectionUI : MonoBehaviour
         foreach (Transform child in gridContainer)
             Destroy(child.gameObject);
 
-        foreach (var item in collectionManager.allItems)
+        // Сортуємо за рідкістю (White -> Orange), в межах однієї рідкості — за назвою;
+        // предмети з різною рідкістю мають різний itemId, тож завжди займають окремі клітинки
+        var sortedItems = collectionManager.allItems.OrderBy(i => (int)i.rarity).ThenBy(i => i.itemName);
+
+        foreach (var item in sortedItems)
         {
             GameObject cardObj = Instantiate(itemCardPrefab, gridContainer);
             var card = cardObj.GetComponent<ItemCollectionCardUI>();

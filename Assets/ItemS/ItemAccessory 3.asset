@@ -10,17 +10,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cee94e0f62424cf4ebf0cdcef23fe21e, type: 3}
-  m_Name: ItemArmor
+  m_Name: ItemAccessory 3
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
-  itemId: ItemArmor
+  itemId: ItemAccessory
   itemName: 
   category: 0
-  slotType: 1
-  icon: {fileID: 21300000, guid: 34c097f2bd21b7e44a64be0f38a4cd27, type: 3}
+  slotType: 2
+  icon: {fileID: 21300000, guid: 8c067c7d532d32e4abe354ac9e6a5002, type: 3}
   description: 
-  rarity: 0
-  sacrificeExperience: 10
-  bonusHealth: 20
+  rarity: 3
+  sacrificeExperience: 10000
+  bonusHealth: 500
   bonusMana: 0
   bonusDamageMultiplier: 0
-  heroExperienceValue: 0
+  heroExperienceValue: 60

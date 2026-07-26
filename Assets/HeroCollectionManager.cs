@@ -16,10 +16,19 @@ public class HeroCollectionManager : MonoBehaviour
     public List<HeroData> squad = new List<HeroData>();
     public const int BaseSquadSize = 4;
 
-    // Базова місткість + бонус від будівлі SquadCapacity (якщо збудована)
-    public int MaxSquadSize => BaseSquadSize + GetSquadCapacityBonus();
+    // Кількість слотів у загоні завжди фіксована — Бараки НЕ додають слоти, лише піднімають ліміт ваги
+    public int MaxSquadSize => BaseSquadSize;
 
-    private int GetSquadCapacityBonus()
+    [Header("Вага загону")]
+    public const int BaseSquadWeight = 4; // базовий ліміт — вистачає рівно на 4 героїв вагою 1 без жодних будівель
+
+    // Базовий ліміт + бонус від будівлі SquadCapacity (Бараки), якщо збудована
+    public int MaxSquadWeight => BaseSquadWeight + GetSquadWeightBonus();
+
+    // Сумарна вага героїв, що зараз реально стоять у загоні
+    public int CurrentSquadWeight => squad.Where(h => h != null).Sum(h => h.weight);
+
+    private int GetSquadWeightBonus()
     {
         if (BuildingManager.Instance == null) return 0;
 
@@ -30,7 +39,7 @@ public class HeroCollectionManager : MonoBehaviour
         var ownership = BuildingManager.Instance.GetOwnership(building.buildingId);
         if (ownership == null || !ownership.isBuilt) return 0;
 
-        return building.GetSquadCapacityBonus(ownership.level);
+        return building.GetSquadWeightBonus(ownership.level);
     }
 
     // Індекс слота, який зараз редагується (-1 = не в режимі вибору)
@@ -125,6 +134,21 @@ public class HeroCollectionManager : MonoBehaviour
             squad.Add(null);
     }
 
+    // Скільки важитиме загін, якщо саме зараз призначити hero в slotBeingEdited (з урахуванням перенесення героя з іншого слота)
+    public int GetProjectedSquadWeight(HeroData hero)
+    {
+        int existingIndex = squad.FindIndex(h => h != null && h.heroId == hero.heroId);
+
+        int weight = hero.weight;
+        for (int i = 0; i < squad.Count; i++)
+        {
+            if (i == slotBeingEdited || i == existingIndex) continue;
+            if (squad[i] != null) weight += squad[i].weight;
+        }
+
+        return weight;
+    }
+
     // Викликається при виборі героя в колекції, коли активний режим вибору слота
     public bool AssignToSlot(HeroData hero)
     {
@@ -132,6 +156,8 @@ public class HeroCollectionManager : MonoBehaviour
         if (!IsUnlocked(hero)) return false;
 
         EnsureSquadSize();
+
+        if (GetProjectedSquadWeight(hero) > MaxSquadWeight) return false;
 
         // Якщо цей герой вже в іншому слоті — прибираємо його звідти (без дублів у загоні)
         int existingIndex = squad.FindIndex(h => h != null && h.heroId == hero.heroId);

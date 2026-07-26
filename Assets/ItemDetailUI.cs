@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
@@ -57,11 +58,20 @@ public class ItemDetailUI : MonoBehaviour
 
         if (statsText != null)
         {
-            statsText.text = isHeroXpItem
-                ? $"Hero XP: +{item.heroExperienceValue}"
-                : $"HP: +{item.bonusHealth}\n" +
-                  $"Мана: +{item.bonusMana}\n" +
-                  $"Множник урону: +{item.bonusDamageMultiplier:0.##}";
+            if (isHeroXpItem)
+            {
+                statsText.text = $"Hero XP: +{item.heroExperienceValue}";
+            }
+            else
+            {
+                // Показуємо лише ті характеристики, які предмет реально підвищує (не 0)
+                var lines = new List<string>();
+                if (item.bonusHealth != 0) lines.Add($"HP: +{item.bonusHealth}");
+                if (item.bonusMana != 0) lines.Add($"Мана: +{item.bonusMana}");
+                if (item.bonusDamageMultiplier != 0) lines.Add($"Damage: +{item.bonusDamageMultiplier:0.##}");
+
+                statsText.text = string.Join("\n", lines);
+            }
         }
 
         if (ownedStatusText != null)

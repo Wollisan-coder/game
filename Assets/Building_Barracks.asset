@@ -15,8 +15,9 @@ MonoBehaviour:
   buildingId: Building_Barracks
   buildingName: Barracks
   buildingType: 5
-  icon: {fileID: 0}
-  description: Increases squad capacity, letting you bring more heroes into battle.
+  icon: {fileID: 21300000, guid: 9c3effb4c2eb934449266aa98a3dd9e9, type: 3}
+  description: Increases squad weight capacity, letting you field heavier heroes
+    without adding slots.
   requiredAccountLevel: 2
   maxLevel: 4
   buildCostWood: 150
@@ -26,4 +27,4 @@ MonoBehaviour:
   baseStorageCap: 0
   heroSummonPool: {fileID: 0}
   itemSummonPool: {fileID: 0}
-  baseSquadCapacityBonus: 1
+  baseSquadWeightBonus: 1

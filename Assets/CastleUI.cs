@@ -293,8 +293,8 @@ public class CastleUI : MonoBehaviour
         }
         else if (building.buildingType == BuildingType.SquadCapacity)
         {
-            int squadSize = HeroCollectionManager.BaseSquadSize + building.GetSquadCapacityBonus(level);
-            statusText.text = $"Level {level}\nSquad size: {squadSize}";
+            int squadWeight = HeroCollectionManager.BaseSquadWeight + building.GetSquadWeightBonus(level);
+            statusText.text = $"Level {level}\nSquad weight capacity: {squadWeight}";
 
             if (level < building.maxLevel)
             {

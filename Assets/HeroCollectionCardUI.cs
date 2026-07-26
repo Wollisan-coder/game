@@ -42,6 +42,14 @@ public class HeroCollectionCardUI : MonoBehaviour
                 var mainMenu = FindAnyObjectByType<MainMenuUI>();
                 if (mainMenu != null) mainMenu.ShowSquad();
             }
+            else
+            {
+                int projected = collectionManager.GetProjectedSquadWeight(heroData);
+                var canvas = FindAnyObjectByType<Canvas>();
+                if (canvas != null)
+                    ConfirmationDialog.ShowInfo(canvas.transform,
+                        $"Not enough squad weight capacity ({projected}/{collectionManager.MaxSquadWeight}).\nUpgrade Barracks to fit this hero.");
+            }
             return;
         }
 

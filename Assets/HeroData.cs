@@ -11,7 +11,7 @@ public class HeroData : ScriptableObject
     public int maxHealth = 100;         // індивідуальне здоров'я героя (HeroRuntimeState.currentHealth)
     public int maxResource = 50;        // максимальна манна
     public float damageMultiplier = 1f; // особистий множник урону цього героя
-    public int weight = 1;              // вага картки — використовується лімітом місткості загону (буде додано пізніше)
+    public int weight = 1;              // вага картки — сума ваг героїв у загоні обмежена HeroCollectionManager.MaxSquadWeight
     public SkillData[] skills;          // кількість умінь = довжина масиву, окреме поле не потрібне
 
     [Header("Візуал")]

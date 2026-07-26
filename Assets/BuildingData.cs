@@ -32,7 +32,7 @@ public class BuildingData : ScriptableObject
     public ItemSummonPoolData itemSummonPool; // для Forge
 
     [Header("Місткість загону (лише для SquadCapacity)")]
-    public int baseSquadCapacityBonus = 1; // скільки додаткових слотів дає кожен рівень
+    public int baseSquadWeightBonus = 1; // скільки додаткової ваги загону дає кожен рівень (кількість слотів завжди фіксована — 4)
 
     private void OnValidate()
     {
@@ -61,6 +61,6 @@ public class BuildingData : ScriptableObject
         return (wood, stone);
     }
 
-    // Додаткові слоти загону на вказаному рівні (0, якщо ще не збудовано)
-    public int GetSquadCapacityBonus(int level) => baseSquadCapacityBonus * Mathf.Max(0, level);
+    // Додаткова вага загону на вказаному рівні (0, якщо ще не збудовано)
+    public int GetSquadWeightBonus(int level) => baseSquadWeightBonus * Mathf.Max(0, level);
 }

@@ -82,7 +82,7 @@ public class MainMenuUI : MonoBehaviour
     {
         if (AccountManager.Instance != null && !AccountManager.Instance.SpendEnergy(battleEnergyCost))
         {
-            var canvas = FindObjectOfType<Canvas>();
+            var canvas = FindAnyObjectByType<Canvas>();
             if (canvas != null)
                 ConfirmationDialog.ShowInfo(canvas.transform, "Not enough energy to start a battle.");
             return;

@@ -25,15 +25,10 @@ public class SquadUI : MonoBehaviour
 
     public void RefreshSlots()
     {
-        int capacity = collectionManager != null ? collectionManager.MaxSquadSize : slots.Length;
-
+        // Кількість слотів завжди фіксована (4) — Бараки піднімають ліміт ваги загону, а не кількість слотів
         for (int i = 0; i < slots.Length; i++)
         {
-            bool unlocked = i < capacity;
-            slots[i].gameObject.SetActive(unlocked);
-            if (!unlocked) continue;
-
-            if (i < collectionManager.squad.Count && collectionManager.squad[i] != null)
+            if (collectionManager != null && i < collectionManager.squad.Count && collectionManager.squad[i] != null)
                 slots[i].SetHero(collectionManager.squad[i], this);
             else
                 slots[i].SetEmpty();

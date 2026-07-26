@@ -80,9 +80,12 @@ public class ItemCollectionManager : MonoBehaviour
 
     // Всі предмети-екіпіровка певного типу слота — і отримані, і ще ні (для показу "наявності").
     // Витратні предмети (category == HeroExperience тощо) сюди не потрапляють — їх не можна екіпірувати.
+    // Відсортовано за рідкістю (White -> Orange), в межах однієї рідкості — за назвою.
     public List<ItemData> GetItemsOfType(EquipmentSlotType slotType)
     {
-        return allItems.Where(i => i.category == ItemCategory.Equipment && i.slotType == slotType).ToList();
+        return allItems.Where(i => i.category == ItemCategory.Equipment && i.slotType == slotType)
+            .OrderBy(i => (int)i.rarity).ThenBy(i => i.itemName)
+            .ToList();
     }
 
     // Знімає одну одиницю з кількості предмета (видаляє стек, коли доходить до 0).
