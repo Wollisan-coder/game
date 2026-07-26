@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c6de25c07db62f40976e26f65fb71cd, type: 3}
+  m_Name: Building_StoneQuarry
+  m_EditorClassIdentifier: Assembly-CSharp::BuildingData
+  buildingId: Building_StoneQuarry
+  buildingName: Stone Quarry
+  buildingType: 1
+  icon: {fileID: 21300000, guid: 3191480f46e1b0a4bbf536679612c752, type: 3}
+  description: Produces Stone over time. Collect it to spend on building upgrades.
+  requiredAccountLevel: 1
+  buildCostWood: 0
+  buildCostStone: 0
+  producedCurrency: 1
+  baseProductionPerHour: 8
+  baseStorageCap: 200
+  heroSummonPool: {fileID: 0}
+  itemSummonPool: {fileID: 0}

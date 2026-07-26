@@ -19,6 +19,9 @@ public class HeroData : ScriptableObject
     public Color themeColor = Color.white;
     public ResourceType resourceType;
 
+    [Header("Рідкість (впливає на шанс випадіння в Алтарі)")]
+    public Rarity rarity = Rarity.White;
+
     [Header("Опис")]
     [TextArea(3, 6)] public string description;
 
@@ -29,4 +32,6 @@ public class HeroData : ScriptableObject
         if (string.IsNullOrEmpty(heroId))
             heroId = name;
     }
+
+    public Color GetRarityColor() => RarityUtility.GetColor(rarity);
 }

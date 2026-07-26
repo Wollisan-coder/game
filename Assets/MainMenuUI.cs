@@ -12,6 +12,11 @@ public class MainMenuUI : MonoBehaviour
     [Header("Назва бойової сцени")]
     public string battleSceneName = "SampleScene";
 
+    [Header("Енергія на бій")]
+    public int battleEnergyCost = 1;
+
+    private CastleUI castleUI; // будується програмно — див. EnsureCastleUI()
+
     private void Start()
     {
         ShowCollection();
@@ -23,6 +28,7 @@ public class MainMenuUI : MonoBehaviour
         squadPanel.SetActive(false);
         if (enemyCollectionPanel != null) enemyCollectionPanel.SetActive(false);
         if (itemCollectionPanel != null) itemCollectionPanel.SetActive(false);
+        castleUI?.Hide();
     }
 
     public void ShowSquad()
@@ -31,6 +37,7 @@ public class MainMenuUI : MonoBehaviour
         squadPanel.SetActive(true);
         if (enemyCollectionPanel != null) enemyCollectionPanel.SetActive(false);
         if (itemCollectionPanel != null) itemCollectionPanel.SetActive(false);
+        castleUI?.Hide();
 
         if (squadUI != null)
             squadUI.RefreshSlots(); // оновлюємо слоти при кожному відкритті
@@ -42,6 +49,7 @@ public class MainMenuUI : MonoBehaviour
         squadPanel.SetActive(false);
         if (enemyCollectionPanel != null) enemyCollectionPanel.SetActive(true);
         if (itemCollectionPanel != null) itemCollectionPanel.SetActive(false);
+        castleUI?.Hide();
     }
 
     public void ShowItemCollection()
@@ -50,10 +58,36 @@ public class MainMenuUI : MonoBehaviour
         squadPanel.SetActive(false);
         if (enemyCollectionPanel != null) enemyCollectionPanel.SetActive(false);
         if (itemCollectionPanel != null) itemCollectionPanel.SetActive(true);
+        castleUI?.Hide();
+    }
+
+    public void ShowCastle()
+    {
+        collectionPanel.SetActive(false);
+        squadPanel.SetActive(false);
+        if (enemyCollectionPanel != null) enemyCollectionPanel.SetActive(false);
+        if (itemCollectionPanel != null) itemCollectionPanel.SetActive(false);
+
+        EnsureCastleUI();
+        castleUI.Open(this);
+    }
+
+    private void EnsureCastleUI()
+    {
+        if (castleUI != null) return;
+        castleUI = gameObject.AddComponent<CastleUI>();
     }
 
     public void StartBattle()
     {
+        if (AccountManager.Instance != null && !AccountManager.Instance.SpendEnergy(battleEnergyCost))
+        {
+            var canvas = FindObjectOfType<Canvas>();
+            if (canvas != null)
+                ConfirmationDialog.ShowInfo(canvas.transform, "Not enough energy to start a battle.");
+            return;
+        }
+
         SceneManager.LoadScene(battleSceneName);
     }
 }

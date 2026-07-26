@@ -14,6 +14,7 @@ public class HeroOwnershipData
     public string heroId;
     public bool isUnlocked;
     public int level = 1;
+    public int experience = 0; // накопичений досвід у межах поточного рівня (від предметів-джерел досвіду)
 
     [Header("Обрані навички")]
     public int activeSkillIndex = 0;   // навичка, що використовується кнопкою в бою

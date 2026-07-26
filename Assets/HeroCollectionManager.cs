@@ -59,6 +59,42 @@ public class HeroCollectionManager : MonoBehaviour
         if (data != null) data.isUnlocked = true;
     }
 
+    // Скільки досвіду потрібно назбирати герою на вказаному рівні, щоб піднятись на наступний
+    public int ExperienceToNextLevel(int level) => level * 100;
+
+    // Додає герою досвід (наприклад, від витратного предмета) і піднімає рівень, поки досвіду вистачає.
+    // Повертає true, якщо герой знайдений і досвід застосовано.
+    public bool GrantExperience(string heroId, int amount)
+    {
+        var data = ownership.FirstOrDefault(o => o.heroId == heroId);
+        if (data == null || amount <= 0) return false;
+
+        data.experience += amount;
+
+        while (data.experience >= ExperienceToNextLevel(data.level))
+        {
+            data.experience -= ExperienceToNextLevel(data.level);
+            data.level++;
+        }
+
+        return true;
+    }
+
+    // Знімає предмет з усіх героїв, на яких він зараз екіпірований (крім exceptHeroId, якщо вказано).
+    // Використовується при екіпіровці, щоб предмет "переносився" між героями, а не дублювався.
+    public void UnequipItemFromAllHeroes(string itemId, string exceptHeroId = null)
+    {
+        if (string.IsNullOrEmpty(itemId)) return;
+
+        foreach (var heroOwnership in ownership)
+        {
+            if (heroOwnership.heroId == exceptHeroId) continue;
+
+            var entry = heroOwnership.equippedItems.Find(e => e.itemId == itemId);
+            if (entry != null) entry.itemId = null;
+        }
+    }
+
     // Викликається, коли гравець натискає на слот у загоні — запускає режим вибору
     public void StartEditingSlot(int slotIndex)
     {

@@ -16,7 +16,8 @@ MonoBehaviour:
   itemName: 
   slotType: 0
   icon: {fileID: 21300000, guid: 045e746e7cfaf8e42b764e663f73ba84, type: 3}
-  description: 
+  description:
+  rarity: 1
   bonusHealth: 0
   bonusMana: 0
   bonusDamageMultiplier: 1.2

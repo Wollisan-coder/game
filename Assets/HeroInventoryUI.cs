@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -35,6 +36,11 @@ public class HeroInventoryUI : MonoBehaviour
     [Header("Кнопка закриття")]
     public Button closeButton;
 
+    private Button heroUpgradeButton; // будується програмно — прокачати героя предметом досвіду
+    private Image heroUpgradeBg;
+    private TMP_Text heroUpgradeText;
+    private HeroExperienceItemPickerUI experienceItemPickerUI;
+
     private HeroData currentHero;
     private HeroOwnershipData currentOwnership;
 
@@ -42,6 +48,8 @@ public class HeroInventoryUI : MonoBehaviour
     {
         if (closeButton != null)
             closeButton.onClick.AddListener(Close);
+
+        CreateUpgradeButtonIfNeeded();
 
         gameObject.SetActive(false);
     }
@@ -69,11 +77,27 @@ public class HeroInventoryUI : MonoBehaviour
         if (portraitImage != null) portraitImage.sprite = currentHero.portrait;
         if (heroNameText != null) heroNameText.text = currentHero.heroName;
         if (healthText != null) healthText.text = $"HP: {currentHero.maxHealth}";
-        if (levelText != null) levelText.text = $"Рівень: {(currentOwnership != null ? currentOwnership.level : 1)}";
         if (descriptionText != null) descriptionText.text = currentHero.description;
+
+        if (levelText != null)
+        {
+            int level = currentOwnership != null ? currentOwnership.level : 1;
+
+            if (currentOwnership != null && collectionManager != null)
+            {
+                int nextThreshold = collectionManager.ExperienceToNextLevel(level);
+                levelText.text = $"Рівень: {level} ({currentOwnership.experience}/{nextThreshold} Exp)";
+            }
+            else
+            {
+                levelText.text = $"Рівень: {level}";
+            }
+        }
 
         PopulateSkills();
         PopulateItems();
+        RefreshUpgradeButtonTheme();
+        RefreshUpgradeButtonVisibility();
     }
 
     private void PopulateSkills()
@@ -125,9 +149,19 @@ public class HeroInventoryUI : MonoBehaviour
             itemPicker.Open(slotType, this);
     }
 
+    // Поточний предмет, екіпірований у вказаний слот цього героя (null, якщо слот порожній)
+    public string GetEquippedItemId(EquipmentSlotType slotType)
+    {
+        return currentOwnership != null ? currentOwnership.GetEquippedItemId(slotType) : null;
+    }
+
     public void EquipItem(EquipmentSlotType slotType, string itemId)
     {
         if (currentOwnership == null) return;
+
+        // Предмет унікальний — якщо він уже екіпірований на іншому герої, знімаємо його звідти ("переносимо" сюди)
+        if (!string.IsNullOrEmpty(itemId) && collectionManager != null)
+            collectionManager.UnequipItemFromAllHeroes(itemId, currentHero.heroId);
 
         currentOwnership.SetEquippedItem(slotType, itemId);
         PopulateItems();
@@ -146,5 +180,66 @@ public class HeroInventoryUI : MonoBehaviour
         // Повторний клік по тій самій навичці знімає позначку пасивної
         currentOwnership.passiveSkillIndex = currentOwnership.passiveSkillIndex == index ? -1 : index;
         PopulateSkills();
+    }
+
+    private void OnUpgradeClicked()
+    {
+        if (experienceItemPickerUI == null || currentHero == null) return;
+
+        experienceItemPickerUI.Open(currentHero.heroId, Refresh);
+    }
+
+    // Кнопку "Upgrade" будуємо програмно поруч із Close (копіюючи його трансформ),
+    // щоб не редагувати вручну розмітку панелі героя у сцені.
+    private void CreateUpgradeButtonIfNeeded()
+    {
+        if (heroUpgradeButton != null) return;
+
+        RectTransform referenceRect = closeButton != null ? closeButton.GetComponent<RectTransform>() : null;
+        if (referenceRect == null) return;
+
+        var upgradeObj = new GameObject("HeroUpgradeButton", typeof(RectTransform));
+        var upgradeRect = (RectTransform)upgradeObj.transform;
+        upgradeRect.SetParent(referenceRect.parent, false);
+        upgradeRect.anchorMin = referenceRect.anchorMin;
+        upgradeRect.anchorMax = referenceRect.anchorMax;
+        upgradeRect.pivot = referenceRect.pivot;
+        upgradeRect.sizeDelta = referenceRect.sizeDelta;
+        upgradeRect.anchoredPosition = referenceRect.anchoredPosition + new Vector2(0, referenceRect.sizeDelta.y + 12f);
+
+        heroUpgradeBg = upgradeObj.AddComponent<Image>();
+        heroUpgradeButton = upgradeObj.AddComponent<Button>();
+        heroUpgradeButton.onClick.AddListener(OnUpgradeClicked);
+
+        var textObj = new GameObject("Text", typeof(RectTransform));
+        var textRect = (RectTransform)textObj.transform;
+        textRect.SetParent(upgradeRect, false);
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+        heroUpgradeText = textObj.AddComponent<TextMeshProUGUI>();
+        heroUpgradeText.text = "Upgrade";
+        heroUpgradeText.alignment = TextAlignmentOptions.Center;
+
+        heroUpgradeButton.gameObject.SetActive(false);
+
+        experienceItemPickerUI = gameObject.AddComponent<HeroExperienceItemPickerUI>();
+    }
+
+    private void RefreshUpgradeButtonTheme()
+    {
+        if (heroUpgradeBg != null) heroUpgradeBg.color = ConfirmationDialog.ButtonColor;
+        if (heroUpgradeText != null) heroUpgradeText.color = ConfirmationDialog.ButtonTextColor;
+    }
+
+    private void RefreshUpgradeButtonVisibility()
+    {
+        if (heroUpgradeButton == null || itemCollectionManager == null) return;
+
+        bool hasExperienceItems = itemCollectionManager.ownership.Any(o =>
+            o.quantity > 0 && itemCollectionManager.GetItemById(o.itemId)?.category == ItemCategory.HeroExperience);
+
+        heroUpgradeButton.gameObject.SetActive(hasExperienceItems);
     }
 }

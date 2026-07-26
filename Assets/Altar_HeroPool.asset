@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1ec77f9b7d0530e40842593706325781, type: 3}
+  m_Name: Altar_HeroPool
+  m_EditorClassIdentifier: Assembly-CSharp::HeroSummonPoolData
+  poolId: Altar_HeroPool
+  entries:
+  - hero: {fileID: 11400000, guid: e154393c132fd47498367116753919e5, type: 2}
+    weightViaShards: 45
+    weightViaPremium: 20
+  - hero: {fileID: 11400000, guid: 24899780ddcf1e34aab1e81dd4519569, type: 2}
+    weightViaShards: 30
+    weightViaPremium: 25
+  - hero: {fileID: 11400000, guid: c9402d59fd6cdf347aa97805cae8d399, type: 2}
+    weightViaShards: 15
+    weightViaPremium: 25
+  - hero: {fileID: 11400000, guid: 859b2a0da13e19d40b1e50265aa9d91a, type: 2}
+    weightViaShards: 8
+    weightViaPremium: 20
+  - hero: {fileID: 11400000, guid: 50e776ab86d11014cb94a39c0f3cb962, type: 2}
+    weightViaShards: 2
+    weightViaPremium: 10
+  shardCost: 100
+  premiumCost: 10
+  hasPity: 1
+  pityThreshold: 50
+  pityGuaranteedRarity: 4

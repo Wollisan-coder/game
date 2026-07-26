@@ -20,3 +20,4 @@ MonoBehaviour:
   maxResource: 15
   skills:
   - {fileID: 11400000, guid: f6fbecdbbc6d2d54ca5cab49d63eb939, type: 2}
+  rarity: 4

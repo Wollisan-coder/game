@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class ItemCollectionCardUI : MonoBehaviour
 {
@@ -10,6 +11,10 @@ public class ItemCollectionCardUI : MonoBehaviour
     private ItemData itemData;
     private ItemCollectionManager collectionManager;
     private ItemDetailUI detailUI;
+
+    private Image rarityFrame;
+    private TMP_Text levelText;
+    private TMP_Text quantityText;
 
     public void Setup(ItemData data, ItemCollectionManager manager, ItemDetailUI detail)
     {
@@ -27,6 +32,10 @@ public class ItemCollectionCardUI : MonoBehaviour
             selectButton.onClick.RemoveAllListeners();
             selectButton.onClick.AddListener(OnSelected);
         }
+
+        ItemBadgeUtility.ApplyRarityFrame(icon, data.GetRarityColor(), ref rarityFrame);
+        ItemBadgeUtility.ApplyLevelBadge(icon != null ? icon.rectTransform : null, owned ? manager.GetLevel(data.itemId) : 0, ref levelText);
+        ItemBadgeUtility.ApplyQuantityBadge(icon != null ? icon.rectTransform : null, owned ? manager.GetQuantity(data.itemId) : 0, ref quantityText);
     }
 
     private void OnSelected()

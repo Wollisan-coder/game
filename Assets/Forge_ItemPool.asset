@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a127a80be758ea4ca5f64128272726a, type: 3}
+  m_Name: Forge_ItemPool
+  m_EditorClassIdentifier: Assembly-CSharp::ItemSummonPoolData
+  poolId: Forge_ItemPool
+  entries:
+  - item: {fileID: 11400000, guid: 68371060e25d2c54d9d6620726f13bb4, type: 2}
+    weightViaShards: 45
+    weightViaPremium: 20
+  - item: {fileID: 11400000, guid: 8b16828a58dd6f540b625591f4f0de57, type: 2}
+    weightViaShards: 15
+    weightViaPremium: 12.5
+  - item: {fileID: 11400000, guid: 016a25ac03c3fc64781c597df111d71b, type: 2}
+    weightViaShards: 15
+    weightViaPremium: 12.5
+  - item: {fileID: 11400000, guid: 8a3677efe8cb0d94a9627f2fc0ed4cf7, type: 2}
+    weightViaShards: 7.5
+    weightViaPremium: 12.5
+  - item: {fileID: 11400000, guid: 49ca1cf1ddb8c3e40aa5a65487f36fa3, type: 2}
+    weightViaShards: 7.5
+    weightViaPremium: 12.5
+  - item: {fileID: 11400000, guid: 3622932aa42f83d4398000f16682990d, type: 2}
+    weightViaShards: 8
+    weightViaPremium: 20
+  - item: {fileID: 11400000, guid: 39e64ad4cf662f9488412a273e3faeb2, type: 2}
+    weightViaShards: 2
+    weightViaPremium: 10
+  shardCost: 100
+  premiumCost: 10
+  hasPity: 1
+  pityThreshold: 50
+  pityGuaranteedRarity: 4

@@ -46,6 +46,9 @@ public class BattleManager : MonoBehaviour
     public bool forceRandomEnemy = false; // true = ігнорувати вибір з колекції, завжди рандом
     public EnemyData currentEnemy;        // фактично обраний ворог цього бою
 
+    [Header("Нагорода за перемогу")]
+    public int accountExperienceReward = 20; // плейсхолдер — легко змінити в інспекторі
+
     public System.Action OnStateChanged;
 
     private HeroRuntimeState lastAttackedHero;
@@ -109,10 +112,14 @@ public class BattleManager : MonoBehaviour
                     var equippedItem = ItemCollectionManager.Instance.GetItemById(equipped.itemId);
                     if (equippedItem == null) continue;
 
-                    heroState.maxHealth += equippedItem.bonusHealth;
-                    heroState.currentHealth += equippedItem.bonusHealth;
-                    heroState.maxResource += equippedItem.bonusMana;
-                    heroState.damageMultiplier += equippedItem.bonusDamageMultiplier;
+                    float levelMultiplier = ItemCollectionManager.Instance.GetLevelMultiplier(equipped.itemId);
+                    int bonusHealth = Mathf.RoundToInt(equippedItem.bonusHealth * levelMultiplier);
+                    int bonusMana = Mathf.RoundToInt(equippedItem.bonusMana * levelMultiplier);
+
+                    heroState.maxHealth += bonusHealth;
+                    heroState.currentHealth += bonusHealth;
+                    heroState.maxResource += bonusMana;
+                    heroState.damageMultiplier += equippedItem.bonusDamageMultiplier * levelMultiplier;
                 }
             }
 
@@ -310,7 +317,11 @@ public class BattleManager : MonoBehaviour
             OnPlayerDefeated();
     }
 
-    private void OnEnemyDefeated() => Debug.Log("Ворог переможений!");
+    private void OnEnemyDefeated()
+    {
+        Debug.Log("Ворог переможений!");
+        AccountManager.Instance?.GrantExperience(accountExperienceReward);
+    }
     private void OnPlayerDefeated() => Debug.Log("Гравець програв бій.");
 
     // Тепер прив'язано до конкретного героя, а не до глобального ресурсу
