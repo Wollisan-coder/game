@@ -92,13 +92,31 @@ public class BattleManager : MonoBehaviour
             if (hero == null) continue;
 
             int level = 1;
+            HeroOwnershipData ownership = null;
             if (HeroCollectionManager.Instance != null)
             {
-                var ownership = HeroCollectionManager.Instance.ownership.Find(o => o.heroId == hero.heroId);
+                ownership = HeroCollectionManager.Instance.ownership.Find(o => o.heroId == hero.heroId);
                 if (ownership != null) level = ownership.level;
             }
 
-            activeHeroes.Add(new HeroRuntimeState(hero, level));
+            var heroState = new HeroRuntimeState(hero, level);
+
+            // Бонуси від екіпірованих предметів (не змінюють сам ассет HeroData, лише цю копію на бій)
+            if (ownership != null && ItemCollectionManager.Instance != null)
+            {
+                foreach (var equipped in ownership.equippedItems)
+                {
+                    var equippedItem = ItemCollectionManager.Instance.GetItemById(equipped.itemId);
+                    if (equippedItem == null) continue;
+
+                    heroState.maxHealth += equippedItem.bonusHealth;
+                    heroState.currentHealth += equippedItem.bonusHealth;
+                    heroState.maxResource += equippedItem.bonusMana;
+                    heroState.damageMultiplier += equippedItem.bonusDamageMultiplier;
+                }
+            }
+
+            activeHeroes.Add(heroState);
         }
     }
 
@@ -130,7 +148,7 @@ public class BattleManager : MonoBehaviour
                 foreach (var hero in activeHeroes)
                 {
                     if (hero.currentHealth > 0 && !hero.blockManaGainThisTurn && (int)hero.data.resourceType <= 4)
-                        hero.currentResource = Mathf.Min(hero.currentResource + count, hero.data.maxResource);
+                        hero.currentResource = Mathf.Min(hero.currentResource + count, hero.maxResource);
                 }
             }
             else if (type >= 0 && type <= 4) // Red/Blue/Green/Yellow/Violet
@@ -144,7 +162,7 @@ public class BattleManager : MonoBehaviour
                 foreach (var hero in activeHeroes)
                 {
                     if (hero.currentHealth > 0 && !hero.blockManaGainThisTurn && (int)hero.data.resourceType == type)
-                        hero.currentResource = Mathf.Min(hero.currentResource + count, hero.data.maxResource);
+                        hero.currentResource = Mathf.Min(hero.currentResource + count, hero.maxResource);
                 }
             }
         }
@@ -186,6 +204,9 @@ public class BattleManager : MonoBehaviour
             UseEnemySkill(skill);
         else
             BasicEnemyAttack(); // якщо скіли не задані — стара проста атака
+
+        // Щит діє від активації до наступного ходу гравця — після ходу ворога знімається
+        playerShield = 0;
 
         OnStateChanged?.Invoke();
 
@@ -307,7 +328,7 @@ public class BattleManager : MonoBehaviour
         switch (skill.effectType)
         {
             case SkillEffectType.Damage:
-                DealDamageToEnemy(Mathf.RoundToInt(skill.effectValue * damageMultiplier * hero.data.damageMultiplier));
+                DealDamageToEnemy(Mathf.RoundToInt(skill.effectValue * damageMultiplier * hero.damageMultiplier));
                 break;
 
             case SkillEffectType.Heal:

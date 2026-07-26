@@ -6,23 +6,28 @@ public class HeroCollectionCardUI : MonoBehaviour
     public Image portrait;
     public Image lockOverlay;
     public Button selectButton;
+    private HeroInventoryUI inventoryUI; // спільний на всю сцену, передається з HeroCollectionUI при спавні
 
     private HeroData heroData;
     private HeroCollectionManager collectionManager;
 
-    public void Setup(HeroData data, HeroCollectionManager manager)
+    public void Setup(HeroData data, HeroCollectionManager manager, HeroInventoryUI inventory)
     {
         heroData = data;
         collectionManager = manager;
+        inventoryUI = inventory;
 
-        portrait.sprite = data.portrait;
+        if (portrait != null) portrait.sprite = data.portrait;
 
         bool unlocked = manager.IsUnlocked(data);
-        lockOverlay.gameObject.SetActive(!unlocked);
-        selectButton.interactable = unlocked;
+        if (lockOverlay != null) lockOverlay.gameObject.SetActive(!unlocked);
+        if (selectButton != null) selectButton.interactable = unlocked;
 
-        selectButton.onClick.RemoveAllListeners();
-        selectButton.onClick.AddListener(OnSelected);
+        if (selectButton != null)
+        {
+            selectButton.onClick.RemoveAllListeners();
+            selectButton.onClick.AddListener(OnSelected);
+        }
     }
 
     private void OnSelected()
@@ -40,6 +45,8 @@ public class HeroCollectionCardUI : MonoBehaviour
             return;
         }
 
-        Debug.Log("Клікніть на слот у загоні, щоб вибрати героя для нього.");
+        // Звичайний перегляд колекції — відкриваємо вікно інвентаря героя
+        if (inventoryUI != null)
+            inventoryUI.Open(heroData);
     }
 }

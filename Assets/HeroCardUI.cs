@@ -13,6 +13,7 @@ public class HeroCardUI : MonoBehaviour
     public Image portraitImage;
     public Image fillImage;       // мана
     public Image healthFillImage; // HP — окремий від мани
+    public Image shieldFillImage; // щит — % від максимального HP героя
     public Button activateButton; // якщо в героя одна основна навичка (skills[0])
     public Image buttonOverlay;
 
@@ -67,7 +68,7 @@ public class HeroCardUI : MonoBehaviour
     {
         if (buttonOverlay == null || heroState == null) return;
 
-        bool isManaFull = heroState.currentResource >= heroState.data.maxResource;
+        bool isManaFull = heroState.currentResource >= heroState.maxResource;
 
         if (isManaFull)
         {
@@ -92,8 +93,8 @@ public class HeroCardUI : MonoBehaviour
     {
         if (fillImage == null || heroState == null) return;
 
-        float fillRatio = heroState.data.maxResource > 0
-            ? (float)heroState.currentResource / heroState.data.maxResource
+        float fillRatio = heroState.maxResource > 0
+            ? (float)heroState.currentResource / heroState.maxResource
             : 0f;
 
         // Без миготіння: альфа лінійно росте разом із заповненням мани,
@@ -105,6 +106,22 @@ public class HeroCardUI : MonoBehaviour
         fillImage.color = c;
     }
 
+    // Береться навичка, обрана гравцем як активна у вікні інвентаря (за замовчуванням — перша)
+    private SkillData ResolveActiveSkill()
+    {
+        if (heroData.skills == null || heroData.skills.Length == 0) return null;
+
+        int activeIndex = 0;
+        if (HeroCollectionManager.Instance != null)
+        {
+            var ownership = HeroCollectionManager.Instance.ownership.Find(o => o.heroId == heroData.heroId);
+            if (ownership != null)
+                activeIndex = Mathf.Clamp(ownership.activeSkillIndex, 0, heroData.skills.Length - 1);
+        }
+
+        return heroData.skills[activeIndex];
+    }
+
     private void ApplyHeroData()
     {
         if (heroData == null) 
@@ -114,7 +131,7 @@ public class HeroCardUI : MonoBehaviour
         }
 
         heroState = battleManager.GetHeroState(heroData);
-        primarySkill = (heroData.skills != null && heroData.skills.Length > 0) ? heroData.skills[0] : null;
+        primarySkill = ResolveActiveSkill();
 
         if (portraitImage != null && heroData.portrait != null)
             portraitImage.sprite = heroData.portrait;
@@ -137,13 +154,18 @@ public class HeroCardUI : MonoBehaviour
         bool isDead = heroState.currentHealth <= 0;
 
         if (fillImage != null)
-            fillImage.fillAmount = heroState.data.maxResource > 0
-                ? (float)heroState.currentResource / heroState.data.maxResource
+            fillImage.fillAmount = heroState.maxResource > 0
+                ? (float)heroState.currentResource / heroState.maxResource
                 : 0f;
 
         if (healthFillImage != null)
             healthFillImage.fillAmount = heroState.maxHealth > 0
                 ? (float)heroState.currentHealth / heroState.maxHealth
+                : 0f;
+
+        if (shieldFillImage != null && battleManager != null)
+            shieldFillImage.fillAmount = heroState.maxHealth > 0
+                ? Mathf.Clamp01((float)battleManager.playerShield / heroState.maxHealth)
                 : 0f;
 
         if (activateButton != null && primarySkill != null)

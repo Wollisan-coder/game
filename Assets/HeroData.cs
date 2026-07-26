@@ -19,6 +19,9 @@ public class HeroData : ScriptableObject
     public Color themeColor = Color.white;
     public ResourceType resourceType;
 
+    [Header("Опис")]
+    [TextArea(3, 6)] public string description;
+
     // Автоматично підставляє heroId = імені файлу при першому створенні,
     // якщо поле ще порожнє — щоб не треба було вручну заповнювати для існуючих героїв
     private void OnValidate()

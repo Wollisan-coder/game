@@ -18,8 +18,13 @@ public class GridManager : MonoBehaviour
     [Header("Тип 'Red' в масиві itemPrefabs")]
 public int redTypeIndex = 0; // перевір, що Element 0 = RedGem у твоєму масиві
 
+    // Поки true — ввід (клік по фішці) ігнорується: йде свап/падіння/каскад
+    public bool isBusy;
+
 public IEnumerator ExecuteConvertAndDestroySkill(int convertCount)
 {
+    isBusy = true;
+
     // Збираємо всі не-червоні фішки на полі
     List<Item> nonRed = new List<Item>();
     for (int x = 0; x < width; x++)
@@ -62,6 +67,10 @@ public IEnumerator ExecuteConvertAndDestroySkill(int convertCount)
         turnMatchedTypes.Clear();
         yield return StartCoroutine(ProcessMatches(allRed));
     }
+    else
+    {
+        isBusy = false;
+    }
 }
 
 private IEnumerator PopInAnimation(Transform t)
@@ -94,6 +103,14 @@ private IEnumerator PopInAnimation(Transform t)
         Debug.Log("Start викликано на " + gameObject.name);
         grid = new Item[width, height];
         GenerateBoard();
+        StartCoroutine(InitialDeadlockCheck());
+    }
+
+    private IEnumerator InitialDeadlockCheck()
+    {
+        isBusy = true;
+        yield return StartCoroutine(ReshuffleIfNoMoves());
+        isBusy = false;
     }
 
     // Генерация поля без начальных совпадений "3 в ряд"
@@ -160,6 +177,8 @@ private IEnumerator PopInAnimation(Transform t)
 // Обмен двух соседних фишек местами
     public IEnumerator SwapItems(Item a, Item b)
 {
+    isBusy = true;
+
     int aX = a.x, aY = a.y;
     int bX = b.x, bY = b.y;
 
@@ -191,6 +210,9 @@ private IEnumerator PopInAnimation(Transform t)
 
         a.MoveTo(GetWorldPosition(a.x, a.y));
         b.MoveTo(GetWorldPosition(b.x, b.y));
+
+        yield return new WaitForSeconds(0.25f);
+        isBusy = false;
     }
 }
 
@@ -337,7 +359,86 @@ public IEnumerator PlayDestroyAnimation()
         {
             battleManager.ResolvePlayerTurn(turnMatchedTypes);
         }
+
+        // Перевіряємо, чи лишився хоч один можливий хід — якщо ні, перегенеровуємо поле
+        yield return StartCoroutine(ReshuffleIfNoMoves());
+
+        isBusy = false;
     }
+}
+
+// Чи існує хоча б один сусідній обмін, що дасть матч 3+
+private bool HasPossibleMoves()
+{
+    for (int x = 0; x < width; x++)
+    {
+        for (int y = 0; y < height; y++)
+        {
+            if (x < width - 1 && WouldCreateMatch(x, y, x + 1, y))
+                return true;
+
+            if (y < height - 1 && WouldCreateMatch(x, y, x, y + 1))
+                return true;
+        }
+    }
+
+    return false;
+}
+
+// Тимчасово міняє місцями в логічній сітці (без анімації), перевіряє матч, повертає як було
+private bool WouldCreateMatch(int x1, int y1, int x2, int y2)
+{
+    Item a = grid[x1, y1];
+    Item b = grid[x2, y2];
+
+    grid[x1, y1] = b;
+    grid[x2, y2] = a;
+
+    bool hasMatch = FindMatches().Count > 0;
+
+    grid[x1, y1] = a;
+    grid[x2, y2] = b;
+
+    return hasMatch;
+}
+
+// Якщо на полі немає жодного можливого ходу — перегенеровуємо його (без нарахування ходу гравцю)
+private IEnumerator ReshuffleIfNoMoves()
+{
+    int safetyCounter = 0;
+
+    while (!HasPossibleMoves() && safetyCounter < 20)
+    {
+        Debug.Log("Немає можливих ходів — перегенеровую поле.");
+        yield return StartCoroutine(ReshuffleBoard());
+        safetyCounter++;
+    }
+}
+
+private IEnumerator ReshuffleBoard()
+{
+    for (int x = 0; x < width; x++)
+    {
+        for (int y = 0; y < height; y++)
+        {
+            if (grid[x, y] != null)
+            {
+                Destroy(grid[x, y].gameObject);
+                grid[x, y] = null;
+            }
+        }
+    }
+
+    yield return null; // дати Destroy() відпрацювати перед новим спавном
+
+    for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+        {
+            int randomType = GetValidRandomType(x, y);
+            SpawnItem(x, y, randomType);
+        }
+
+    yield return new WaitForSeconds(0.25f);
 }
 private void OnDrawGizmos()
 {
@@ -365,6 +466,8 @@ private void OnDrawGizmos()
             // Знищує всі фішки в діапазоні рядів [rowStart, rowEnd] включно (по осі Y сітки)
         public IEnumerator ExecuteDestroyRowsSkill(int rowStart, int rowEnd)
         {
+            isBusy = true;
+
             List<Item> toDestroy = new List<Item>();
 
             int clampedStart = Mathf.Clamp(rowStart, 0, height - 1);
@@ -384,6 +487,10 @@ private void OnDrawGizmos()
                 turnMatchedTypes.Clear();
                 yield return StartCoroutine(ProcessMatches(toDestroy));
             }
-}  
+            else
+            {
+                isBusy = false;
+            }
+}
 
 }    

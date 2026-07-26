@@ -64,7 +64,7 @@ if (enemyPortrait != null && battleManager.currentEnemy != null && battleManager
 
             HeroRuntimeState state = battleManager.GetHeroState(entry.heroData);
             if (state != null)
-                entry.amountText.text = $"{state.currentResource} / {state.data.maxResource}";
+                entry.amountText.text = $"{state.currentResource} / {state.maxResource}";
         }
     }
 }

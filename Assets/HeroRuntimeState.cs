@@ -9,6 +9,8 @@ public class HeroRuntimeState
     public int level;
     public int maxHealth;
     public int currentHealth;
+    public int maxResource;         // копія heroData.maxResource + бонуси від екіпіровки
+    public float damageMultiplier;  // копія heroData.damageMultiplier + бонуси від екіпіровки
 
     public bool blockManaGainThisTurn; // true після використання навички — пропускає наступне нарахування мани
 
@@ -20,6 +22,8 @@ public class HeroRuntimeState
         level = heroLevel;
         maxHealth = heroData.maxHealth;
         currentHealth = maxHealth;
+        maxResource = heroData.maxResource;
+        damageMultiplier = heroData.damageMultiplier;
     }
 
     public void TakeDamage(int amount)

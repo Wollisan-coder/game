@@ -157,7 +157,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 200, y: -20}
+  m_AnchoredPosition: {x: 200, y: -80}
   m_SizeDelta: {x: 1920, y: 80}
   m_Pivot: {x: 1, y: 1}
 --- !u!114 &8828427
@@ -2338,7 +2338,7 @@ MonoBehaviour:
     currentHealth: 0
     blockManaGainThisTurn: 0
   baseDamagePerGem: 0500000005000000050000000500000005000000
-  aliveDamagePerGem: 0800000008000000080000000800000008000000
+  aliveDamagePerGem: 0600000006000000060000000600000006000000
   pinkHealPerGem: 3
   damageMultiplier: 1
   damageMultiplierTurnsRemaining: 0

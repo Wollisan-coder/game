@@ -23,6 +23,8 @@ public class Item : MonoBehaviour
 
     private void OnMouseDown()
     {
+        if (gridManager != null && gridManager.isBusy) return; // поле ще анімується — ігноруємо клік
+
         if (firstSelected == null)
         {
             firstSelected = this;
