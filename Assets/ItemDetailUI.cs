@@ -17,6 +17,7 @@ public class ItemDetailUI : MonoBehaviour
     public Button closeButton;
 
     private ItemData currentItem;
+    private ItemOwnershipData currentStack; // null = предмет не отриманий (locked)
     private Image rarityFrame;
     private TMP_Text infoText;      // Rarity + Lvl + прогрес Exp (або кількість — для витратних предметів)
 
@@ -26,6 +27,10 @@ public class ItemDetailUI : MonoBehaviour
 
     private ItemSacrificeUI sacrificeUI;
     private HeroExperienceUseUI heroExperienceUseUI;
+
+    // Викликається при закритті цього попапу — щоб екран-каталог позаду міг перебудувати сітку
+    // (наприклад, якщо апгрейд/використання предмета створило/змінило стек, поки попап був відкритий)
+    public System.Action OnClosed;
 
     private void Awake()
     {
@@ -37,22 +42,30 @@ public class ItemDetailUI : MonoBehaviour
         gameObject.SetActive(false);
     }
 
-    public void Open(ItemData item, bool owned)
+    // stack — конкретний стек (рівень) предмета, який належить гравцю; null, якщо предмет ще не отриманий
+    public void Open(ItemData item, ItemOwnershipData stack)
     {
         if (item == null) return;
 
         currentItem = item;
+        currentStack = stack;
         gameObject.SetActive(true);
-        Refresh(owned);
+        Refresh();
     }
 
-    private void Refresh(bool owned)
+    private void Refresh()
     {
         var item = currentItem;
+        var ownership = currentStack;
+        bool owned = ownership != null;
         bool isHeroXpItem = item.category == ItemCategory.HeroExperience;
 
         if (icon != null) icon.sprite = item.icon;
-        if (nameText != null) nameText.text = item.itemName;
+        if (nameText != null)
+        {
+            nameText.text = item.itemName;
+            nameText.color = item.GetRarityColor();
+        }
         if (slotTypeText != null) slotTypeText.text = isHeroXpItem ? "Consumable" : item.slotType.ToString();
         if (descriptionText != null) descriptionText.text = item.description;
 
@@ -80,7 +93,6 @@ public class ItemDetailUI : MonoBehaviour
         ItemBadgeUtility.ApplyRarityFrame(icon, item.GetRarityColor(), ref rarityFrame);
 
         var manager = ItemCollectionManager.Instance;
-        var ownership = owned && manager != null ? manager.GetOwnership(item.itemId) : null;
         int maxLevel = item.GetMaxLevel();
 
         if (infoText != null)
@@ -122,7 +134,7 @@ public class ItemDetailUI : MonoBehaviour
             else
             {
                 bool canSacrifice = owned && ownership != null && ownership.level < maxLevel
-                    && manager != null && manager.ownership.Any(o => o.itemId != item.itemId);
+                    && manager != null && manager.ownership.Any(o => o.instanceId != ownership.instanceId);
 
                 actionButton.gameObject.SetActive(canSacrifice);
                 if (actionText != null) actionText.text = "Upgrade";
@@ -186,30 +198,40 @@ public class ItemDetailUI : MonoBehaviour
 
     private void OnSacrificeClicked()
     {
-        if (sacrificeUI == null || currentItem == null) return;
+        if (sacrificeUI == null || currentItem == null || currentStack == null) return;
+
+        var manager = ItemCollectionManager.Instance;
+        if (manager == null) return;
 
         string itemId = currentItem.itemId;
-        sacrificeUI.Open(itemId, () =>
+        sacrificeUI.Open(currentStack.instanceId, () =>
         {
-            var refreshedData = ItemCollectionManager.Instance != null ? ItemCollectionManager.Instance.GetItemById(itemId) : null;
-            if (refreshedData != null) Open(refreshedData, true);
+            // instanceId цілі міг змінитись (поділ/злиття стеків) — беремо актуальний зі sacrificeUI
+            var refreshedStack = manager.GetStackByInstanceId(sacrificeUI.CurrentTargetInstanceId);
+            var refreshedData = manager.GetItemById(itemId);
+            if (refreshedData != null && refreshedStack != null)
+                Open(refreshedData, refreshedStack);
+            else
+                Close(); // цільовий стек більше не існує (наприклад, витрачено все паливо і донор зник)
         });
     }
 
     private void OnUseClicked()
     {
-        if (heroExperienceUseUI == null || currentItem == null) return;
+        if (heroExperienceUseUI == null || currentItem == null || currentStack == null) return;
+
+        var manager = ItemCollectionManager.Instance;
+        if (manager == null) return;
 
         string itemId = currentItem.itemId;
-        heroExperienceUseUI.Open(itemId, () =>
+        string instanceId = currentStack.instanceId;
+        heroExperienceUseUI.Open(instanceId, () =>
         {
-            var manager = ItemCollectionManager.Instance;
-            var refreshedData = manager != null ? manager.GetItemById(itemId) : null;
-            if (refreshedData == null) return;
+            var refreshedData = manager.GetItemById(itemId);
+            var refreshedStack = manager.GetStackByInstanceId(instanceId);
 
-            bool stillOwned = manager.IsOwned(refreshedData);
-            if (stillOwned)
-                Open(refreshedData, true);
+            if (refreshedData != null && refreshedStack != null)
+                Open(refreshedData, refreshedStack);
             else
                 Close(); // останню копію витрачено
         });
@@ -218,5 +240,6 @@ public class ItemDetailUI : MonoBehaviour
     public void Close()
     {
         gameObject.SetActive(false);
+        OnClosed?.Invoke();
     }
 }

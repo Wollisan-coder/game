@@ -9,7 +9,7 @@ public class ItemCollectionManager : MonoBehaviour
     [Header("Всі предмети гри (каталог)")]
     public ItemData[] allItems;
 
-    [Header("Стан володіння (рівень і досвід кожного отриманого предмета)")]
+    [Header("Стан володіння (окремий стек на кожен itemId+рівень)")]
     public List<ItemOwnershipData> ownership = new List<ItemOwnershipData>();
 
     private void Awake()
@@ -26,50 +26,62 @@ public class ItemCollectionManager : MonoBehaviour
 
     public bool IsOwned(ItemData item) => item != null && ownership.Any(o => o.itemId == item.itemId);
 
-    public ItemOwnershipData GetOwnership(string itemId)
+    // Всі стеки конкретного предмета (може бути кілька — по одному на кожен унікальний рівень/досвід)
+    public List<ItemOwnershipData> GetStacks(string itemId)
     {
-        return ownership.FirstOrDefault(o => o.itemId == itemId);
+        return ownership.Where(o => o.itemId == itemId).ToList();
     }
 
-    public int GetLevel(string itemId)
+    // Конкретний стек за його унікальним instanceId (використовується для екіпіровки/жертвоприношення/списання)
+    public ItemOwnershipData GetStackByInstanceId(string instanceId)
     {
-        var data = GetOwnership(itemId);
-        return data != null ? data.level : 0;
+        if (string.IsNullOrEmpty(instanceId)) return null;
+        return ownership.FirstOrDefault(o => o.instanceId == instanceId);
     }
 
-    public int GetQuantity(string itemId)
+    // Сумарна кількість копій предмета по всіх стеках/рівнях (для бейджа в каталозі-браузері)
+    public int GetTotalQuantity(string itemId)
     {
-        var data = GetOwnership(itemId);
-        return data != null ? data.quantity : 0;
+        return ownership.Where(o => o.itemId == itemId).Sum(o => o.quantity);
     }
 
-    // Гарантує, що предмет отриманий (є хоча б 1 копія). Повторні виклики нічого не додають —
+    // Гарантує, що предмет отриманий (є хоча б 1 стек). Повторні виклики нічого не додають —
     // безпечно викликати щоразу при старті (наприклад, у "розблокувати всі предмети для тесту").
     public void UnlockItem(ItemData item)
     {
         if (item == null || IsOwned(item)) return;
 
-        ownership.Add(new ItemOwnershipData { itemId = item.itemId, level = 1, experience = 0, quantity = 1 });
+        CreateStack(item.itemId, level: 1, experience: 0, quantity: 1);
         SaveOwnedItems();
     }
 
-    // Додає ще одну(і) копію(ї) предмета до вже наявного стеку (або створює новий стек, якщо предмета ще немає).
-    // Використовувати для реальної видачі предметів (нагороди, магазин тощо) — на відміну від UnlockItem, завжди збільшує кількість.
+    // Додає ще одну(і) копію(ї) предмета. Щойно отримані копії завжди рівня 1 — приєднуються до вже
+    // наявного стека рівня 1 (якщо є) або утворюють новий. Стеки вищого рівня (прокачані) не займає.
     public void AddItemCopy(ItemData item, int count = 1)
     {
         if (item == null || count <= 0) return;
 
-        var existing = GetOwnership(item.itemId);
-        if (existing != null)
-        {
-            existing.quantity += count;
-        }
+        var level1Stack = ownership.FirstOrDefault(o => o.itemId == item.itemId && o.level == 1);
+        if (level1Stack != null)
+            level1Stack.quantity += count;
         else
-        {
-            ownership.Add(new ItemOwnershipData { itemId = item.itemId, level = 1, experience = 0, quantity = count });
-        }
+            CreateStack(item.itemId, level: 1, experience: 0, quantity: count);
 
         SaveOwnedItems();
+    }
+
+    private ItemOwnershipData CreateStack(string itemId, int level, int experience, int quantity)
+    {
+        var stack = new ItemOwnershipData
+        {
+            instanceId = System.Guid.NewGuid().ToString("N"),
+            itemId = itemId,
+            level = level,
+            experience = experience,
+            quantity = quantity
+        };
+        ownership.Add(stack);
+        return stack;
     }
 
     public ItemData GetItemById(string id)
@@ -88,11 +100,29 @@ public class ItemCollectionManager : MonoBehaviour
             .ToList();
     }
 
-    // Знімає одну одиницю з кількості предмета (видаляє стек, коли доходить до 0).
-    // Повертає true, якщо предмет був у володінні і одиницю вдалося списати.
-    public bool ConsumeItem(string itemId)
+    // Готує ОДНУ копію предмета для екіпіровки: якщо у вказаного стека quantity > 1, відділяє від нього
+    // 1 одиницю в новий окремий стек (той самий itemId/рівень/досвід, quantity=1) і повертає ЙОГО instanceId —
+    // саме його й треба екіпірувати, а решта копій лишаються вільними в інвентарі. Якщо quantity вже == 1,
+    // повертає той самий instanceId без змін (нема потреби ділити єдину копію).
+    public string SplitOneForEquip(string instanceId)
     {
-        var data = GetOwnership(itemId);
+        var stack = GetStackByInstanceId(instanceId);
+        if (stack == null) return null;
+
+        if (stack.quantity <= 1) return instanceId;
+
+        stack.quantity--;
+        var newStack = CreateStack(stack.itemId, stack.level, stack.experience, 1);
+        SaveOwnedItems();
+
+        return newStack.instanceId;
+    }
+
+    // Знімає одну одиницю з кількості КОНКРЕТНОГО стека (за instanceId). Стек видаляється, коли доходить до 0.
+    // Повертає true, якщо стек існував і одиницю вдалося списати.
+    public bool ConsumeItem(string instanceId)
+    {
+        var data = GetStackByInstanceId(instanceId);
         if (data == null) return false;
 
         data.quantity--;
@@ -106,57 +136,88 @@ public class ItemCollectionManager : MonoBehaviour
     // Скільки досвіду потрібно назбирати на вказаному рівні, щоб піднятись на наступний
     public int ExperienceToNextLevel(int level) => level * 50;
 
-    // Множник бонусів предмета від його поточного рівня (+10% за кожен рівень понад 1-й)
-    public float GetLevelMultiplier(string itemId)
+    // Множник бонусів предмета від вказаного рівня (+10% за кожен рівень понад 1-й)
+    public float GetLevelMultiplierForLevel(int level)
     {
-        int level = GetLevel(itemId);
         if (level <= 0) level = 1;
         return 1f + 0.1f * (level - 1);
     }
 
-    // Жертвуємо ОДНУ копію предмета fuelItemId, щоб підняти рівень предмета targetItemId.
-    // Знімається лише 1 одиниця з кількості донора (quantity--); стек видаляється з володіння, тільки коли кількість сягає 0.
+    // Жертвуємо ОДНУ копію зі стека fuelInstanceId, щоб підняти рівень стека targetInstanceId.
+    // Якщо в цільового стека quantity > 1 — рівень отримує лише ОДНА одиниця: вона відділяється
+    // в новий окремий стек (нова "ячейка"), а решта (quantity-1) залишається на старому рівні.
+    // resultingTargetInstanceId — instanceId стека, який фактично зберігає новий рівень (може відрізнятись
+    // від targetInstanceId, якщо стався поділ) — використовуйте його для НАСТУПНОГО виклику SacrificeItem
+    // у межах одного пакетного пожертвування, інакше кожен виклик знову ділитиме вихідний стек.
     // Максимальний рівень цілі обмежений її рідкістю (ItemData.GetMaxLevel).
-    // wastedExperience — скільки досвіду "згоріло" понад поріг максимального рівня (якщо предмет саме зараз досяг максимуму).
-    public bool SacrificeItem(string fuelItemId, string targetItemId, out int wastedExperience)
+    // wastedExperience — скільки досвіду "згоріло" понад поріг максимального рівня.
+    public bool SacrificeItem(string fuelInstanceId, string targetInstanceId, out int wastedExperience, out string resultingTargetInstanceId)
     {
         wastedExperience = 0;
+        resultingTargetInstanceId = targetInstanceId;
 
-        if (string.IsNullOrEmpty(fuelItemId) || string.IsNullOrEmpty(targetItemId) || fuelItemId == targetItemId)
+        if (string.IsNullOrEmpty(fuelInstanceId) || string.IsNullOrEmpty(targetInstanceId) || fuelInstanceId == targetInstanceId)
             return false;
 
-        var fuelData = GetItemById(fuelItemId);
-        var targetData = GetItemById(targetItemId);
-        var fuelOwnership = GetOwnership(fuelItemId);
-        var targetOwnership = GetOwnership(targetItemId);
+        var fuelStack = GetStackByInstanceId(fuelInstanceId);
+        var targetStack = GetStackByInstanceId(targetInstanceId);
+        if (fuelStack == null || targetStack == null) return false;
 
-        if (fuelData == null || targetData == null || fuelOwnership == null || targetOwnership == null) return false;
+        var fuelData = GetItemById(fuelStack.itemId);
+        var targetData = GetItemById(targetStack.itemId);
+        if (fuelData == null || targetData == null) return false;
 
         int maxLevel = targetData.GetMaxLevel();
-        if (targetOwnership.level >= maxLevel) return false;
+        if (targetStack.level >= maxLevel) return false;
 
-        int gainedExperience = fuelData.sacrificeExperience * fuelOwnership.level;
+        int gainedExperience = fuelData.sacrificeExperience * fuelStack.level;
 
-        fuelOwnership.quantity--;
-        if (fuelOwnership.quantity <= 0)
-            ownership.Remove(fuelOwnership);
+        fuelStack.quantity--;
+        if (fuelStack.quantity <= 0)
+            ownership.Remove(fuelStack);
 
-        targetOwnership.experience += gainedExperience;
-
-        while (targetOwnership.level < maxLevel && targetOwnership.experience >= ExperienceToNextLevel(targetOwnership.level))
+        ItemOwnershipData leveledStack;
+        if (targetStack.quantity > 1)
         {
-            targetOwnership.experience -= ExperienceToNextLevel(targetOwnership.level);
-            targetOwnership.level++;
+            targetStack.quantity--;
+            leveledStack = CreateStack(targetStack.itemId, targetStack.level, targetStack.experience, 1);
+        }
+        else
+        {
+            leveledStack = targetStack;
         }
 
-        if (targetOwnership.level >= maxLevel && targetOwnership.experience > 0)
+        leveledStack.experience += gainedExperience;
+
+        while (leveledStack.level < maxLevel && leveledStack.experience >= ExperienceToNextLevel(leveledStack.level))
         {
-            wastedExperience = targetOwnership.experience;
-            targetOwnership.experience = 0;
+            leveledStack.experience -= ExperienceToNextLevel(leveledStack.level);
+            leveledStack.level++;
         }
+
+        if (leveledStack.level >= maxLevel && leveledStack.experience > 0)
+        {
+            wastedExperience = leveledStack.experience;
+            leveledStack.experience = 0;
+        }
+
+        MergeIdenticalStacks(leveledStack);
+        resultingTargetInstanceId = leveledStack.instanceId;
 
         SaveOwnedItems();
         return true;
+    }
+
+    // Якщо після поділу/апгрейду в системі вже є ІНШИЙ стек з таким самим itemId+рівнем+досвідом —
+    // об'єднуємо їх (сумуємо quantity), щоб фактично однакові предмети не плодили зайві ячейки.
+    private void MergeIdenticalStacks(ItemOwnershipData stack)
+    {
+        var twin = ownership.FirstOrDefault(o => o != stack && o.itemId == stack.itemId
+            && o.level == stack.level && o.experience == stack.experience);
+        if (twin == null) return;
+
+        twin.quantity += stack.quantity;
+        ownership.Remove(stack);
     }
 
     // Прогноз результату (без застосування): який буде рівень/досвід/втрачений досвід, якщо додати totalGainedXp до вказаного предмета
@@ -183,7 +244,7 @@ public class ItemCollectionManager : MonoBehaviour
 
     private void SaveOwnedItems()
     {
-        string serialized = string.Join(";", ownership.Select(o => $"{o.itemId}:{o.level}:{o.experience}:{o.quantity}"));
+        string serialized = string.Join(";", ownership.Select(o => $"{o.instanceId}:{o.itemId}:{o.level}:{o.experience}:{o.quantity}"));
         PlayerPrefs.SetString("item_ownership", serialized);
         PlayerPrefs.Save();
     }
@@ -198,15 +259,30 @@ public class ItemCollectionManager : MonoBehaviour
         foreach (var entry in saved.Split(';'))
         {
             string[] parts = entry.Split(':');
-            if (parts.Length < 3) continue;
 
-            ownership.Add(new ItemOwnershipData
+            // Сумісність зі старим форматом збереження (itemId:level:experience:quantity, без instanceId)
+            if (parts.Length == 4)
             {
-                itemId = parts[0],
-                level = int.Parse(parts[1]),
-                experience = int.Parse(parts[2]),
-                quantity = parts.Length >= 4 ? int.Parse(parts[3]) : 1 // сумісність зі старими збереженнями без кількості
-            });
+                ownership.Add(new ItemOwnershipData
+                {
+                    instanceId = System.Guid.NewGuid().ToString("N"),
+                    itemId = parts[0],
+                    level = int.Parse(parts[1]),
+                    experience = int.Parse(parts[2]),
+                    quantity = int.Parse(parts[3])
+                });
+            }
+            else if (parts.Length >= 5)
+            {
+                ownership.Add(new ItemOwnershipData
+                {
+                    instanceId = parts[0],
+                    itemId = parts[1],
+                    level = int.Parse(parts[2]),
+                    experience = int.Parse(parts[3]),
+                    quantity = int.Parse(parts[4])
+                });
+            }
         }
     }
 }

@@ -134,10 +134,11 @@ public class HeroInventoryUI : MonoBehaviour
             var slot = slotObj.GetComponent<ItemSlotUI>();
             slot.Setup(slotType, this);
 
-            string equippedId = currentOwnership != null ? currentOwnership.GetEquippedItemId(slotType) : null;
-            ItemData equippedItem = (!string.IsNullOrEmpty(equippedId) && itemCollectionManager != null)
-                ? itemCollectionManager.GetItemById(equippedId)
+            string equippedInstanceId = currentOwnership != null ? currentOwnership.GetEquippedItemInstanceId(slotType) : null;
+            ItemOwnershipData equippedStack = (!string.IsNullOrEmpty(equippedInstanceId) && itemCollectionManager != null)
+                ? itemCollectionManager.GetStackByInstanceId(equippedInstanceId)
                 : null;
+            ItemData equippedItem = equippedStack != null ? itemCollectionManager.GetItemById(equippedStack.itemId) : null;
 
             slot.Refresh(equippedItem);
         }
@@ -149,21 +150,21 @@ public class HeroInventoryUI : MonoBehaviour
             itemPicker.Open(slotType, this);
     }
 
-    // Поточний предмет, екіпірований у вказаний слот цього героя (null, якщо слот порожній)
-    public string GetEquippedItemId(EquipmentSlotType slotType)
+    // Instance ID стека, екіпірованого у вказаний слот цього героя (null, якщо слот порожній)
+    public string GetEquippedItemInstanceId(EquipmentSlotType slotType)
     {
-        return currentOwnership != null ? currentOwnership.GetEquippedItemId(slotType) : null;
+        return currentOwnership != null ? currentOwnership.GetEquippedItemInstanceId(slotType) : null;
     }
 
-    public void EquipItem(EquipmentSlotType slotType, string itemId)
+    public void EquipItem(EquipmentSlotType slotType, string itemInstanceId)
     {
         if (currentOwnership == null) return;
 
-        // Предмет унікальний — якщо він уже екіпірований на іншому герої, знімаємо його звідти ("переносимо" сюди)
-        if (!string.IsNullOrEmpty(itemId) && collectionManager != null)
-            collectionManager.UnequipItemFromAllHeroes(itemId, currentHero.heroId);
+        // Конкретний стек унікальний — якщо він уже екіпірований на іншому герої, знімаємо його звідти ("переносимо" сюди)
+        if (!string.IsNullOrEmpty(itemInstanceId) && collectionManager != null)
+            collectionManager.UnequipItemFromAllHeroes(itemInstanceId, currentHero.heroId);
 
-        currentOwnership.SetEquippedItem(slotType, itemId);
+        currentOwnership.SetEquippedItem(slotType, itemInstanceId);
         PopulateItems();
     }
 

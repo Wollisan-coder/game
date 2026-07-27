@@ -18,10 +18,10 @@ public class HeroExperienceUseUI : MonoBehaviour
     private Image closeBg;
     private TMP_Text closeButtonText;
 
-    private string itemId;
+    private string itemInstanceId;
     private System.Action onApplied;
 
-    public void Open(string itemId, System.Action onApplied = null)
+    public void Open(string itemInstanceId, System.Action onApplied = null)
     {
         heroCollectionManager = HeroCollectionManager.Instance;
         itemCollectionManager = ItemCollectionManager.Instance;
@@ -33,7 +33,7 @@ public class HeroExperienceUseUI : MonoBehaviour
             canvasRoot = canvas != null ? canvas.transform : transform;
         }
 
-        this.itemId = itemId;
+        this.itemInstanceId = itemInstanceId;
         this.onApplied = onApplied;
 
         BuildOverlayIfNeeded();
@@ -242,7 +242,8 @@ public class HeroExperienceUseUI : MonoBehaviour
 
     private void OnHeroSelected(HeroData hero)
     {
-        var itemData = itemCollectionManager.GetItemById(itemId);
+        var stack = itemCollectionManager.GetStackByInstanceId(itemInstanceId);
+        var itemData = stack != null ? itemCollectionManager.GetItemById(stack.itemId) : null;
         if (itemData == null) return;
 
         ConfirmationDialog.Show(
@@ -254,7 +255,7 @@ public class HeroExperienceUseUI : MonoBehaviour
     private void Apply(string heroId, int amount)
     {
         if (!heroCollectionManager.GrantExperience(heroId, amount)) return;
-        if (!itemCollectionManager.ConsumeItem(itemId)) return;
+        if (!itemCollectionManager.ConsumeItem(itemInstanceId)) return;
 
         onApplied?.Invoke();
         Close();

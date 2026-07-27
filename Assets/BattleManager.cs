@@ -109,10 +109,13 @@ public class BattleManager : MonoBehaviour
             {
                 foreach (var equipped in ownership.equippedItems)
                 {
-                    var equippedItem = ItemCollectionManager.Instance.GetItemById(equipped.itemId);
+                    var equippedStack = ItemCollectionManager.Instance.GetStackByInstanceId(equipped.itemInstanceId);
+                    if (equippedStack == null) continue;
+
+                    var equippedItem = ItemCollectionManager.Instance.GetItemById(equippedStack.itemId);
                     if (equippedItem == null) continue;
 
-                    float levelMultiplier = ItemCollectionManager.Instance.GetLevelMultiplier(equipped.itemId);
+                    float levelMultiplier = ItemCollectionManager.Instance.GetLevelMultiplierForLevel(equippedStack.level);
                     int bonusHealth = Mathf.RoundToInt(equippedItem.bonusHealth * levelMultiplier);
                     int bonusMana = Mathf.RoundToInt(equippedItem.bonusMana * levelMultiplier);
 

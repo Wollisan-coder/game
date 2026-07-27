@@ -106,18 +106,26 @@ public class HeroCollectionManager : MonoBehaviour
         return true;
     }
 
+    // Чи екіпірований цей конкретний стек (за instanceId) хоч на одному герої зараз.
+    // Використовується, щоб приховати екіпіровані предмети з каталогу та зі списку донорів жертвоприношення.
+    public bool IsItemEquippedAnywhere(string itemInstanceId)
+    {
+        if (string.IsNullOrEmpty(itemInstanceId)) return false;
+        return ownership.Any(o => o.equippedItems.Any(e => e.itemInstanceId == itemInstanceId));
+    }
+
     // Знімає предмет з усіх героїв, на яких він зараз екіпірований (крім exceptHeroId, якщо вказано).
     // Використовується при екіпіровці, щоб предмет "переносився" між героями, а не дублювався.
-    public void UnequipItemFromAllHeroes(string itemId, string exceptHeroId = null)
+    public void UnequipItemFromAllHeroes(string itemInstanceId, string exceptHeroId = null)
     {
-        if (string.IsNullOrEmpty(itemId)) return;
+        if (string.IsNullOrEmpty(itemInstanceId)) return;
 
         foreach (var heroOwnership in ownership)
         {
             if (heroOwnership.heroId == exceptHeroId) continue;
 
-            var entry = heroOwnership.equippedItems.Find(e => e.itemId == itemId);
-            if (entry != null) entry.itemId = null;
+            var entry = heroOwnership.equippedItems.Find(e => e.itemInstanceId == itemInstanceId);
+            if (entry != null) entry.itemInstanceId = null;
         }
     }
 

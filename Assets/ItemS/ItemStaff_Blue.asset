@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cee94e0f62424cf4ebf0cdcef23fe21e, type: 3}
+  m_Name: ItemStaff_Blue
+  m_EditorClassIdentifier: Assembly-CSharp::ItemData
+  itemId: ItemStaff_Blue
+  itemName: "\u041F\u043E\u0441\u043E\u0445"
+  category: 0
+  slotType: 0
+  icon: {fileID: 21300000, guid: 18a5db08da7a764449339b5088bddca0, type: 3}
+  description: 
+  rarity: 2
+  sacrificeExperience: 10
+  bonusHealth: 0
+  bonusMana: 0
+  bonusDamageMultiplier: 2.4
+  heroExperienceValue: 0

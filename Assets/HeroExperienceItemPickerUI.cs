@@ -231,16 +231,19 @@ public class HeroExperienceItemPickerUI : MonoBehaviour
         labelRect.offsetMin = new Vector2(4, 2);
         labelRect.offsetMax = new Vector2(-4, 0);
         var label = labelObj.AddComponent<TextMeshProUGUI>();
-        string qtySuffix = ownership.quantity > 1 ? $" x{ownership.quantity}" : "";
-        label.text = $"{itemData.itemName}{qtySuffix}\n+{itemData.heroExperienceValue} Exp.";
+        label.text = $"{itemData.itemName}\n+{itemData.heroExperienceValue} Exp.";
         label.fontSize = 12;
         label.alignment = TextAlignmentOptions.Center;
         label.color = itemData.GetRarityColor();
 
-        btn.onClick.AddListener(() => OnItemSelected(itemData));
+        TMP_Text quantityBadge = null;
+        ItemBadgeUtility.ApplyQuantityBadge(iconRect, ownership.quantity, ref quantityBadge);
+
+        string instanceId = ownership.instanceId;
+        btn.onClick.AddListener(() => OnItemSelected(itemData, instanceId));
     }
 
-    private void OnItemSelected(ItemData itemData)
+    private void OnItemSelected(ItemData itemData, string instanceId)
     {
         var hero = heroCollectionManager.allHeroes.FirstOrDefault(h => h.heroId == heroId);
         string heroName = hero != null ? hero.heroName : heroId;
@@ -248,13 +251,13 @@ public class HeroExperienceItemPickerUI : MonoBehaviour
         ConfirmationDialog.Show(
             canvasRoot,
             $"Use {itemData.itemName} (+{itemData.heroExperienceValue} XP) on {heroName}?",
-            () => Apply(itemData.itemId, itemData.heroExperienceValue));
+            () => Apply(instanceId, itemData.heroExperienceValue));
     }
 
-    private void Apply(string itemId, int amount)
+    private void Apply(string instanceId, int amount)
     {
         if (!heroCollectionManager.GrantExperience(heroId, amount)) return;
-        if (!itemCollectionManager.ConsumeItem(itemId)) return;
+        if (!itemCollectionManager.ConsumeItem(instanceId)) return;
 
         onApplied?.Invoke();
         Populate(); // вікно лишається відкритим — можна одразу використати ще один предмет

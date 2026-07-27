@@ -4402,13 +4402,41 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ItemCollectionManager
   allItems:
-  - {fileID: 11400000, guid: 3622932aa42f83d4398000f16682990d, type: 2}
-  - {fileID: 11400000, guid: 016a25ac03c3fc64781c597df111d71b, type: 2}
-  - {fileID: 11400000, guid: 39e64ad4cf662f9488412a273e3faeb2, type: 2}
-  - {fileID: 11400000, guid: 49ca1cf1ddb8c3e40aa5a65487f36fa3, type: 2}
-  - {fileID: 11400000, guid: 8b16828a58dd6f540b625591f4f0de57, type: 2}
   - {fileID: 11400000, guid: 8a3677efe8cb0d94a9627f2fc0ed4cf7, type: 2}
+  - {fileID: 11400000, guid: 67a03a72e9ac46339c43057dc468a35e, type: 2}
+  - {fileID: 11400000, guid: 2bc6eb27f31ac5eabe34d8cf5977dd4f, type: 2}
+  - {fileID: 11400000, guid: 65bac47ebc104926ca511baf3b07f18b, type: 2}
+  - {fileID: 11400000, guid: fa0f577c35f61f1023674eff615c591d, type: 2}
+  - {fileID: 11400000, guid: 49ca1cf1ddb8c3e40aa5a65487f36fa3, type: 2}
+  - {fileID: 11400000, guid: 0fd0283a3f2e9143cae80d5d61279f7f, type: 2}
+  - {fileID: 11400000, guid: 1747579ef993249bcede173e0e091889, type: 2}
+  - {fileID: 11400000, guid: e589d85993db4b78b8d9625892384c4b, type: 2}
+  - {fileID: 11400000, guid: 975ebf24f3ba611b6fde37d1ba133a9e, type: 2}
   - {fileID: 11400000, guid: 68371060e25d2c54d9d6620726f13bb4, type: 2}
+  - {fileID: 11400000, guid: 1f432dcefb1ffe14a494140badc241af, type: 2}
+  - {fileID: 11400000, guid: 767d9d8a52bb186d8ba0a6dec775d165, type: 2}
+  - {fileID: 11400000, guid: 9e1dd2054af8aa3379659d7cd30b1cfa, type: 2}
+  - {fileID: 11400000, guid: 1503887e32cd09e6ff60b0ff3de99f39, type: 2}
+  - {fileID: 11400000, guid: 8b16828a58dd6f540b625591f4f0de57, type: 2}
+  - {fileID: 11400000, guid: e73d46c55954f2a8b8ec621b515e399f, type: 2}
+  - {fileID: 11400000, guid: 6f4e401d7b6cf17b7659a15ad52ce562, type: 2}
+  - {fileID: 11400000, guid: f0cb718a0c661147ba14ff7c7425abe3, type: 2}
+  - {fileID: 11400000, guid: b3a199a870caa1fea3084ed69938f141, type: 2}
+  - {fileID: 11400000, guid: 3622932aa42f83d4398000f16682990d, type: 2}
+  - {fileID: 11400000, guid: ad773ad50d64587ccfa3e865205bff72, type: 2}
+  - {fileID: 11400000, guid: ba210cbe3e3ad01e00c64d898425da70, type: 2}
+  - {fileID: 11400000, guid: c318940584f51b27d5bdd7cafcdebb34, type: 2}
+  - {fileID: 11400000, guid: 44d40cce766364424347fedd3cf83b2a, type: 2}
+  - {fileID: 11400000, guid: 016a25ac03c3fc64781c597df111d71b, type: 2}
+  - {fileID: 11400000, guid: eddf7eba98a97c4ec14f5059b9c3f558, type: 2}
+  - {fileID: 11400000, guid: 10a9c1cef9dd553530395c8b96810764, type: 2}
+  - {fileID: 11400000, guid: 528b5d7baa048832d2b9c33533c97567, type: 2}
+  - {fileID: 11400000, guid: 30fe5343ec9a3b5daeded4edbe134d24, type: 2}
+  - {fileID: 11400000, guid: 39e64ad4cf662f9488412a273e3faeb2, type: 2}
+  - {fileID: 11400000, guid: d21e3eb2a9a49cf07fcc76e03fb17020, type: 2}
+  - {fileID: 11400000, guid: 4ab4033bd177b291563170038417cde4, type: 2}
+  - {fileID: 11400000, guid: 561175846d7b3e085f64eaddb683d29d, type: 2}
+  - {fileID: 11400000, guid: ec9ccf9462d11c9b11e975efacb8f2b8, type: 2}
   - {fileID: 11400000, guid: 9f3a7c214b8e6d05c2a19f74e83b56d0, type: 2}
   - {fileID: 11400000, guid: d4e1b7a935c02f6e88a4d13c759e2b60, type: 2}
   - {fileID: 11400000, guid: 6b2f9d47e1a83c0594f7b2d63ac081e5, type: 2}
@@ -8679,7 +8707,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 0.9098039, g: 0.72156864, b: 0.29411766, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1

@@ -5,8 +5,10 @@ using UnityEngine.UI;
 using TMPro;
 
 // Runtime-built window for selecting donor items to sacrifice (levels up the target item).
-// Supports selecting several items at once; once the predicted level reaches the cap,
-// the remaining candidates get locked out and a popup explains why. Built entirely in code.
+// Selection is per-copy: each click on a stack adds exactly ONE unit of it to the selection
+// (clicking again adds another, up to its owned quantity; clicking once more after reaching
+// the cap resets that stack's selection back to 0). Different stacks can be mixed freely.
+// Once the predicted level reaches the cap, the remaining candidates get locked out and a popup explains why. Built entirely in code.
 public class ItemSacrificeUI : MonoBehaviour
 {
     private static readonly Color NormalBgColor = new Color(1, 1, 1, 0.06f);
@@ -26,26 +28,32 @@ public class ItemSacrificeUI : MonoBehaviour
     private Image closeBg;
     private TMP_Text closeButtonText;
 
-    private string targetItemId;
+    private string targetInstanceId;
     private System.Action onApplied;
     private int baseLevel;
     private int baseExperience;
     private int maxLevel;
 
-    private readonly HashSet<string> selectedDonorIds = new HashSet<string>();
+    // instanceId стека, який зараз фактично несе рівень цілі — може змінюватись під час пакетного
+    // пожертвування (якщо ціль ділиться на новий стек або зливається з існуючим-близнюком)
+    public string CurrentTargetInstanceId => targetInstanceId;
+
+    // instanceId стека -> скільки одиниць саме з нього обрано (0..quantity цього стека)
+    private readonly Dictionary<string, int> selectedDonorCounts = new Dictionary<string, int>();
     private readonly Dictionary<string, Button> donorButtons = new Dictionary<string, Button>();
     private readonly Dictionary<string, Image> donorBackgrounds = new Dictionary<string, Image>();
+    private readonly Dictionary<string, TMP_Text> donorLabels = new Dictionary<string, TMP_Text>();
 
-    // targetId — предмет, який прокачуємо. onApplied — викликається після кожного успішного пожертвування
-    // (щоб викликач міг оновити свій власний UI: деталі предмета, слот екіпіровки тощо).
+    // targetInstanceId — конкретний стек (рівень) предмета, який прокачуємо. onApplied — викликається після
+    // кожного успішного пожертвування (щоб викликач міг оновити свій власний UI: деталі предмета, слот екіпіровки тощо).
     public void Open(string targetId, System.Action onApplied = null)
     {
         itemCollectionManager = ItemCollectionManager.Instance;
         if (itemCollectionManager == null) return;
 
-        var targetData = itemCollectionManager.GetItemById(targetId);
-        var targetOwnership = itemCollectionManager.GetOwnership(targetId);
-        if (targetData == null || targetOwnership == null) return;
+        var targetStack = itemCollectionManager.GetStackByInstanceId(targetId);
+        var targetData = targetStack != null ? itemCollectionManager.GetItemById(targetStack.itemId) : null;
+        if (targetData == null || targetStack == null) return;
 
         if (canvasRoot == null)
         {
@@ -53,12 +61,12 @@ public class ItemSacrificeUI : MonoBehaviour
             canvasRoot = canvas != null ? canvas.transform : transform;
         }
 
-        targetItemId = targetId;
+        targetInstanceId = targetId;
         this.onApplied = onApplied;
-        baseLevel = targetOwnership.level;
-        baseExperience = targetOwnership.experience;
+        baseLevel = targetStack.level;
+        baseExperience = targetStack.experience;
         maxLevel = targetData.GetMaxLevel();
-        selectedDonorIds.Clear();
+        selectedDonorCounts.Clear();
 
         BuildOverlayIfNeeded();
         RefreshButtonTheme();
@@ -260,9 +268,14 @@ public class ItemSacrificeUI : MonoBehaviour
 
         donorButtons.Clear();
         donorBackgrounds.Clear();
+        donorLabels.Clear();
+
+        var heroManager = HeroCollectionManager.Instance;
 
         var candidates = itemCollectionManager.ownership
-            .Where(o => o.itemId != targetItemId)
+            .Where(o => o.instanceId != targetInstanceId) // виключаємо саме цільовий СТЕК, а не весь itemId —
+                                                            // інший рівень того самого предмета цілком годиться як паливо
+            .Where(o => heroManager == null || !heroManager.IsItemEquippedAnywhere(o.instanceId)) // екіпіровані на герої предмети — не паливо
             .Select(o => (ownership: o, data: itemCollectionManager.GetItemById(o.itemId)))
             .Where(c => c.data != null && c.data.category == ItemCategory.Equipment) // предмети досвіду героя сюди не годяться
             .ToList();
@@ -279,7 +292,7 @@ public class ItemSacrificeUI : MonoBehaviour
 
     private void CreateDonorEntry(ItemData donorData, ItemOwnershipData donorOwnership)
     {
-        var entryObj = new GameObject(donorData.itemId, typeof(RectTransform));
+        var entryObj = new GameObject(donorOwnership.instanceId, typeof(RectTransform));
         var entryRect = (RectTransform)entryObj.transform;
         entryRect.SetParent(listContainer, false);
 
@@ -306,38 +319,64 @@ public class ItemSacrificeUI : MonoBehaviour
         labelRect.offsetMin = new Vector2(4, 2);
         labelRect.offsetMax = new Vector2(-4, 0);
         var label = labelObj.AddComponent<TextMeshProUGUI>();
-        int xp = donorData.sacrificeExperience * donorOwnership.level;
-        string qtySuffix = donorOwnership.quantity > 1 ? $" x{donorOwnership.quantity}" : "";
-        label.text = $"{donorData.itemName}{qtySuffix}\nLvl.{donorOwnership.level}  +{xp} Exp.";
         label.fontSize = 12;
         label.alignment = TextAlignmentOptions.Center;
         label.color = donorData.GetRarityColor();
 
-        string donorId = donorData.itemId;
-        btn.onClick.AddListener(() => ToggleDonor(donorId));
+        TMP_Text quantityBadge = null;
+        ItemBadgeUtility.ApplyQuantityBadge(iconRect, donorOwnership.quantity, ref quantityBadge);
+
+        string donorId = donorOwnership.instanceId;
+        btn.onClick.AddListener(() => IncrementDonor(donorId));
 
         donorButtons[donorId] = btn;
         donorBackgrounds[donorId] = bg;
+        donorLabels[donorId] = label;
+
+        RefreshDonorLabel(donorId, donorData, donorOwnership);
     }
 
+    // Перебудовує текст рядка донора з урахуванням того, скільки одиниць саме з нього зараз обрано
+    private void RefreshDonorLabel(string donorId, ItemData donorData, ItemOwnershipData donorOwnership)
+    {
+        if (!donorLabels.TryGetValue(donorId, out var label)) return;
+
+        int xp = donorData.sacrificeExperience * donorOwnership.level;
+        int selected = selectedDonorCounts.TryGetValue(donorId, out int c) ? c : 0;
+        string selectedLine = selected > 0 ? $"\nОбрано: {selected}/{donorOwnership.quantity}" : "";
+
+        label.text = $"{donorData.itemName}\nLvl.{donorOwnership.level}  +{xp} Exp.{selectedLine}";
+    }
+
+    // Сума досвіду лише за ОБРАНУ кількість одиниць з кожного стека (не за весь стек)
     private int SumSelectedXp()
     {
         int sum = 0;
-        foreach (var id in selectedDonorIds)
+        foreach (var kvp in selectedDonorCounts)
         {
-            var data = itemCollectionManager.GetItemById(id);
-            var ownership = itemCollectionManager.GetOwnership(id);
+            var ownership = itemCollectionManager.GetStackByInstanceId(kvp.Key);
+            var data = ownership != null ? itemCollectionManager.GetItemById(ownership.itemId) : null;
             if (data != null && ownership != null)
-                sum += data.sacrificeExperience * ownership.level;
+                sum += data.sacrificeExperience * ownership.level * kvp.Value;
         }
         return sum;
     }
 
-    private void ToggleDonor(string donorId)
+    // Скільки предметів реально буде списано (сума обраних одиниць по всіх стеках) — для тексту підтвердження
+    private int SumSelectedItemCount() => selectedDonorCounts.Values.Sum();
+
+    // Клік по донору додає РІВНО ОДНУ одиницю саме з нього. Якщо весь стек уже обрано —
+    // клік скидає вибір цього стека назад до 0 (щоб не потрібно було клікати по одному, щоб зняти вибір).
+    private void IncrementDonor(string donorId)
     {
-        if (selectedDonorIds.Contains(donorId))
+        var donorStack = itemCollectionManager.GetStackByInstanceId(donorId);
+        if (donorStack == null) return;
+
+        int current = selectedDonorCounts.TryGetValue(donorId, out int c) ? c : 0;
+
+        if (current >= donorStack.quantity)
         {
-            selectedDonorIds.Remove(donorId);
+            selectedDonorCounts.Remove(donorId);
         }
         else
         {
@@ -348,7 +387,7 @@ public class ItemSacrificeUI : MonoBehaviour
                 return;
             }
 
-            selectedDonorIds.Add(donorId);
+            selectedDonorCounts[donorId] = current + 1;
 
             var afterResult = itemCollectionManager.SimulateExperienceGain(baseLevel, baseExperience, SumSelectedXp(), maxLevel);
             if (afterResult.wastedExperience > 0)
@@ -357,6 +396,9 @@ public class ItemSacrificeUI : MonoBehaviour
                     $"Level {maxLevel} will be reached.\nExperience above the cap ({afterResult.wastedExperience}) will be lost.");
             }
         }
+
+        var donorData = itemCollectionManager.GetItemById(donorStack.itemId);
+        if (donorData != null) RefreshDonorLabel(donorId, donorData, donorStack);
 
         RefreshSelectionVisuals();
         UpdateSummary();
@@ -369,7 +411,7 @@ public class ItemSacrificeUI : MonoBehaviour
 
         foreach (var kvp in donorButtons)
         {
-            bool isSelected = selectedDonorIds.Contains(kvp.Key);
+            bool isSelected = selectedDonorCounts.TryGetValue(kvp.Key, out int count) && count > 0;
             kvp.Value.interactable = isSelected || !atMax;
             donorBackgrounds[kvp.Key].color = isSelected ? SelectedBgColor : NormalBgColor;
         }
@@ -379,45 +421,56 @@ public class ItemSacrificeUI : MonoBehaviour
     {
         var result = itemCollectionManager.SimulateExperienceGain(baseLevel, baseExperience, SumSelectedXp(), maxLevel);
 
-        if (selectedDonorIds.Count == 0)
+        if (selectedDonorCounts.Count == 0)
         {
             summaryText.text = $"Selected: 0\nCurrent level: {baseLevel}/{maxLevel}";
         }
         else
         {
             string expLine = result.level >= maxLevel ? "MAX" : $"{result.experience}/{itemCollectionManager.ExperienceToNextLevel(result.level)}";
-            summaryText.text = $"Selected: {selectedDonorIds.Count}\nPreview: level {result.level}/{maxLevel} ({expLine})";
+            summaryText.text = $"Selected: {SumSelectedItemCount()} item(s)\nPreview: level {result.level}/{maxLevel} ({expLine})";
         }
 
         if (confirmButton != null)
-            confirmButton.interactable = selectedDonorIds.Count > 0;
+            confirmButton.interactable = SumSelectedItemCount() > 0;
     }
 
     private void OnConfirmClicked()
     {
-        if (selectedDonorIds.Count == 0) return;
+        int itemCount = SumSelectedItemCount();
+        if (itemCount == 0) return;
 
-        int count = selectedDonorIds.Count;
         ConfirmationDialog.Show(
             canvasRoot,
-            $"Sacrifice {count} item(s)?\nThis cannot be undone.",
+            $"Sacrifice {itemCount} item(s)?\nThis cannot be undone.",
             ApplySacrifice);
     }
 
     private void ApplySacrifice()
     {
         int totalWasted = 0;
-        var idsToSacrifice = new List<string>(selectedDonorIds);
+        var countsToSacrifice = new Dictionary<string, int>(selectedDonorCounts);
 
-        foreach (var donorId in idsToSacrifice)
+        foreach (var kvp in countsToSacrifice)
         {
-            if (itemCollectionManager.SacrificeItem(donorId, targetItemId, out int wasted))
-                totalWasted += wasted;
+            string donorId = kvp.Key;
+            int quantityToSacrifice = kvp.Value; // саме стільки одиниць було обрано з цього стека, не весь стек
+
+            for (int i = 0; i < quantityToSacrifice; i++)
+            {
+                // targetInstanceId може змінитись (стек ділиться на новий або зливається з існуючим) —
+                // SacrificeItem повертає актуальний instanceId, і наступний виклик має цілитись саме в нього.
+                if (itemCollectionManager.SacrificeItem(donorId, targetInstanceId, out int wasted, out string resultingId))
+                {
+                    totalWasted += wasted;
+                    targetInstanceId = resultingId;
+                }
+            }
         }
 
-        selectedDonorIds.Clear();
+        selectedDonorCounts.Clear();
 
-        var targetOwnership = itemCollectionManager.GetOwnership(targetItemId);
+        var targetOwnership = itemCollectionManager.GetStackByInstanceId(targetInstanceId);
         if (targetOwnership != null)
         {
             baseLevel = targetOwnership.level;

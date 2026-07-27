@@ -61,20 +61,35 @@ public class ItemPickerUI : MonoBehaviour
 
         foreach (var item in itemsOfType)
         {
-            GameObject entryObj = Instantiate(itemEntryPrefab, itemsContainer);
-            var entry = entryObj.GetComponent<ItemPickerEntryUI>();
-            bool owned = itemCollectionManager.IsOwned(item);
-            int level = owned ? itemCollectionManager.GetLevel(item.itemId) : 0;
-            int quantity = owned ? itemCollectionManager.GetQuantity(item.itemId) : 0;
-            entry.Setup(item, owned, level, quantity, () => OnItemSelected(item));
+            var stacks = itemCollectionManager.GetStacks(item.itemId);
+
+            if (stacks.Count == 0)
+            {
+                // Не отримано жодної копії — один "заблокований" рядок без можливості вибору
+                GameObject lockedObj = Instantiate(itemEntryPrefab, itemsContainer);
+                lockedObj.GetComponent<ItemPickerEntryUI>().Setup(item, false, 0, 0, null);
+                continue;
+            }
+
+            // Кожен стек (окремий рівень) — окремий рядок, щоб предмети різного рівня не зливались в одну ячейку
+            foreach (var stack in stacks)
+            {
+                GameObject entryObj = Instantiate(itemEntryPrefab, itemsContainer);
+                var entry = entryObj.GetComponent<ItemPickerEntryUI>();
+                string instanceId = stack.instanceId;
+                entry.Setup(item, true, stack.level, stack.quantity, () => OnItemSelected(instanceId));
+            }
         }
 
         RefreshUpgradeButtonVisibility();
     }
 
-    private void OnItemSelected(ItemData item)
+    private void OnItemSelected(string itemInstanceId)
     {
-        owner.EquipItem(currentSlot, item.itemId);
+        // Якщо в стеку більше 1 копії — екіпірувати можна лише ОДНУ, тож відділяємо її в окремий стек,
+        // а решта копій лишаються вільними (доступними) в інвентарі предметів.
+        string toEquip = itemCollectionManager.SplitOneForEquip(itemInstanceId) ?? itemInstanceId;
+        owner.EquipItem(currentSlot, toEquip);
         Close();
     }
 
@@ -88,13 +103,13 @@ public class ItemPickerUI : MonoBehaviour
     {
         if (owner == null || itemCollectionManager == null) return;
 
-        string equippedId = owner.GetEquippedItemId(currentSlot);
-        if (string.IsNullOrEmpty(equippedId)) return;
+        string equippedInstanceId = owner.GetEquippedItemInstanceId(currentSlot);
+        if (string.IsNullOrEmpty(equippedInstanceId)) return;
 
         if (sacrificeUI == null)
             sacrificeUI = gameObject.AddComponent<ItemSacrificeUI>();
 
-        sacrificeUI.Open(equippedId, Populate);
+        sacrificeUI.Open(equippedInstanceId, Populate);
     }
 
     // Кнопку "Upgrade" будуємо програмно поруч із Unequip/Close (копіюючи їхній трансформ),
@@ -144,15 +159,15 @@ public class ItemPickerUI : MonoBehaviour
     {
         if (upgradeButton == null || owner == null || itemCollectionManager == null) return;
 
-        string equippedId = owner.GetEquippedItemId(currentSlot);
-        bool hasEquipped = !string.IsNullOrEmpty(equippedId);
+        string equippedInstanceId = owner.GetEquippedItemInstanceId(currentSlot);
+        var equippedStack = !string.IsNullOrEmpty(equippedInstanceId)
+            ? itemCollectionManager.GetStackByInstanceId(equippedInstanceId)
+            : null;
+        var equippedData = equippedStack != null ? itemCollectionManager.GetItemById(equippedStack.itemId) : null;
 
-        var equippedData = hasEquipped ? itemCollectionManager.GetItemById(equippedId) : null;
-        var equippedOwnership = hasEquipped ? itemCollectionManager.GetOwnership(equippedId) : null;
-
-        bool canUpgrade = equippedData != null && equippedOwnership != null
-            && equippedOwnership.level < equippedData.GetMaxLevel()
-            && itemCollectionManager.ownership.Any(o => o.itemId != equippedId);
+        bool canUpgrade = equippedData != null && equippedStack != null
+            && equippedStack.level < equippedData.GetMaxLevel()
+            && itemCollectionManager.ownership.Any(o => o.instanceId != equippedStack.instanceId);
 
         upgradeButton.gameObject.SetActive(canUpgrade);
     }

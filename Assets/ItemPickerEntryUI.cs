@@ -17,7 +17,11 @@ public class ItemPickerEntryUI : MonoBehaviour
     public void Setup(ItemData item, bool owned, int level, int quantity, System.Action onClick)
     {
         if (iconImage != null) iconImage.sprite = item.icon;
-        if (nameText != null) nameText.text = item.itemName;
+        if (nameText != null)
+        {
+            nameText.text = item.itemName;
+            nameText.color = item.GetRarityColor();
+        }
         if (descriptionText != null) descriptionText.text = item.description;
         if (lockOverlay != null) lockOverlay.SetActive(!owned);
 

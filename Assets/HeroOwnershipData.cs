@@ -5,7 +5,8 @@ using UnityEngine;
 public class EquippedItem
 {
     public EquipmentSlotType slotType;
-    public string itemId;
+    public string itemInstanceId; // унікальний ID конкретного стека предмета (не itemId — той не унікальний, бо
+                                   // один і той самий предмет може існувати кількома стеками різного рівня)
 }
 
 [System.Serializable]
@@ -23,19 +24,19 @@ public class HeroOwnershipData
     [Header("Екіпіровані предмети (по одному на тип слота)")]
     public List<EquippedItem> equippedItems = new List<EquippedItem>();
 
-    public string GetEquippedItemId(EquipmentSlotType slotType)
+    public string GetEquippedItemInstanceId(EquipmentSlotType slotType)
     {
         var entry = equippedItems.Find(e => e.slotType == slotType);
-        return entry != null ? entry.itemId : null;
+        return entry != null ? entry.itemInstanceId : null;
     }
 
-    public void SetEquippedItem(EquipmentSlotType slotType, string itemId)
+    public void SetEquippedItem(EquipmentSlotType slotType, string itemInstanceId)
     {
         var entry = equippedItems.Find(e => e.slotType == slotType);
 
         if (entry != null)
-            entry.itemId = itemId;
+            entry.itemInstanceId = itemInstanceId;
         else
-            equippedItems.Add(new EquippedItem { slotType = slotType, itemId = itemId });
+            equippedItems.Add(new EquippedItem { slotType = slotType, itemInstanceId = itemInstanceId });
     }
 }
