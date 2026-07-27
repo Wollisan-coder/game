@@ -12,11 +12,13 @@ public class SquadSlotUI : MonoBehaviour
 
     private HeroData heroData;
     private SquadUI parentUI;
+    private HeroInventoryUI inventoryUI;
 
     // Викликається один раз при ініціалізації слотів у SquadUI
-    public void Initialize(SquadUI squadUI)
+    public void Initialize(SquadUI squadUI, HeroInventoryUI inventory)
     {
         parentUI = squadUI;
+        inventoryUI = inventory;
     }
 
     public void SetHero(HeroData data, SquadUI squadUI)
@@ -50,17 +52,25 @@ public class SquadSlotUI : MonoBehaviour
         }
     }
 
-            private void OnSelectClicked()
+    private void OnSelectClicked()
+    {
+        // Якщо в слоті вже стоїть герой — клік по картинці відкриває його інвентар (екіпіровку), а не вибір нового
+        if (heroData != null)
         {
-            Debug.Log($"Клікнуто на слот з slotIndex = {slotIndex}, ім'я об'єкта: {gameObject.name}");
-
-            HeroCollectionManager.Instance.StartEditingSlot(slotIndex);
-
-            if (parentUI != null && parentUI.mainMenuUI != null)
-                parentUI.mainMenuUI.ShowCollection();
+            if (inventoryUI != null)
+                inventoryUI.Open(heroData);
             else
-                Debug.LogWarning("SquadSlotUI: parentUI або mainMenuUI не призначено!");
+                Debug.LogWarning("SquadSlotUI: inventoryUI не призначено!");
+            return;
         }
+
+        HeroCollectionManager.Instance.StartEditingSlot(slotIndex);
+
+        if (parentUI != null && parentUI.mainMenuUI != null)
+            parentUI.mainMenuUI.ShowCollection();
+        else
+            Debug.LogWarning("SquadSlotUI: parentUI або mainMenuUI не призначено!");
+    }
 
     private void OnRemoveClicked()
     {

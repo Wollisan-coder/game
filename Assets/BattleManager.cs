@@ -50,6 +50,7 @@ public class BattleManager : MonoBehaviour
     public int accountExperienceReward = 20; // плейсхолдер — легко змінити в інспекторі
 
     public System.Action OnStateChanged;
+    public System.Action<string> OnBattleLog; // виклик з текстом рядка при кожному нанесеному/отриманому уроні
 
     private HeroRuntimeState lastAttackedHero;
     private int consecutiveHitsOnLastHero;
@@ -134,7 +135,11 @@ public class BattleManager : MonoBehaviour
     {
         int absorbed = Mathf.Min(enemyShield, amount);
         enemyShield -= absorbed;
-        enemyHP = Mathf.Max(0, enemyHP - (amount - absorbed));
+        int applied = amount - absorbed;
+        enemyHP = Mathf.Max(0, enemyHP - applied);
+
+        if (applied > 0)
+            OnBattleLog?.Invoke($"Ворогу нанесено {applied} урону");
     }
 
     // Базовий урон, якщо живого героя цього кольору немає; підвищений — якщо є
@@ -306,7 +311,11 @@ public class BattleManager : MonoBehaviour
 
         int absorbed = Mathf.Min(playerShield, rawDamage);
         playerShield -= absorbed;
-        hero.TakeDamage(rawDamage - absorbed);
+        int applied = rawDamage - absorbed;
+        hero.TakeDamage(applied);
+
+        if (applied > 0)
+            OnBattleLog?.Invoke($"{hero.data.heroName} отримав {applied} урону");
 
         if (hero.currentHealth <= 0)
             OnHeroDefeated(hero);

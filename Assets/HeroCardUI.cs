@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class HeroCardUI : MonoBehaviour
 {
@@ -14,6 +15,7 @@ public class HeroCardUI : MonoBehaviour
     public Image fillImage;       // мана
     public Image healthFillImage; // HP — окремий від мани
     public Image shieldFillImage; // щит — % від максимального HP героя
+    public TMP_Text healthText;   // числове значення "поточне/максимальне" HP поверх смужки
     public Button activateButton; // якщо в героя одна основна навичка (skills[0])
     public Image buttonOverlay;
 
@@ -162,6 +164,9 @@ public class HeroCardUI : MonoBehaviour
             healthFillImage.fillAmount = heroState.maxHealth > 0
                 ? (float)heroState.currentHealth / heroState.maxHealth
                 : 0f;
+
+        if (healthText != null)
+            healthText.text = $"{heroState.currentHealth}/{heroState.maxHealth}";
 
         if (shieldFillImage != null && battleManager != null)
             shieldFillImage.fillAmount = heroState.maxHealth > 0

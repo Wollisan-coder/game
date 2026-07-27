@@ -4,6 +4,7 @@ public class SquadUI : MonoBehaviour
 {
     public HeroCollectionManager collectionManager;
     public MainMenuUI mainMenuUI;
+    public HeroInventoryUI inventoryUI; // спільний попап на всю сцену — той самий, що й у HeroCollectionUI
     public SquadSlotUI[] slots;
 
         private void Awake()
@@ -14,7 +15,7 @@ public class SquadUI : MonoBehaviour
         {
             Debug.Log($"Призначаю slotIndex={i} для {slots[i].gameObject.name}");
             slots[i].slotIndex = i;
-            slots[i].Initialize(this);
+            slots[i].Initialize(this, inventoryUI);
         }
     }
 

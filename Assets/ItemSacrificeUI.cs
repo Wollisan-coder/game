@@ -124,7 +124,7 @@ public class ItemSacrificeUI : MonoBehaviour
         windowRect.anchorMin = new Vector2(0.5f, 0.5f);
         windowRect.anchorMax = new Vector2(0.5f, 0.5f);
         windowRect.pivot = new Vector2(0.5f, 0.5f);
-        windowRect.sizeDelta = new Vector2(560, 480);
+        windowRect.sizeDelta = new Vector2(760, 1000);
         var windowBg = windowObj.AddComponent<Image>();
         windowBg.color = new Color(0.12f, 0.12f, 0.12f, 0.98f);
 
@@ -166,7 +166,7 @@ public class ItemSacrificeUI : MonoBehaviour
         contentRect.sizeDelta = new Vector2(0, 0);
 
         var grid = contentObj.AddComponent<GridLayoutGroup>();
-        grid.cellSize = new Vector2(100, 120);
+        grid.cellSize = new Vector2(150, 150);
         grid.spacing = new Vector2(10, 10);
         grid.padding = new RectOffset(6, 6, 6, 6);
 

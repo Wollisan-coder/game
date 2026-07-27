@@ -30,12 +30,18 @@ public class BattleUI : MonoBehaviour
     [Header("Ресурси героїв")]
     public HeroResourceUIEntry[] heroResourceEntries;
 
+    [Header("Лог бою (нанесений/отриманий урон)")]
+    public TMP_Text battleLogText; // призначити в Inspector — окремий текстовий блок десь на екрані бою
+    private const int MaxLogLines = 8;
+    private readonly List<string> logLines = new List<string>();
+
     private void Start()
     {
         if (battleManager == null)
             battleManager = FindAnyObjectByType<BattleManager>();
 
         battleManager.OnStateChanged += RefreshUI;
+        battleManager.OnBattleLog += AppendLog;
 if (enemyPortrait != null && battleManager.currentEnemy != null && battleManager.currentEnemy.portrait != null)
     enemyPortrait.sprite = battleManager.currentEnemy.portrait;
         RefreshUI();
@@ -44,7 +50,21 @@ if (enemyPortrait != null && battleManager.currentEnemy != null && battleManager
     private void OnDestroy()
     {
         if (battleManager != null)
+        {
             battleManager.OnStateChanged -= RefreshUI;
+            battleManager.OnBattleLog -= AppendLog;
+        }
+    }
+
+    // Новий рядок додається зверху, старі за межами ліміту відкидаються знизу
+    private void AppendLog(string message)
+    {
+        logLines.Insert(0, message);
+        if (logLines.Count > MaxLogLines)
+            logLines.RemoveAt(logLines.Count - 1);
+
+        if (battleLogText != null)
+            battleLogText.text = string.Join("\n", logLines);
     }
 
     private void RefreshUI()

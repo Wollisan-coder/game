@@ -14,9 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HeroSummonPoolData
   poolId: Altar_HeroPool
   entries:
-  - hero: {fileID: 11400000, guid: e154393c132fd47498367116753919e5, type: 2}
-    weightViaShards: 45
-    weightViaPremium: 20
   - hero: {fileID: 11400000, guid: 24899780ddcf1e34aab1e81dd4519569, type: 2}
     weightViaShards: 30
     weightViaPremium: 25

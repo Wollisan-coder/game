@@ -32,7 +32,9 @@ public class ItemPickerUI : MonoBehaviour
 
         CreateUpgradeButtonIfNeeded();
 
-        gameObject.SetActive(false);
+        // Панель вже збережена вимкненою в сцені (m_IsActive: 0) — не гасимо її тут ще раз:
+        // якщо викликати SetActive(false) з Awake(), а Awake() вперше запускається САМЕ під час
+        // першого Open()->SetActive(true), цей виклик одразу скасовує щойно виконану активацію.
     }
 
     public void Open(EquipmentSlotType slotType, HeroInventoryUI ownerUI)
@@ -40,6 +42,7 @@ public class ItemPickerUI : MonoBehaviour
         currentSlot = slotType;
         owner = ownerUI;
 
+        transform.SetAsLastSibling(); // інакше панель, з якої відкрито (наприклад, HeroInventoryUI), може перекрити цю зверху
         gameObject.SetActive(true);
         RefreshUpgradeButtonTheme();
         Populate();

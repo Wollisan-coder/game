@@ -2312,30 +2312,40 @@ MonoBehaviour:
     level: 0
     maxHealth: 0
     currentHealth: 0
+    maxResource: 0
+    damageMultiplier: 0
     blockManaGainThisTurn: 0
   - data: {fileID: 11400000, guid: c9402d59fd6cdf347aa97805cae8d399, type: 2}
     currentResource: 0
     level: 0
     maxHealth: 0
     currentHealth: 0
+    maxResource: 0
+    damageMultiplier: 0
     blockManaGainThisTurn: 0
   - data: {fileID: 11400000, guid: e154393c132fd47498367116753919e5, type: 2}
     currentResource: 0
     level: 0
     maxHealth: 0
     currentHealth: 0
+    maxResource: 0
+    damageMultiplier: 0
     blockManaGainThisTurn: 0
   - data: {fileID: 11400000, guid: 24899780ddcf1e34aab1e81dd4519569, type: 2}
     currentResource: 0
     level: 0
     maxHealth: 0
     currentHealth: 0
+    maxResource: 0
+    damageMultiplier: 0
     blockManaGainThisTurn: 0
   - data: {fileID: 11400000, guid: 50e776ab86d11014cb94a39c0f3cb962, type: 2}
     currentResource: 0
     level: 0
     maxHealth: 0
     currentHealth: 0
+    maxResource: 0
+    damageMultiplier: 0
     blockManaGainThisTurn: 0
   baseDamagePerGem: 0500000005000000050000000500000005000000
   aliveDamagePerGem: 0600000006000000060000000600000006000000
@@ -2344,9 +2354,10 @@ MonoBehaviour:
   damageMultiplierTurnsRemaining: 0
   gridManager: {fileID: 2052208227}
   possibleEnemies:
-  - {fileID: 11400000, guid: 44f586928af305f4bb36b1f2f488cb07, type: 2}
+  - {fileID: 11400000, guid: 5f70f8cede4c7a84aa0c0c20b05b3c18, type: 2}
   forceRandomEnemy: 0
   currentEnemy: {fileID: 0}
+  accountExperienceReward: 20
 --- !u!4 &1455953439
 Transform:
   m_ObjectHideFlags: 0
@@ -3370,6 +3381,7 @@ MonoBehaviour:
   - {fileID: 9035633925371763252}
   battleManager: {fileID: 1455953438}
   redTypeIndex: 0
+  isBusy: 0
 --- !u!4 &2052208228
 Transform:
   m_ObjectHideFlags: 0

@@ -39,7 +39,9 @@ public class ItemDetailUI : MonoBehaviour
 
         EnsureExtraUI();
 
-        gameObject.SetActive(false);
+        // Панель вже збережена вимкненою в сцені (m_IsActive: 0) — не гасимо її тут ще раз:
+        // якщо викликати SetActive(false) з Awake(), а Awake() вперше запускається САМЕ під час
+        // першого Open()->SetActive(true), цей виклик одразу скасовує щойно виконану активацію.
     }
 
     // stack — конкретний стек (рівень) предмета, який належить гравцю; null, якщо предмет ще не отриманий
@@ -49,6 +51,7 @@ public class ItemDetailUI : MonoBehaviour
 
         currentItem = item;
         currentStack = stack;
+        transform.SetAsLastSibling(); // інакше панель, з якої відкрито (каталог тощо), може перекрити цю зверху
         gameObject.SetActive(true);
         Refresh();
     }

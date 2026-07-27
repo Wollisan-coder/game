@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 98f2a619572e0984c9fe8cc8f1ab4142, type: 3}
-  m_Name: Hero_Green
+  m_Name: Orc2
   m_EditorClassIdentifier: Assembly-CSharp::HeroData
-  heroId: Hero_Green
-  heroName: elf
+  heroId: Orc2
+  heroName: Orc2
   maxHealth: 100
   maxResource: 15
   damageMultiplier: 1
   weight: 1
   skills:
-  - {fileID: 11400000, guid: 3daf4277044340f4a975152177d1f991, type: 2}
-  portrait: {fileID: 21300000, guid: 258c70630247e1f45824699f90b3adec, type: 3}
-  themeColor: {r: 0.28025985, g: 0.8867924, b: 0.29050902, a: 1}
-  resourceType: 2
-  rarity: 3
+  - {fileID: 11400000, guid: f6fbecdbbc6d2d54ca5cab49d63eb939, type: 2}
+  portrait: {fileID: 21300000, guid: 68c18de9479d95b4aaf77fbafce2a0bf, type: 3}
+  themeColor: {r: 0.8396226, g: 0.051486313, b: 0.067757785, a: 1}
+  resourceType: 0
+  rarity: 2
   description: 

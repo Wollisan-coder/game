@@ -21,9 +21,13 @@ public class HeroCollectionUI : MonoBehaviour
 
         foreach (var hero in collectionManager.allHeroes)
         {
+            Debug.Log($"[HeroCollectionUI] Перед Instantiate для {hero?.heroName}");
             GameObject cardObj = Instantiate(heroCardUIPrefab, gridContainer);
+            Debug.Log($"[HeroCollectionUI] Instantiate готово, викликаю Setup для {hero?.heroName}");
             var card = cardObj.GetComponent<HeroCollectionCardUI>();
             card.Setup(hero, collectionManager, inventoryUI);
+            Debug.Log($"[HeroCollectionUI] Setup готово для {hero?.heroName}");
         }
+        Debug.Log("[HeroCollectionUI] PopulateGrid() повністю завершено");
     }
 }
