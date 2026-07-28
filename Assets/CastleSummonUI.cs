@@ -106,7 +106,7 @@ public class CastleSummonUI : MonoBehaviour
         infoText.alignment = TextAlignmentOptions.Center;
         infoText.color = new Color(1, 1, 1, 0.85f);
 
-        // Ліва колонка — Shards (x1 зверху, x10 знизу); права колонка — Premium Gems
+        // Левая колонка — Shards (x1 сверху, x10 снизу); правая колонка — Premium Gems
         shardsX1Text = CreateBigButton(windowRect, new Vector2(0.27f, 0.46f), () => Pull(false, 1), out _);
         shardsX10Text = CreateBigButton(windowRect, new Vector2(0.27f, 0.27f), () => Pull(false, MultiPullCount), out _);
         premiumX1Text = CreateBigButton(windowRect, new Vector2(0.73f, 0.46f), () => Pull(true, 1), out _);
@@ -165,7 +165,7 @@ public class CastleSummonUI : MonoBehaviour
         var text = textObj.AddComponent<TextMeshProUGUI>();
         text.fontSize = 15;
         text.alignment = TextAlignmentOptions.Center;
-        text.color = Color.black; // текст кнопок замку — окремо від глобального ConfirmationDialog.ButtonTextColor
+        text.color = Color.black; // текст кнопок замка — отдельно от глобального ConfirmationDialog.ButtonTextColor
 
         return text;
     }

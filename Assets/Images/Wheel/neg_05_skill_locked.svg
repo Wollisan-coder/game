@@ -1,0 +1,17 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bgGlowN5" cx="50%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#2a1a4a"/>
+      <stop offset="100%" stop-color="#100820"/>
+    </radialGradient>
+  </defs>
+  <circle cx="100" cy="100" r="94" fill="url(#bgGlowN5)" stroke="#8a2a2a" stroke-width="6"/>
+  <!-- skill star icon behind -->
+  <polygon points="100,45 112,80 150,80 119,102 130,138 100,116 70,138 81,102 50,80 88,80"
+           fill="#c9a8ff" stroke="#8a6ac9" stroke-width="3" opacity="0.85"/>
+  <!-- padlock over it -->
+  <rect x="78" y="105" width="44" height="38" rx="6" fill="#3a3a3a" stroke="#1a1a1a" stroke-width="3"/>
+  <path d="M85 105 L85 90 C85 76 115 76 115 90 L115 105" fill="none" stroke="#3a3a3a" stroke-width="9"/>
+  <circle cx="100" cy="120" r="6" fill="#1a1a1a"/>
+  <rect x="97" y="122" width="6" height="12" fill="#1a1a1a"/>
+</svg>

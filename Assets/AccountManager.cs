@@ -4,17 +4,17 @@ public class AccountManager : MonoBehaviour
 {
     public static AccountManager Instance { get; private set; }
 
-    [Header("Рівень акаунту")]
+    [Header("Уровень аккаунта")]
     public int level = 1;
     public int experience = 0;
 
-    [Header("Енергія")]
-    public int baseMaxEnergy = 10;   // максимум на 1-му рівні акаунту, +1 за кожен наступний рівень
+    [Header("Энергия")]
+    public int baseMaxEnergy = 10;   // максимум на 1-м уровне аккаунта, +1 за каждый следующий уровень
     public int currentEnergy;
 
-    private const float EnergyRegenIntervalMinutes = 5f; // 1 енергія за 5 реальних хвилин
+    private const float EnergyRegenIntervalMinutes = 5f; // 1 энергия за 5 реальных минут
 
-    private long lastEnergyRegenTicks; // DateTime.UtcNow.Ticks на момент останнього нарахування
+    private long lastEnergyRegenTicks; // DateTime.UtcNow.Ticks на момент последнего начисления
 
     public int MaxEnergy => baseMaxEnergy + (level - 1);
 
@@ -25,11 +25,11 @@ public class AccountManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
 
         Load();
-        level = 20; // ВРЕМЕННО для тесту будівель — розблоковує всі будівлі одразу
+        level = 20; // ВРЕМЕННО для теста зданий — разблокирует все здания сразу
         RegenerateEnergyFromElapsedTime();
     }
 
-    // Скільки досвіду потрібно на вказаному рівні, щоб піднятись на наступний (плейсхолдер — легко змінити)
+    // Сколько опыта нужно на указанном уровне, чтобы подняться на следующий (плейсхолдер — легко поменять)
     public int ExperienceToNextLevel(int lvl) => lvl * 200;
 
     public void GrantExperience(int amount)
@@ -47,7 +47,7 @@ public class AccountManager : MonoBehaviour
         Save();
     }
 
-    // Витрачає енергію (наприклад, на вхід у бій). Повертає false і нічого не змінює, якщо не вистачає.
+    // Тратит энергию (например, на вход в бой). Возвращает false и ничего не меняет, если не хватает.
     public bool SpendEnergy(int amount)
     {
         RegenerateEnergyFromElapsedTime();
@@ -59,8 +59,8 @@ public class AccountManager : MonoBehaviour
         return true;
     }
 
-    // Дораховує енергію за реальний час, що минув відтоді, як рахунок оновлювався востаннє
-    // (включно з часом, поки гра була закрита). Викликати перед показом UI енергії.
+    // Доначисляет энергию за реальное время, прошедшее с последнего обновления счёта
+    // (включая время, пока игра была закрыта). Вызывать перед показом UI энергии.
     public void RegenerateEnergyFromElapsedTime()
     {
         if (currentEnergy >= MaxEnergy)
@@ -76,14 +76,14 @@ public class AccountManager : MonoBehaviour
 
         currentEnergy = Mathf.Min(MaxEnergy, currentEnergy + gained);
 
-        // Залишок часу, що не встиг накопичити повну одиницю, переноситься на наступний тік (без "дрейфу")
+        // Остаток времени, не успевший накопить полную единицу, переносится на следующий тик (без "дрейфа")
         long consumedTicks = (long)(gained * EnergyRegenIntervalMinutes * System.TimeSpan.TicksPerMinute);
         lastEnergyRegenTicks += consumedTicks;
 
         Save();
     }
 
-    // Скільки секунд лишилось до наступної одиниці енергії — для UI-таймера
+    // Сколько секунд осталось до следующей единицы энергии — для UI-таймера
     public int SecondsUntilNextEnergy()
     {
         if (currentEnergy >= MaxEnergy) return 0;

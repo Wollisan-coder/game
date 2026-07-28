@@ -1,0 +1,77 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6baacb94d4faa7c4eba061a1edf9b872, type: 3}
+  m_Name: GambleEffectPool
+  m_EditorClassIdentifier: Assembly-CSharp::BoardEffectPoolData
+  positiveEffects:
+  - effectType: 8
+    icon: {fileID: 21300000, guid: 6671d0145d1933c4cb300da3dadb6f9c, type: 3}
+    description: Every hero's power surges to its limit at once, ready for a decisive
+      strike.
+    amount: 10
+    turns: 2
+    multiplier: 1.5
+  - effectType: 3
+    icon: {fileID: 21300000, guid: f8ebd11581f4b15489a343fb96c8ccf6, type: 3}
+    description: A single, precise strike lands with devastating force on the enemy.
+    amount: 40
+    turns: 2
+    multiplier: 1.5
+  - effectType: 9
+    icon: {fileID: 21300000, guid: c41eb8bccc0179442a98894b4a897600, type: 3}
+    description: A warm wave restores half the strength of every hero.
+    amount: 10
+    turns: 2
+    multiplier: 0.5
+  - effectType: 10
+    icon: {fileID: 21300000, guid: b79a9d91b85e55140a44b18adc69decc, type: 3}
+    description: The whole party is wrapped in a protective barrier for several turns.
+    amount: 20
+    turns: 2
+    multiplier: 1.5
+  - effectType: 11
+    icon: {fileID: 21300000, guid: bd890f9269022f247a4aae3ff224705b, type: 3}
+    description: Time briefly slows, letting you act without pause.
+    amount: 3
+    turns: 2
+    multiplier: 1.5
+  negativeEffects:
+  - effectType: 12
+    icon: {fileID: 21300000, guid: 9482d642a67835d489ff5d44b558c5ab, type: 3}
+    description: A random row or column is locked in ice.
+    amount: 10
+    turns: 2
+    multiplier: 1.5
+  - effectType: 6
+    icon: {fileID: 21300000, guid: 6a3fd6d132f5e3d489d3fd1856899953, type: 3}
+    description: The player's damage output temporarily fades.
+    amount: 10
+    turns: 2
+    multiplier: 0.7
+  - effectType: 13
+    icon: {fileID: 21300000, guid: 4072a1d70bb513142abe578a1837c2f2, type: 3}
+    description: One hero is bound and skips their turns.
+    amount: 10
+    turns: 2
+    multiplier: 1.5
+  - effectType: 14
+    icon: {fileID: 21300000, guid: a63c3334d9121654ca8b6228dc3cbebc, type: 3}
+    description: The foe gains fleeting power and strikes harder.
+    amount: 10
+    turns: 2
+    multiplier: 1.3
+  - effectType: 15
+    icon: {fileID: 21300000, guid: 77810168c23b8144099a5124cf236526, type: 3}
+    description: A hero's skill is sealed for several turns.
+    amount: 10
+    turns: 2
+    multiplier: 1.5

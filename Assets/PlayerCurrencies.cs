@@ -13,7 +13,7 @@ public class PlayerCurrencies : MonoBehaviour
 {
     public static PlayerCurrencies Instance { get; private set; }
 
-    [Header("Поточні баланси (заповнюється при завантаженні збереження)")]
+    [Header("Текущие балансы (заполняется при загрузке сохранения)")]
     public List<CurrencyBalance> balances = new List<CurrencyBalance>();
 
     private void Awake()
@@ -24,7 +24,7 @@ public class PlayerCurrencies : MonoBehaviour
 
         Load();
 
-        // ВРЕМЕННО для тесту — фіксовані баланси для перевірки будівель і призову
+        // ВРЕМЕННО для теста — фиксированные балансы для проверки зданий и призыва
         SetBalance(CurrencyType.Wood, 5000);
         SetBalance(CurrencyType.Stone, 5000);
         SetBalance(CurrencyType.SummonShards, 2000);
@@ -61,7 +61,7 @@ public class PlayerCurrencies : MonoBehaviour
         Save();
     }
 
-    // Списує суму, якщо вистачає коштів. Повертає false і нічого не змінює, якщо недостатньо.
+    // Списывает сумму, если хватает средств. Возвращает false и ничего не меняет, если недостаточно.
     public bool Spend(CurrencyType type, int amount)
     {
         if (amount <= 0) return true;

@@ -8,8 +8,82 @@ public class Item : MonoBehaviour
     public int y;
     public int type;
 
-    [Header("Ефекти")]
-    public GameObject destroyEffectPrefab; // призначити в Inspector на кожному префабі геема
+    [Header("Состояние фишки (для скиллов рас)")]
+    public bool isHarmful; // заготовка под будущую систему дебаффов поля — DestroyHarmfulTile ищет именно такие фишки
+    public bool isJoker;   // джокер (ConvertCellToJoker) — матчится с фишкой любого цвета
+
+    [Header("Заморозка (гемблинг-колесо: FreezeRandomRowOrColumn)")]
+    public bool isFrozen;
+    public int frozenTurnsRemaining;
+    private Color frozenOriginalColor;
+    private bool hasFrozenOriginalColor;
+
+    // Замораживает фишку на turns ходов — её нельзя свайпать/менять местами, пока не разморозится
+    public void Freeze(int turns)
+    {
+        isFrozen = true;
+        frozenTurnsRemaining = turns;
+
+        var rend = GetComponentInChildren<Renderer>();
+        if (rend == null) return;
+
+        rend.material = new Material(rend.material);
+
+        if (!hasFrozenOriginalColor)
+        {
+            frozenOriginalColor = GetTintColor(rend.material);
+            hasFrozenOriginalColor = true;
+        }
+
+        SetTintColor(rend.material, new Color(0.6f, 0.85f, 1f));
+    }
+
+    public void Unfreeze()
+    {
+        isFrozen = false;
+        frozenTurnsRemaining = 0;
+
+        if (!hasFrozenOriginalColor) return;
+
+        var rend = GetComponentInChildren<Renderer>();
+        if (rend == null) return;
+
+        rend.material = new Material(rend.material);
+        SetTintColor(rend.material, frozenOriginalColor);
+    }
+
+    // У разных шейдеров (в т.ч. glTF Shader Graph без стандартных _BaseColor/_Color)
+    // может не быть ни одного из привычных цветовых свойств — не падаем в этом случае, а просто игнорируем тонирование
+    private static Color GetTintColor(Material mat)
+    {
+        if (mat.HasProperty("_BaseColor")) return mat.GetColor("_BaseColor");
+        if (mat.HasProperty("_Color")) return mat.color;
+        return Color.white;
+    }
+
+    private static void SetTintColor(Material mat, Color color)
+    {
+        if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+        else if (mat.HasProperty("_Color")) mat.color = color;
+    }
+
+    // Простая визуальная отметка джокера — золотистая подсветка поверх цвета фишки
+    public void MarkAsJoker()
+    {
+        isJoker = true;
+
+        var rend = GetComponentInChildren<Renderer>();
+        if (rend == null) return;
+
+        rend.material = new Material(rend.material);
+        if (rend.material.HasProperty("_BaseColor"))
+            rend.material.SetColor("_BaseColor", new Color(1f, 0.85f, 0.2f));
+        else if (rend.material.HasProperty("_Color"))
+            rend.material.color = new Color(1f, 0.85f, 0.2f);
+    }
+
+    [Header("Эффекты")]
+    public GameObject destroyEffectPrefab; // назначить в Inspector на каждом префабе гема
 
     private GridManager gridManager;
     private static Item firstSelected;
@@ -23,15 +97,15 @@ public class Item : MonoBehaviour
     }
 
     [Header("Свайп")]
-    public float swipeThresholdPixels = 50f; // менший рух миші/пальця — вважається тапом, не свайпом
+    public float swipeThresholdPixels = 50f; // меньшее движение мыши/пальца — считается тапом, не свайпом
 
     private Vector3 mouseDownScreenPos;
 
     private void OnMouseDown()
     {
-        gridManager?.ResetIdleTimer(); // будь-який клік скидає таймер підказки і ховає її
+        gridManager?.ResetIdleTimer(); // любой клик сбрасывает таймер подсказки и прячет её
 
-        if (gridManager != null && gridManager.isBusy) return; // поле ще анімується — ігноруємо клік
+        if (gridManager != null && gridManager.isBusy) return; // поле ещё анимируется — игнорируем клик
 
         mouseDownScreenPos = Mouse.current.position.ReadValue();
     }
@@ -48,7 +122,7 @@ public class Item : MonoBehaviour
             HandleTap();
     }
 
-    // Свайп напряму рухає фішку до сусіда в бік свайпу, минаючи систему тап-тап-вибору
+    // Свайп напрямую двигает фишку к соседу в сторону свайпа, минуя систему тап-тап-выбора
     private void HandleSwipe(Vector3 screenDelta)
     {
         if (firstSelected != null)
@@ -77,7 +151,7 @@ public class Item : MonoBehaviour
         }
         else
         {
-            firstSelected.SetSelected(false); // знімаємо підсвітку з попередньої
+            firstSelected.SetSelected(false); // снимаем подсветку с предыдущей
 
             if (IsNeighbor(firstSelected, this))
             {
@@ -106,7 +180,7 @@ public class Item : MonoBehaviour
         while (true)
         {
             t += Time.deltaTime * 4f;
-            float scaleMod = 1f + Mathf.Sin(t) * 0.1f; // пульсація ±10%
+            float scaleMod = 1f + Mathf.Sin(t) * 0.1f; // пульсация ±10%
             transform.localScale = baseScale * scaleMod;
             yield return null;
         }
@@ -114,7 +188,7 @@ public class Item : MonoBehaviour
 
     private Coroutine hintAnimCoroutine;
 
-    // Викликається з GridManager, коли ця фішка — підказка можливого ходу
+    // Вызывается из GridManager, когда эта фишка — подсказка возможного хода
     public void SetHighlighted(bool isHighlighted)
     {
         if (hintAnimCoroutine != null) StopCoroutine(hintAnimCoroutine);
@@ -131,7 +205,7 @@ public class Item : MonoBehaviour
         while (true)
         {
             t += Time.deltaTime * 3f;
-            float scaleMod = 1f + Mathf.Sin(t) * 0.15f; // помітніша пульсація, ніж звичайне виділення
+            float scaleMod = 1f + Mathf.Sin(t) * 0.15f; // более заметная пульсация, чем обычное выделение
             transform.localScale = baseScale * scaleMod;
             yield return null;
         }
@@ -167,7 +241,7 @@ public class Item : MonoBehaviour
 
     public IEnumerator PlayDestroyAnimation()
     {
-        // Запускаємо частинки перед зникненням
+        // Запускаем частицы перед исчезновением
         if (destroyEffectPrefab != null)
 {
     GameObject effect = Instantiate(destroyEffectPrefab, transform.position, Quaternion.identity);
@@ -186,7 +260,7 @@ public class Item : MonoBehaviour
         var main = ps.main;
         main.startColor = gemColor;
 
-        ps.Play(); // явно запускаємо систему частинок
+        ps.Play(); // явно запускаем систему частиц
     }
 
     Destroy(effect, 1f);

@@ -5,7 +5,7 @@ public class HeroCollectionUI : MonoBehaviour
     public HeroCollectionManager collectionManager;
     public Transform gridContainer;
     public GameObject heroCardUIPrefab;
-    public HeroInventoryUI inventoryUI; // спільний попап на всю сцену, призначити в Inspector
+    public HeroInventoryUI inventoryUI; // общий попап на всю сцену, назначить в Inspector
 
     private void Start()
     {
@@ -14,7 +14,7 @@ public class HeroCollectionUI : MonoBehaviour
 
     private void PopulateGrid()
     {
-        Debug.Log($"Кількість героїв у allHeroes: {collectionManager.allHeroes.Length}");
+        Debug.Log($"Количество героев в allHeroes: {collectionManager.allHeroes.Length}");
 
         foreach (Transform child in gridContainer)
             Destroy(child.gameObject);
@@ -28,6 +28,6 @@ public class HeroCollectionUI : MonoBehaviour
             card.Setup(hero, collectionManager, inventoryUI);
             Debug.Log($"[HeroCollectionUI] Setup готово для {hero?.heroName}");
         }
-        Debug.Log("[HeroCollectionUI] PopulateGrid() повністю завершено");
+        Debug.Log("[HeroCollectionUI] PopulateGrid() полностью завершён");
     }
 }

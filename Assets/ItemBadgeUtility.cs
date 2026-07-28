@@ -2,14 +2,14 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-// Рантайм-генерація рамки рідкості та бейджа рівня для іконки предмета.
-// Створюється програмно (а не через префаб), щоб не редагувати вручну кожен UI-префаб предметів.
+// Рантайм-генерация рамки редкости и беджа уровня для иконки предмета.
+// Создаётся программно (а не через префаб), чтобы не редактировать вручную каждый UI-префаб предметов.
 public static class ItemBadgeUtility
 {
     private const float FrameOutset = 4f;
 
-    // Кольорова рамка рідкості позаду іконки. Копіює трансформ іконки й трохи "роздуває" її,
-    // тому працює однаково незалежно від того, чи іконка розтягнута на всю комірку, чи має фіксований розмір.
+    // Цветная рамка редкости позади иконки. Копирует трансформ иконки и немного "раздувает" её,
+    // поэтому работает одинаково независимо от того, растянута ли иконка на всю ячейку или имеет фиксированный размер.
     public static void ApplyRarityFrame(Image icon, Color rarityColor, ref Image frame)
     {
         if (icon == null) return;
@@ -20,7 +20,7 @@ public static class ItemBadgeUtility
             var frameObj = new GameObject("RarityFrame", typeof(RectTransform), typeof(Image));
             var frameRect = (RectTransform)frameObj.transform;
             frameRect.SetParent(iconRect.parent, false);
-            frameRect.SetSiblingIndex(iconRect.GetSiblingIndex()); // позаду іконки
+            frameRect.SetSiblingIndex(iconRect.GetSiblingIndex()); // позади иконки
 
             frameRect.anchorMin = iconRect.anchorMin;
             frameRect.anchorMax = iconRect.anchorMax;
@@ -34,7 +34,7 @@ public static class ItemBadgeUtility
         frame.color = rarityColor;
     }
 
-    // Маленький бейдж з номером рівня в правому нижньому куті переданого елемента. level <= 0 — бейдж ховається.
+    // Маленький бедж с номером уровня в правом нижнем углу переданного элемента. level <= 0 — бедж скрывается.
     public static void ApplyLevelBadge(RectTransform anchorTo, int level, ref TMP_Text text)
     {
         if (anchorTo == null) return;
@@ -72,7 +72,7 @@ public static class ItemBadgeUtility
         if (level > 0) text.text = level.ToString();
     }
 
-    // Бейдж кількості "xN" у лівому верхньому куті — показується лише коли є кілька однакових копій (quantity > 1)
+    // Бедж количества "xN" в левом верхнем углу — показывается только когда есть несколько одинаковых копий (quantity > 1)
     public static void ApplyQuantityBadge(RectTransform anchorTo, int quantity, ref TMP_Text text)
     {
         if (anchorTo == null) return;

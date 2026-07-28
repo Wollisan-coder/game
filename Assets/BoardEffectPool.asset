@@ -12,4 +12,35 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6baacb94d4faa7c4eba061a1edf9b872, type: 3}
   m_Name: BoardEffectPool
   m_EditorClassIdentifier: Assembly-CSharp::BoardEffectPoolData
-  effects: []
+  positiveEffects:
+  - effectType: 0
+    icon: {fileID: 0}
+    description: 
+    amount: 0
+    turns: 0
+    multiplier: 0
+  - effectType: 0
+    icon: {fileID: 0}
+    description: 
+    amount: 0
+    turns: 0
+    multiplier: 0
+  - effectType: 0
+    icon: {fileID: 0}
+    description: 
+    amount: 0
+    turns: 0
+    multiplier: 0
+  - effectType: 0
+    icon: {fileID: 0}
+    description: 
+    amount: 0
+    turns: 0
+    multiplier: 0
+  - effectType: 0
+    icon: {fileID: 0}
+    description: 
+    amount: 0
+    turns: 0
+    multiplier: 0
+  negativeEffects: []

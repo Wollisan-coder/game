@@ -23,15 +23,15 @@ public class BattleUI : MonoBehaviour
     [System.Serializable]
     public class HeroResourceUIEntry
     {
-        public HeroData heroData;   // який герой відповідає цьому UI-елементу
+        public HeroData heroData;   // какой герой соответствует этому UI-элементу
         public TMP_Text amountText; // текст з поточним значенням ресурсу
     }
 
-    [Header("Ресурси героїв")]
+    [Header("Ресурсы героев")]
     public HeroResourceUIEntry[] heroResourceEntries;
 
     [Header("Лог бою (нанесений/отриманий урон)")]
-    public TMP_Text battleLogText; // призначити в Inspector — окремий текстовий блок десь на екрані бою
+    public TMP_Text battleLogText; // назначить в Inspector — отдельный текстовый блок где-то на экране боя
     private const int MaxLogLines = 8;
     private readonly List<string> logLines = new List<string>();
 
@@ -56,7 +56,7 @@ if (enemyPortrait != null && battleManager.currentEnemy != null && battleManager
         }
     }
 
-    // Новий рядок додається зверху, старі за межами ліміту відкидаються знизу
+    // Новая строка добавляется сверху, старые за пределами лимита отбрасываются снизу
     private void AppendLog(string message)
     {
         logLines.Insert(0, message);
@@ -72,7 +72,7 @@ if (enemyPortrait != null && battleManager.currentEnemy != null && battleManager
         playerHPSlider.maxValue = battleManager.playerMaxHP;
         playerHPSlider.value = battleManager.playerHP;
         playerHPText.text = $"{battleManager.playerHP} / {battleManager.playerMaxHP}";
-        playerShieldText.text = battleManager.playerShield > 0 ? $"Щит: {battleManager.playerShield}" : "";
+        playerShieldText.text = battleManager.playerShield > 0 ? $"Shield: {battleManager.playerShield}" : "";
 
         enemyHPSlider.maxValue = battleManager.enemyMaxHP;
         enemyHPSlider.value = battleManager.enemyHP;

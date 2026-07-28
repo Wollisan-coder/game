@@ -8,8 +8,8 @@ public class SkillEntryUI : MonoBehaviour
     public TMP_Text skillNameText;
     public Button setActiveButton;
     public Button setPassiveButton;
-    public GameObject activeMarker;  // показується, якщо цей скіл зараз обраний активним
-    public GameObject passiveMarker; // показується, якщо цей скіл зараз обраний пасивним
+    public GameObject activeMarker;  // показывается, если этот скилл сейчас выбран активным
+    public GameObject passiveMarker; // показывается, если этот скилл сейчас выбран пассивным
 
     private int skillIndex;
     private HeroInventoryUI owner;

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-// Спільна логіка кольору рідкості — використовується і предметами, і героями
+// Общая логика цвета редкости — используется и предметами, и героями
 public static class RarityUtility
 {
     public static Color GetColor(Rarity rarity)

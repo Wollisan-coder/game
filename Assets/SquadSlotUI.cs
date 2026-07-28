@@ -14,7 +14,7 @@ public class SquadSlotUI : MonoBehaviour
     private SquadUI parentUI;
     private HeroInventoryUI inventoryUI;
 
-    // Викликається один раз при ініціалізації слотів у SquadUI
+    // Вызывается один раз при инициализации слотов в SquadUI
     public void Initialize(SquadUI squadUI, HeroInventoryUI inventory)
     {
         parentUI = squadUI;
@@ -54,7 +54,7 @@ public class SquadSlotUI : MonoBehaviour
 
     private void OnSelectClicked()
     {
-        // Якщо в слоті вже стоїть герой — клік по картинці відкриває його інвентар (екіпіровку), а не вибір нового
+        // Если в слоте уже стоит герой — клик по картинке открывает его инвентарь (экипировку), а не выбор нового
         if (heroData != null)
         {
             if (inventoryUI != null)

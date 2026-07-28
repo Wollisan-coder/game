@@ -6,7 +6,7 @@ public class HeroCollectionCardUI : MonoBehaviour
     public Image portrait;
     public Image lockOverlay;
     public Button selectButton;
-    private HeroInventoryUI inventoryUI; // спільний на всю сцену, передається з HeroCollectionUI при спавні
+    private HeroInventoryUI inventoryUI; // общий на всю сцену, передаётся из HeroCollectionUI при спавне
 
     private HeroData heroData;
     private HeroCollectionManager collectionManager;
@@ -32,13 +32,13 @@ public class HeroCollectionCardUI : MonoBehaviour
 
     private void OnSelected()
     {
-        // Якщо зараз активний режим вибору героя для конкретного слота — призначаємо туди
+        // Если сейчас активен режим выбора героя для конкретного слота — назначаем туда
         if (collectionManager.slotBeingEdited >= 0)
         {
             bool assigned = collectionManager.AssignToSlot(heroData);
             if (assigned)
             {
-                // Повертаємось до екрану загону після вибору
+                // Возвращаемся к экрану отряда после выбора
                 var mainMenu = FindAnyObjectByType<MainMenuUI>();
                 if (mainMenu != null) mainMenu.ShowSquad();
             }
@@ -53,7 +53,7 @@ public class HeroCollectionCardUI : MonoBehaviour
             return;
         }
 
-        // Звичайний перегляд колекції — відкриваємо вікно інвентаря героя
+        // Обычный просмотр коллекции — открываем окно инвентаря героя
         if (inventoryUI != null)
             inventoryUI.Open(heroData);
     }

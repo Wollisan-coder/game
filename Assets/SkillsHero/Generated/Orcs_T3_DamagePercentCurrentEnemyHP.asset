@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b6c568475f7bc04db6263e88ef88fd0, type: 3}
+  m_Name: Orcs_T3_DamagePercentCurrentEnemyHP
+  m_EditorClassIdentifier: Assembly-CSharp::SkillData
+  skillName: Finishing Blow
+  description: 'Orcs, tier 3: DamagePercentCurrentEnemyHP'
+  costType: 0
+  cost: 55
+  effectType: 15
+  effectValue: 0
+  rowStart: 0
+  rowEnd: 0
+  shieldPercentOfMaxHP: 0.15
+  damageMultiplier: 1
+  buffDurationTurns: 0
+  hitCount: 0

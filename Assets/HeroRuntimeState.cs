@@ -9,10 +9,20 @@ public class HeroRuntimeState
     public int level;
     public int maxHealth;
     public int currentHealth;
-    public int maxResource;         // копія heroData.maxResource + бонуси від екіпіровки
-    public float damageMultiplier;  // копія heroData.damageMultiplier + бонуси від екіпіровки
+    public int maxResource;         // копия heroData.maxResource + бонусы от экипировки
+    public float damageMultiplier;  // копия heroData.damageMultiplier + бонусы от экипировки
 
-    public bool blockManaGainThisTurn; // true після використання навички — пропускає наступне нарахування мани
+    public bool blockManaGainThisTurn; // true после использования навыка — пропускает следующее начисление маны
+
+    // Для скиллов расы Людей
+    public SkillData lastUsedSkill;              // последний использованный скилл этого героя (для CopyAllyLastSkill)
+    [Range(0f, 1f)] public float costReductionPercent; // скидка на стоимость следующего скилла (ReduceAllyNextSkillCost), тратится сразу после использования
+    public SkillData borrowedSkill;               // временно одолженный legendary-скилл другой расы (BorrowAllyLegendarySkill)
+    public int borrowedSkillTurnsRemaining;
+
+    // Для негативных эффектов гемблинг-колеса
+    public int stunnedTurnsRemaining;      // герой полностью "пропускает" ходы — его цвет не даёт урон/ману (StunRandomHero)
+    public int skillBlockedTurnsRemaining; // герой не может использовать скилл, но матчи всё ещё работают (BlockHeroSkill)
 
     public HeroRuntimeState(HeroData heroData, int heroLevel = 1)
     {

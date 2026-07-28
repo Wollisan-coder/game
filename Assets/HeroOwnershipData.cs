@@ -5,8 +5,8 @@ using UnityEngine;
 public class EquippedItem
 {
     public EquipmentSlotType slotType;
-    public string itemInstanceId; // унікальний ID конкретного стека предмета (не itemId — той не унікальний, бо
-                                   // один і той самий предмет може існувати кількома стеками різного рівня)
+    public string itemInstanceId; // уникальный ID конкретного стека предмета (не itemId — тот не уникален, потому что
+                                   // один и тот же предмет может существовать несколькими стеками разного уровня)
 }
 
 [System.Serializable]
@@ -15,13 +15,13 @@ public class HeroOwnershipData
     public string heroId;
     public bool isUnlocked;
     public int level = 1;
-    public int experience = 0; // накопичений досвід у межах поточного рівня (від предметів-джерел досвіду)
+    public int experience = 0; // накопленный опыт в пределах текущего уровня (от предметов-источников опыта)
 
-    [Header("Обрані навички")]
-    public int activeSkillIndex = 0;   // навичка, що використовується кнопкою в бою
-    public int passiveSkillIndex = -1; // -1 = не обрано
+    [Header("Выбранные навыки")]
+    public int activeSkillIndex = 0;   // навык, используемый кнопкой в бою
+    public int passiveSkillIndex = -1; // -1 = не выбран
 
-    [Header("Екіпіровані предмети (по одному на тип слота)")]
+    [Header("Экипированные предметы (по одному на тип слота)")]
     public List<EquippedItem> equippedItems = new List<EquippedItem>();
 
     public string GetEquippedItemInstanceId(EquipmentSlotType slotType)

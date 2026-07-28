@@ -6,10 +6,10 @@ public class ItemCollectionManager : MonoBehaviour
 {
     public static ItemCollectionManager Instance { get; private set; }
 
-    [Header("Всі предмети гри (каталог)")]
+    [Header("Все предметы игры (каталог)")]
     public ItemData[] allItems;
 
-    [Header("Стан володіння (окремий стек на кожен itemId+рівень)")]
+    [Header("Состояние владения (отдельный стек на каждый itemId+уровень)")]
     public List<ItemOwnershipData> ownership = new List<ItemOwnershipData>();
 
     private void Awake()
@@ -21,32 +21,32 @@ public class ItemCollectionManager : MonoBehaviour
         LoadOwnedItems();
 
         foreach (var item in allItems)
-            UnlockItem(item); // ВРЕМЕННО для тесту, як і герої/вороги
+            UnlockItem(item); // ВРЕМЕННО для теста, как и герои/враги
     }
 
     public bool IsOwned(ItemData item) => item != null && ownership.Any(o => o.itemId == item.itemId);
 
-    // Всі стеки конкретного предмета (може бути кілька — по одному на кожен унікальний рівень/досвід)
+    // Все стеки конкретного предмета (может быть несколько — по одному на каждый уникальный уровень/опыт)
     public List<ItemOwnershipData> GetStacks(string itemId)
     {
         return ownership.Where(o => o.itemId == itemId).ToList();
     }
 
-    // Конкретний стек за його унікальним instanceId (використовується для екіпіровки/жертвоприношення/списання)
+    // Конкретный стек по его уникальному instanceId (используется для экипировки/жертвоприношения/списания)
     public ItemOwnershipData GetStackByInstanceId(string instanceId)
     {
         if (string.IsNullOrEmpty(instanceId)) return null;
         return ownership.FirstOrDefault(o => o.instanceId == instanceId);
     }
 
-    // Сумарна кількість копій предмета по всіх стеках/рівнях (для бейджа в каталозі-браузері)
+    // Суммарное количество копий предмета по всем стекам/уровням (для беджа в каталоге-браузере)
     public int GetTotalQuantity(string itemId)
     {
         return ownership.Where(o => o.itemId == itemId).Sum(o => o.quantity);
     }
 
-    // Гарантує, що предмет отриманий (є хоча б 1 стек). Повторні виклики нічого не додають —
-    // безпечно викликати щоразу при старті (наприклад, у "розблокувати всі предмети для тесту").
+    // Гарантирует, что предмет получен (есть хотя бы 1 стек). Повторные вызовы ничего не добавляют —
+    // безопасно вызывать каждый раз при старте (например, в "разблокировать все предметы для теста").
     public void UnlockItem(ItemData item)
     {
         if (item == null || IsOwned(item)) return;
@@ -55,8 +55,8 @@ public class ItemCollectionManager : MonoBehaviour
         SaveOwnedItems();
     }
 
-    // Додає ще одну(і) копію(ї) предмета. Щойно отримані копії завжди рівня 1 — приєднуються до вже
-    // наявного стека рівня 1 (якщо є) або утворюють новий. Стеки вищого рівня (прокачані) не займає.
+    // Добавляет ещё одну(и) копию(и) предмета. Только что полученные копии всегда уровня 1 — присоединяются к уже
+    // имеющемуся стеку уровня 1 (если есть) или образуют новый. Стеки более высокого уровня (прокачанные) не занимает.
     public void AddItemCopy(ItemData item, int count = 1)
     {
         if (item == null || count <= 0) return;
@@ -90,9 +90,9 @@ public class ItemCollectionManager : MonoBehaviour
         return allItems.FirstOrDefault(i => i.itemId == id);
     }
 
-    // Всі предмети-екіпіровка певного типу слота — і отримані, і ще ні (для показу "наявності").
-    // Витратні предмети (category == HeroExperience тощо) сюди не потрапляють — їх не можна екіпірувати.
-    // Відсортовано за рідкістю (White -> Orange), в межах однієї рідкості — за назвою.
+    // Все предметы-экипировка определённого типа слота — и полученные, и ещё нет (для показа "наличия").
+    // Расходные предметы (category == HeroExperience и т.п.) сюда не попадают — их нельзя экипировать.
+    // Отсортировано по редкости (White -> Orange), в пределах одной редкости — по названию.
     public List<ItemData> GetItemsOfType(EquipmentSlotType slotType)
     {
         return allItems.Where(i => i.category == ItemCategory.Equipment && i.slotType == slotType)
@@ -100,10 +100,10 @@ public class ItemCollectionManager : MonoBehaviour
             .ToList();
     }
 
-    // Готує ОДНУ копію предмета для екіпіровки: якщо у вказаного стека quantity > 1, відділяє від нього
-    // 1 одиницю в новий окремий стек (той самий itemId/рівень/досвід, quantity=1) і повертає ЙОГО instanceId —
-    // саме його й треба екіпірувати, а решта копій лишаються вільними в інвентарі. Якщо quantity вже == 1,
-    // повертає той самий instanceId без змін (нема потреби ділити єдину копію).
+    // Готовит ОДНУ копию предмета для экипировки: если у указанного стека quantity > 1, отделяет от него
+    // 1 единицу в новый отдельный стек (тот же itemId/уровень/опыт, quantity=1) и возвращает ЕГО instanceId —
+    // именно его и нужно экипировать, а остальные копии остаются свободными в инвентаре. Если quantity уже == 1,
+    // возвращает тот же instanceId без изменений (нет нужды делить единственную копию).
     public string SplitOneForEquip(string instanceId)
     {
         var stack = GetStackByInstanceId(instanceId);
@@ -118,8 +118,8 @@ public class ItemCollectionManager : MonoBehaviour
         return newStack.instanceId;
     }
 
-    // Знімає одну одиницю з кількості КОНКРЕТНОГО стека (за instanceId). Стек видаляється, коли доходить до 0.
-    // Повертає true, якщо стек існував і одиницю вдалося списати.
+    // Снимает одну единицу с количества КОНКРЕТНОГО стека (по instanceId). Стек удаляется, когда доходит до 0.
+    // Возвращает true, если стек существовал и единицу удалось списать.
     public bool ConsumeItem(string instanceId)
     {
         var data = GetStackByInstanceId(instanceId);
@@ -133,24 +133,24 @@ public class ItemCollectionManager : MonoBehaviour
         return true;
     }
 
-    // Скільки досвіду потрібно назбирати на вказаному рівні, щоб піднятись на наступний
+    // Сколько опыта нужно набрать на указанном уровне, чтобы подняться на следующий
     public int ExperienceToNextLevel(int level) => level * 50;
 
-    // Множник бонусів предмета від вказаного рівня (+10% за кожен рівень понад 1-й)
+    // Множитель бонусов предмета от указанного уровня (+10% за каждый уровень сверх 1-го)
     public float GetLevelMultiplierForLevel(int level)
     {
         if (level <= 0) level = 1;
         return 1f + 0.1f * (level - 1);
     }
 
-    // Жертвуємо ОДНУ копію зі стека fuelInstanceId, щоб підняти рівень стека targetInstanceId.
-    // Якщо в цільового стека quantity > 1 — рівень отримує лише ОДНА одиниця: вона відділяється
-    // в новий окремий стек (нова "ячейка"), а решта (quantity-1) залишається на старому рівні.
-    // resultingTargetInstanceId — instanceId стека, який фактично зберігає новий рівень (може відрізнятись
-    // від targetInstanceId, якщо стався поділ) — використовуйте його для НАСТУПНОГО виклику SacrificeItem
-    // у межах одного пакетного пожертвування, інакше кожен виклик знову ділитиме вихідний стек.
-    // Максимальний рівень цілі обмежений її рідкістю (ItemData.GetMaxLevel).
-    // wastedExperience — скільки досвіду "згоріло" понад поріг максимального рівня.
+    // Жертвуем ОДНУ копию из стека fuelInstanceId, чтобы поднять уровень стека targetInstanceId.
+    // Если у целевого стека quantity > 1 — уровень получает только ОДНА единица: она отделяется
+    // в новый отдельный стек (новая "ячейка"), а остальные (quantity-1) остаются на старом уровне.
+    // resultingTargetInstanceId — instanceId стека, который фактически хранит новый уровень (может отличаться
+    // от targetInstanceId, если произошло разделение) — используйте его для СЛЕДУЮЩЕГО вызова SacrificeItem
+    // в рамках одного пакетного пожертвования, иначе каждый вызов снова будет делить исходный стек.
+    // Максимальный уровень цели ограничен её редкостью (ItemData.GetMaxLevel).
+    // wastedExperience — сколько опыта "сгорело" сверх порога максимального уровня.
     public bool SacrificeItem(string fuelInstanceId, string targetInstanceId, out int wastedExperience, out string resultingTargetInstanceId)
     {
         wastedExperience = 0;
@@ -208,8 +208,8 @@ public class ItemCollectionManager : MonoBehaviour
         return true;
     }
 
-    // Якщо після поділу/апгрейду в системі вже є ІНШИЙ стек з таким самим itemId+рівнем+досвідом —
-    // об'єднуємо їх (сумуємо quantity), щоб фактично однакові предмети не плодили зайві ячейки.
+    // Если после разделения/апгрейда в системе уже есть ДРУГОЙ стек с таким же itemId+уровнем+опытом —
+    // объединяем их (суммируем quantity), чтобы фактически одинаковые предметы не плодили лишние ячейки.
     private void MergeIdenticalStacks(ItemOwnershipData stack)
     {
         var twin = ownership.FirstOrDefault(o => o != stack && o.itemId == stack.itemId
@@ -220,7 +220,7 @@ public class ItemCollectionManager : MonoBehaviour
         ownership.Remove(stack);
     }
 
-    // Прогноз результату (без застосування): який буде рівень/досвід/втрачений досвід, якщо додати totalGainedXp до вказаного предмета
+    // Прогноз результата (без применения): каким будет уровень/опыт/потерянный опыт, если добавить totalGainedXp к указанному предмету
     public (int level, int experience, int wastedExperience) SimulateExperienceGain(int baseLevel, int baseExperience, int totalGainedXp, int maxLevel)
     {
         int level = baseLevel;
@@ -260,7 +260,7 @@ public class ItemCollectionManager : MonoBehaviour
         {
             string[] parts = entry.Split(':');
 
-            // Сумісність зі старим форматом збереження (itemId:level:experience:quantity, без instanceId)
+            // Совместимость со старым форматом сохранения (itemId:level:experience:quantity, без instanceId)
             if (parts.Length == 4)
             {
                 ownership.Add(new ItemOwnershipData

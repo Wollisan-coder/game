@@ -3,8 +3,8 @@ using UnityEngine;
 public enum EnemySkillEffectType
 {
     Damage,       // урон гравцю
-    ShieldSelf,   // щит ворогу — % від власного максимального HP
-    WeakenHeroes  // зниження урону героїв на N% на M ходів
+    ShieldSelf,   // щит врагу — % от собственного максимального HP
+    WeakenHeroes  // снижение урона героев на N% на M ходов
 }
 
 [CreateAssetMenu(fileName = "NewEnemySkill", menuName = "Battle/Enemy Skill")]

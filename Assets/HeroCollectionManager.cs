@@ -6,26 +6,26 @@ public class HeroCollectionManager : MonoBehaviour
 {
     public static HeroCollectionManager Instance { get; private set; }
 
-    [Header("Всі герої гри (весь пул для генерації колекції)")]
+    [Header("Все герои игры (весь пул для генерации коллекции)")]
     public HeroData[] allHeroes;
 
-    [Header("Стан володіння (заповнюється при завантаженні збереження)")]
+    [Header("Состояние владения (заполняется при загрузке сохранения)")]
     public List<HeroOwnershipData> ownership = new List<HeroOwnershipData>();
 
-    [Header("Обраний загін")]
+    [Header("Выбранный отряд")]
     public List<HeroData> squad = new List<HeroData>();
     public const int BaseSquadSize = 4;
 
-    // Кількість слотів у загоні завжди фіксована — Бараки НЕ додають слоти, лише піднімають ліміт ваги
+    // Количество слотов в отряде всегда фиксировано — Бараки НЕ добавляют слоты, только поднимают лимит веса
     public int MaxSquadSize => BaseSquadSize;
 
-    [Header("Вага загону")]
-    public const int BaseSquadWeight = 4; // базовий ліміт — вистачає рівно на 4 героїв вагою 1 без жодних будівель
+    [Header("Вес отряда")]
+    public const int BaseSquadWeight = 4; // базовый лимит — хватает ровно на 4 героев весом 1 без каких-либо построек
 
-    // Базовий ліміт + бонус від будівлі SquadCapacity (Бараки), якщо збудована
+    // Базовый лимит + бонус от здания SquadCapacity (Бараки), если построено
     public int MaxSquadWeight => BaseSquadWeight + GetSquadWeightBonus();
 
-    // Сумарна вага героїв, що зараз реально стоять у загоні
+    // Суммарный вес героев, которые сейчас реально стоят в отряде
     public int CurrentSquadWeight => squad.Where(h => h != null).Sum(h => h.weight);
 
     private int GetSquadWeightBonus()
@@ -42,7 +42,7 @@ public class HeroCollectionManager : MonoBehaviour
         return building.GetSquadWeightBonus(ownership.level);
     }
 
-    // Індекс слота, який зараз редагується (-1 = не в режимі вибору)
+    // Индекс слота, который сейчас редактируется (-1 = не в режиме выбора)
     public int slotBeingEdited = -1;
 
     private void Awake()
@@ -55,7 +55,7 @@ public class HeroCollectionManager : MonoBehaviour
         LoadSquad();
 
         foreach (var hero in allHeroes)
-            UnlockHero(hero); // ВРЕМЕННО для тесту
+            UnlockHero(hero); // ВРЕМЕННО для теста
     }
 
     private void InitializeOwnershipIfMissing()
@@ -85,11 +85,11 @@ public class HeroCollectionManager : MonoBehaviour
         if (data != null) data.isUnlocked = true;
     }
 
-    // Скільки досвіду потрібно назбирати герою на вказаному рівні, щоб піднятись на наступний
+    // Сколько опыта нужно набрать герою на указанном уровне, чтобы подняться на следующий
     public int ExperienceToNextLevel(int level) => level * 100;
 
-    // Додає герою досвід (наприклад, від витратного предмета) і піднімає рівень, поки досвіду вистачає.
-    // Повертає true, якщо герой знайдений і досвід застосовано.
+    // Добавляет герою опыт (например, от расходного предмета) и поднимает уровень, пока опыта хватает.
+    // Возвращает true, если герой найден и опыт применён.
     public bool GrantExperience(string heroId, int amount)
     {
         var data = ownership.FirstOrDefault(o => o.heroId == heroId);
@@ -106,16 +106,16 @@ public class HeroCollectionManager : MonoBehaviour
         return true;
     }
 
-    // Чи екіпірований цей конкретний стек (за instanceId) хоч на одному герої зараз.
-    // Використовується, щоб приховати екіпіровані предмети з каталогу та зі списку донорів жертвоприношення.
+    // Экипирован ли этот конкретный стек (по instanceId) хоть на одном герое сейчас.
+    // Используется, чтобы скрыть экипированные предметы из каталога и из списка доноров жертвоприношения.
     public bool IsItemEquippedAnywhere(string itemInstanceId)
     {
         if (string.IsNullOrEmpty(itemInstanceId)) return false;
         return ownership.Any(o => o.equippedItems.Any(e => e.itemInstanceId == itemInstanceId));
     }
 
-    // Знімає предмет з усіх героїв, на яких він зараз екіпірований (крім exceptHeroId, якщо вказано).
-    // Використовується при екіпіровці, щоб предмет "переносився" між героями, а не дублювався.
+    // Снимает предмет со всех героев, на которых он сейчас экипирован (кроме exceptHeroId, если указан).
+    // Используется при экипировке, чтобы предмет "переносился" между героями, а не дублировался.
     public void UnequipItemFromAllHeroes(string itemInstanceId, string exceptHeroId = null)
     {
         if (string.IsNullOrEmpty(itemInstanceId)) return;
@@ -129,20 +129,20 @@ public class HeroCollectionManager : MonoBehaviour
         }
     }
 
-    // Викликається, коли гравець натискає на слот у загоні — запускає режим вибору
+    // Вызывается, когда игрок нажимает на слот в отряде — запускает режим выбора
     public void StartEditingSlot(int slotIndex)
     {
         slotBeingEdited = slotIndex;
     }
 
-    // Гарантує, що в списку squad є "місце" під потрібний індекс (заповнює null, якщо треба)
+    // Гарантирует, что в списке squad есть "место" под нужный индекс (заполняет null, если нужно)
     private void EnsureSquadSize()
     {
         while (squad.Count < MaxSquadSize)
             squad.Add(null);
     }
 
-    // Скільки важитиме загін, якщо саме зараз призначити hero в slotBeingEdited (з урахуванням перенесення героя з іншого слота)
+    // Сколько будет весить отряд, если именно сейчас назначить hero в slotBeingEdited (с учётом переноса героя из другого слота)
     public int GetProjectedSquadWeight(HeroData hero)
     {
         int existingIndex = squad.FindIndex(h => h != null && h.heroId == hero.heroId);
@@ -157,7 +157,7 @@ public class HeroCollectionManager : MonoBehaviour
         return weight;
     }
 
-    // Викликається при виборі героя в колекції, коли активний режим вибору слота
+    // Вызывается при выборе героя в коллекции, когда активен режим выбора слота
     public bool AssignToSlot(HeroData hero)
     {
         if (slotBeingEdited < 0 || slotBeingEdited >= MaxSquadSize) return false;
@@ -167,7 +167,7 @@ public class HeroCollectionManager : MonoBehaviour
 
         if (GetProjectedSquadWeight(hero) > MaxSquadWeight) return false;
 
-        // Якщо цей герой вже в іншому слоті — прибираємо його звідти (без дублів у загоні)
+        // Если этот герой уже в другом слоте — убираем его оттуда (без дублей в отряде)
         int existingIndex = squad.FindIndex(h => h != null && h.heroId == hero.heroId);
         if (existingIndex >= 0 && existingIndex != slotBeingEdited)
             squad[existingIndex] = null;

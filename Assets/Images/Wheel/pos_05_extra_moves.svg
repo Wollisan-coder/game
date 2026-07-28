@@ -1,0 +1,14 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bgGlow5" cx="50%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#6d5a1a"/>
+      <stop offset="100%" stop-color="#2a2210"/>
+    </radialGradient>
+  </defs>
+  <circle cx="100" cy="100" r="94" fill="url(#bgGlow5)" stroke="#f4d47c" stroke-width="6"/>
+  <!-- circular refresh arrow -->
+  <path d="M60 75 A45 45 0 1 1 55 130" fill="none" stroke="#ffe28a" stroke-width="12" stroke-linecap="round"/>
+  <polygon points="60,55 60,85 33,70" fill="#ffe28a"/>
+  <!-- big +3 -->
+  <text x="100" y="118" font-family="Arial, sans-serif" font-size="46" font-weight="bold" fill="#ffffff" text-anchor="middle" stroke="#7a5a10" stroke-width="2">+3</text>
+</svg>

@@ -11,13 +11,13 @@ public class ItemCollectionUI : MonoBehaviour
     public GameObject itemCardPrefab;
     public ItemDetailUI detailUI;
 
-    private const float TitleReservedHeight = 100f; // висота існуючого заголовка панелі (щоб вкладки не наїжджали на нього)
+    private const float TitleReservedHeight = 100f; // высота существующего заголовка панели (чтобы вкладки не наезжали на него)
     private const float TabBarHeight = 40f;
     private const float TabBarTopGap = 4f;
 
     private static readonly Color TabInactiveColor = new Color(1f, 1f, 1f, 0.08f);
 
-    // Категорії — по аналогії з попапом сфер досвіду (HeroExperienceItemPickerUI), але вкладками зверху цієї ж панелі
+    // Категории — по аналогии с попапом сфер опыта (HeroExperienceItemPickerUI), но вкладками сверху этой же панели
     private readonly (string label, ItemCategory? category, EquipmentSlotType? slot)[] tabs =
     {
         ("All", null, null),
@@ -35,8 +35,8 @@ public class ItemCollectionUI : MonoBehaviour
     {
         BuildTabBar();
 
-        // Перебудовуємо сітку, коли закривається попап деталей предмета — інакше апгрейд/використання,
-        // зроблені всередині попапу, не будуть видні в каталозі, поки вкладку не перемкнути вручну.
+        // Перестраиваем сетку, когда закрывается попап деталей предмета — иначе апгрейд/использование,
+        // сделанные внутри попапа, не будут видны в каталоге, пока вкладку не переключить вручную.
         if (detailUI != null)
             detailUI.OnClosed += PopulateGrid;
     }
@@ -46,7 +46,7 @@ public class ItemCollectionUI : MonoBehaviour
         PopulateGrid();
     }
 
-    // Будує ряд кнопок-вкладок над сіткою і звільняє під нього місце, підрізаючи Scroll View зверху.
+    // Строит ряд кнопок-вкладок над сеткой и освобождает под него место, подрезая Scroll View сверху.
     private void BuildTabBar()
     {
         var panelRect = (RectTransform)transform;
@@ -77,7 +77,7 @@ public class ItemCollectionUI : MonoBehaviour
 
         for (int i = 0; i < tabs.Length; i++)
         {
-            int index = i; // захоплюємо копію для замикання
+            int index = i; // захватываем копию для замыкания
             var tabObj = new GameObject(tabs[i].label, typeof(RectTransform));
             var tabRect = (RectTransform)tabObj.transform;
             tabRect.SetParent(barRect, false);
@@ -132,7 +132,7 @@ public class ItemCollectionUI : MonoBehaviour
         foreach (Transform child in gridContainer)
             Destroy(child.gameObject);
 
-        // Сортуємо за рідкістю (White -> Orange), в межах однієї рідкості — за назвою
+        // Сортируем по редкости (White -> Orange), в пределах одной редкости — по названию
         var sortedItems = collectionManager.allItems
             .Where(MatchesCurrentTab)
             .OrderBy(i => (int)i.rarity).ThenBy(i => i.itemName);
@@ -145,20 +145,20 @@ public class ItemCollectionUI : MonoBehaviour
 
             if (allStacks.Count == 0)
             {
-                // Жодної копії не отримано — одна заблокована картка-плейсхолдер
+                // Ни одной копии не получено — одна заблокированная карточка-плейсхолдер
                 CreateCard(item, null);
                 continue;
             }
 
-            // Екіпіровані на герої стеки в інвентарі не показуємо — предмет "зайнятий"
+            // Экипированные на герое стеки в инвентаре не показываем — предмет "занят"
             var visibleStacks = heroManager != null
                 ? allStacks.Where(s => !heroManager.IsItemEquippedAnywhere(s.instanceId)).ToList()
                 : allStacks;
 
-            // Усі наявні копії зараз екіпіровані — картку взагалі не показуємо (вона не "заблокована", просто зайнята)
+            // Все имеющиеся копии сейчас экипированы — карточку вообще не показываем (она не "заблокирована", просто занята)
             if (visibleStacks.Count == 0) continue;
 
-            // Кожен стек (окремий рівень) — окрема картка, щоб предмети різного рівня не зливались в одну ячейку
+            // Каждый стек (отдельный уровень) — отдельная карточка, чтобы предметы разного уровня не сливались в одну ячейку
             foreach (var stack in visibleStacks)
                 CreateCard(item, stack);
         }

@@ -2,8 +2,8 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-// Прості рантайм-модали: підтвердження (Так/Скасувати) та інформаційне повідомлення (Гаразд).
-// Будуються на льоту й знищуються після вибору.
+// Простые рантайм-модалки: подтверждение (Yes/Cancel) и информационное сообщение (Ok).
+// Строятся на лету и уничтожаются после выбора.
 public static class ConfirmationDialog
 {
     public static readonly Color ButtonColor = new Color32(0xE8, 0xB8, 0x4B, 0xFF);
@@ -25,8 +25,8 @@ public static class ConfirmationDialog
         });
     }
 
-    // Інформаційне повідомлення з єдиною кнопкою "Гаразд" — без варіанту вибору.
-    // windowHeight — за замовчуванням 170, збільшуйте для довших/багаторядкових повідомлень (наприклад, результат x10-призову).
+    // Информационное сообщение с единственной кнопкой "Ok" — без варианта выбора.
+    // windowHeight — по умолчанию 170, увеличивайте для более длинных/многострочных сообщений (например, результат x10-призыва).
     public static void ShowInfo(Transform parent, string message, float windowHeight = 170)
     {
         var (overlay, windowRect) = BuildBase(parent, message, windowHeight);
@@ -73,7 +73,7 @@ public static class ConfirmationDialog
         text.alignment = TextAlignmentOptions.Center;
         text.color = Color.white;
         text.fontSize = 20;
-        text.enableAutoSizing = true; // довгі повідомлення (наприклад, результат x10-призову) самі зменшують шрифт, щоб влізти
+        text.enableAutoSizing = true; // длинные сообщения (например, результат x10-призыва) сами уменьшают шрифт, чтобы влезть
         text.fontSizeMin = 12;
         text.fontSizeMax = 20;
 

@@ -1,10 +1,10 @@
 [System.Serializable]
 public class ItemOwnershipData
 {
-    public string instanceId; // унікальний ID конкретного стека — itemId сам по собі більше НЕ унікальний,
-                               // бо один і той самий предмет може існувати кількома стеками різного рівня
+    public string instanceId; // уникальный ID конкретного стека — itemId сам по себе больше НЕ уникален,
+                               // потому что один и тот же предмет может существовать несколькими стеками разного уровня
     public string itemId;
     public int level = 1;
-    public int experience = 0; // накопичений досвід у межах поточного рівня
-    public int quantity = 1;   // скільки однакових копій (той самий itemId І рівень) зараз у гравця в цьому стеку
+    public int experience = 0; // накопленный опыт в пределах текущего уровня
+    public int quantity = 1;   // сколько одинаковых копий (тот же itemId И уровень) сейчас у игрока в этом стеке
 }

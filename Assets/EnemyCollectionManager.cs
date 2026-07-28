@@ -6,13 +6,13 @@ public class EnemyCollectionManager : MonoBehaviour
 {
     public static EnemyCollectionManager Instance { get; private set; }
 
-    [Header("Всі вороги гри (поки що один)")]
+    [Header("Все враги игры (пока что один)")]
     public EnemyData[] allEnemies;
 
-    [Header("Стан володіння (заповнюється при завантаженні збереження)")]
+    [Header("Состояние владения (заполняется при загрузке сохранения)")]
     public List<EnemyOwnershipData> ownership = new List<EnemyOwnershipData>();
 
-    [Header("Обраний ворог для наступного бою")]
+    [Header("Выбранный враг для следующего боя")]
     public EnemyData selectedEnemy;
 
     private void Awake()
@@ -25,7 +25,7 @@ public class EnemyCollectionManager : MonoBehaviour
         LoadSelectedEnemy();
 
         foreach (var enemy in allEnemies)
-            UnlockEnemy(enemy); // ВРЕМЕННО для тесту, как и у героїв
+            UnlockEnemy(enemy); // ВРЕМЕННО для теста, как и у героев
     }
 
     private void InitializeOwnershipIfMissing()
@@ -71,6 +71,6 @@ public class EnemyCollectionManager : MonoBehaviour
 
         selectedEnemy = !string.IsNullOrEmpty(savedId)
             ? allEnemies.FirstOrDefault(e => e.enemyId == savedId)
-            : allEnemies.FirstOrDefault(); // якщо ворог один — обираємо його за замовчуванням
+            : allEnemies.FirstOrDefault(); // если враг один — выбираем его по умолчанию
     }
 }

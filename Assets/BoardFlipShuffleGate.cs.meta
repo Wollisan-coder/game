@@ -1,2 +1,17 @@
 fileFormatVersion: 2
 guid: d72a57a3c2b557b4c8a7537f76095441
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - flipButton: {instanceID: 0}
+  - shufflePanel: {instanceID: 0}
+  - shuffleGrid: {instanceID: 0}
+  - effectPool: {fileID: 11400000, guid: 4a452d86409b9e449bafbec04122928e, type: 2}
+  - battleManager: {instanceID: 0}
+  - flippableModel: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -3,19 +3,19 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-// Вішається на будь-який GameObject (наприклад, на сам контейнер сітки 3х3).
-// Центральна кнопка по кліку міняє місцями (позиції) решту 8 кнопок.
+// Вешается на любой GameObject (например, на сам контейнер сетки 3х3).
+// Центральная кнопка по клику меняет местами (позиции) остальные 8 кнопок.
 public class ShuffleButtonGrid : MonoBehaviour
 {
-    [Header("Центральна кнопка — по кліку перемішує решту")]
+    [Header("Центральная кнопка — по клику перемешивает остальные")]
     public Button centerButton;
 
-    [Header("Решта 8 кнопок сітки (без центральної)")]
+    [Header("Остальные 8 кнопок сетки (без центральной)")]
     public RectTransform[] shuffleTargets;
 
-    [Header("Візуальний ефект перемішування")]
+    [Header("Визуальный эффект перемешивания")]
     public float shuffleDuration = 0.4f;
-    public float squeezeAmount = 0.2f; // наскільки кнопки "стискаються" по дорозі
+    public float squeezeAmount = 0.2f; // насколько кнопки "сжимаются" по пути
 
     private bool isShuffling;
 
@@ -25,15 +25,24 @@ public class ShuffleButtonGrid : MonoBehaviour
             centerButton.onClick.AddListener(Shuffle);
     }
 
+    // Шаффл можно нажать только один раз на текущую раскладку — сама кнопка блокируется
+    // сразу по нажатию и снова разблокируется в RevealAllOptions() при новой раскладке
     public void Shuffle()
     {
         if (isShuffling) return;
+
+        if (centerButton != null)
+            centerButton.interactable = false;
+
         StartCoroutine(ShuffleRoutine());
     }
 
-    // Показати всі 8 варіантів відкрито — викликати при відкритті панелі, до шаффла
+    // Показать все 8 вариантов открыто и разблокировать шаффл — вызывать при открытии панели, до шаффла
     public void RevealAllOptions()
     {
+        if (centerButton != null)
+            centerButton.interactable = true;
+
         foreach (var t in shuffleTargets)
         {
             var option = t != null ? t.GetComponent<BoardEffectOption>() : null;
@@ -70,7 +79,7 @@ public class ShuffleButtonGrid : MonoBehaviour
         {
             elapsed += Time.deltaTime;
             float p = Mathf.SmoothStep(0f, 1f, elapsed / shuffleDuration);
-            float scaleMod = 1f - Mathf.Sin(p * Mathf.PI) * squeezeAmount; // легкий "стиск" на півшляху
+            float scaleMod = 1f - Mathf.Sin(p * Mathf.PI) * squeezeAmount; // лёгкое "сжатие" на полпути
 
             for (int i = 0; i < shuffleTargets.Length; i++)
             {
@@ -87,7 +96,7 @@ public class ShuffleButtonGrid : MonoBehaviour
             shuffleTargets[i].localScale = Vector3.one;
         }
 
-        BlurAllOptions(); // після шаффла позиції секретні — гравець обирає наосліп
+        BlurAllOptions(); // после шаффла позиции секретны — игрок выбирает вслепую
 
         isShuffling = false;
     }

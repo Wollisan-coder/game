@@ -4,26 +4,26 @@ using UnityEngine;
 public class ItemSummonEntry
 {
     public ItemData item;
-    public float weightViaShards = 1f;  // вага при оплаті SummonShards
-    public float weightViaPremium = 1f; // вага при оплаті PremiumGems (зазвичай вищі шанси на топ-рідкість)
+    public float weightViaShards = 1f;  // вес при оплате SummonShards
+    public float weightViaPremium = 1f; // вес при оплате PremiumGems (обычно выше шансы на топ-редкость)
 }
 
 [CreateAssetMenu(fileName = "NewItemSummonPool", menuName = "Castle/Item Summon Pool")]
 public class ItemSummonPoolData : ScriptableObject
 {
-    [Header("Ідентифікатор (не змінювати після релізу!)")]
+    [Header("Идентификатор (не менять после релиза!)")]
     public string poolId;
 
-    [Header("Можливі результати")]
+    [Header("Возможные результаты")]
     public ItemSummonEntry[] entries;
 
-    [Header("Вартість одного призову")]
+    [Header("Стоимость одного призыва")]
     public int shardCost = 100;
     public int premiumCost = 10;
 
-    [Header("Гарант (лише для оплати PremiumGems)")]
+    [Header("Гарант (только для оплаты PremiumGems)")]
     public bool hasPity = true;
-    public int pityThreshold = 50;               // після стількох призовів поспіль без топ-рідкості — гарантія
+    public int pityThreshold = 50;               // после стольких призывов подряд без топ-редкости — гарантия
     public Rarity pityGuaranteedRarity = Rarity.Orange;
 
     private void OnValidate()

@@ -9,13 +9,13 @@ public class MainMenuUI : MonoBehaviour
     public GameObject itemCollectionPanel;  // каталог предметов
     public SquadUI squadUI;
 
-    [Header("Назва бойової сцени")]
+    [Header("Название боевой сцены")]
     public string battleSceneName = "SampleScene";
 
-    [Header("Енергія на бій")]
+    [Header("Энергия на бой")]
     public int battleEnergyCost = 1;
 
-    private CastleUI castleUI; // будується програмно — див. EnsureCastleUI()
+    private CastleUI castleUI; // строится программно — см. EnsureCastleUI()
 
     private void Start()
     {
@@ -40,7 +40,7 @@ public class MainMenuUI : MonoBehaviour
         castleUI?.Hide();
 
         if (squadUI != null)
-            squadUI.RefreshSlots(); // оновлюємо слоти при кожному відкритті
+            squadUI.RefreshSlots(); // обновляем слоты при каждом открытии
     }
 
     public void ShowEnemyCollection()

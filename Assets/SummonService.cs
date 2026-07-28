@@ -10,13 +10,13 @@ public class SummonPityState
     public int pullsSincePity;
 }
 
-// Спільний сервіс призову для Алтаря (герої) і Кузні (предмети).
-// Гарант рахується окремо на кожен пул і діє лише при оплаті PremiumGems.
+// Общий сервис призыва для Алтаря (герои) и Кузни (предметы).
+// Гарант считается отдельно на каждый пул и действует только при оплате PremiumGems.
 public class SummonService : MonoBehaviour
 {
     public static SummonService Instance { get; private set; }
 
-    [Header("Стан гаранта по кожному пулу (лише преміум-оплата)")]
+    [Header("Состояние гаранта по каждому пулу (только премиум-оплата)")]
     public List<SummonPityState> pityStates = new List<SummonPityState>();
 
     private void Awake()
@@ -28,7 +28,7 @@ public class SummonService : MonoBehaviour
         Load();
     }
 
-    // Призов героя. usePremium — оплата PremiumGems (з гарантом) чи SummonShards (без гаранта).
+    // Призыв героя. usePremium — оплата PremiumGems (с гарантом) или SummonShards (без гаранта).
     public HeroData PullHero(HeroSummonPoolData pool, bool usePremium)
     {
         if (pool == null || PlayerCurrencies.Instance == null || HeroCollectionManager.Instance == null) return null;
@@ -50,7 +50,7 @@ public class SummonService : MonoBehaviour
         return result.hero;
     }
 
-    // Призов предмета. usePremium — оплата PremiumGems (з гарантом) чи SummonShards (без гаранта).
+    // Призыв предмета. usePremium — оплата PremiumGems (с гарантом) или SummonShards (без гаранта).
     public ItemData PullItem(ItemSummonPoolData pool, bool usePremium)
     {
         if (pool == null || PlayerCurrencies.Instance == null || ItemCollectionManager.Instance == null) return null;
@@ -72,8 +72,8 @@ public class SummonService : MonoBehaviour
         return result.item;
     }
 
-    // Багаторазовий призов героїв (наприклад, x10). Зупиняється раніше, якщо не вистачає валюти —
-    // повертає стільки результатів, скільки вдалося фактично оплатити.
+    // Многократный призыв героев (например, x10). Останавливается раньше, если не хватает валюты —
+    // возвращает столько результатов, сколько удалось фактически оплатить.
     public List<HeroData> PullHeroMultiple(HeroSummonPoolData pool, bool usePremium, int count)
     {
         var results = new List<HeroData>();
@@ -86,7 +86,7 @@ public class SummonService : MonoBehaviour
         return results;
     }
 
-    // Багаторазовий призов предметів (наприклад, x10). Зупиняється раніше, якщо не вистачає валюти.
+    // Многократный призыв предметов (например, x10). Останавливается раньше, если не хватает валюты.
     public List<ItemData> PullItemMultiple(ItemSummonPoolData pool, bool usePremium, int count)
     {
         var results = new List<ItemData>();
@@ -99,7 +99,7 @@ public class SummonService : MonoBehaviour
         return results;
     }
 
-    // Спільна логіка лічильника гаранта — незалежна від того, герой це чи предмет
+    // Общая логика счётчика гаранта — не зависит от того, герой это или предмет
     private T RollWithPity<T>(string poolId, int pityThreshold, System.Func<T> forcedPick, System.Func<T> normalRoll, System.Func<T, bool> hitsGuaranteeRarity)
     {
         var pity = pityStates.FirstOrDefault(p => p.poolId == poolId);

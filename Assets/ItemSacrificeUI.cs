@@ -34,18 +34,18 @@ public class ItemSacrificeUI : MonoBehaviour
     private int baseExperience;
     private int maxLevel;
 
-    // instanceId стека, який зараз фактично несе рівень цілі — може змінюватись під час пакетного
-    // пожертвування (якщо ціль ділиться на новий стек або зливається з існуючим-близнюком)
+    // instanceId стека, который сейчас фактически несёт уровень цели — может меняться во время пакетного
+    // пожертвования (если цель делится на новый стек или сливается с существующим-близнецом)
     public string CurrentTargetInstanceId => targetInstanceId;
 
-    // instanceId стека -> скільки одиниць саме з нього обрано (0..quantity цього стека)
+    // instanceId стека -> сколько единиц именно из него выбрано (0..quantity этого стека)
     private readonly Dictionary<string, int> selectedDonorCounts = new Dictionary<string, int>();
     private readonly Dictionary<string, Button> donorButtons = new Dictionary<string, Button>();
     private readonly Dictionary<string, Image> donorBackgrounds = new Dictionary<string, Image>();
     private readonly Dictionary<string, TMP_Text> donorLabels = new Dictionary<string, TMP_Text>();
 
-    // targetInstanceId — конкретний стек (рівень) предмета, який прокачуємо. onApplied — викликається після
-    // кожного успішного пожертвування (щоб викликач міг оновити свій власний UI: деталі предмета, слот екіпіровки тощо).
+    // targetInstanceId — конкретный стек (уровень) предмета, который прокачиваем. onApplied — вызывается после
+    // каждого успешного пожертвования (чтобы вызывающий мог обновить свой собственный UI: детали предмета, слот экипировки и т.д.).
     public void Open(string targetId, System.Action onApplied = null)
     {
         itemCollectionManager = ItemCollectionManager.Instance;
@@ -75,8 +75,8 @@ public class ItemSacrificeUI : MonoBehaviour
         Populate();
     }
 
-    // Перечитує кольори кнопок при кожному відкритті — щоб правки палітри в коді
-    // одразу застосовувались і до вже раз побудованого (закешованого) вікна, без рестарту Play Mode.
+    // Перечитывает цвета кнопок при каждом открытии — чтобы правки палитры в коде
+    // сразу применялись и к уже однажды построенному (закэшированному) окну, без рестарта Play Mode.
     private void RefreshButtonTheme()
     {
         if (confirmBg != null) confirmBg.color = ConfirmationDialog.ButtonColor;
@@ -273,11 +273,11 @@ public class ItemSacrificeUI : MonoBehaviour
         var heroManager = HeroCollectionManager.Instance;
 
         var candidates = itemCollectionManager.ownership
-            .Where(o => o.instanceId != targetInstanceId) // виключаємо саме цільовий СТЕК, а не весь itemId —
-                                                            // інший рівень того самого предмета цілком годиться як паливо
-            .Where(o => heroManager == null || !heroManager.IsItemEquippedAnywhere(o.instanceId)) // екіпіровані на герої предмети — не паливо
+            .Where(o => o.instanceId != targetInstanceId) // исключаем именно целевой СТЕК, а не весь itemId —
+                                                            // другой уровень того же предмета вполне годится как топливо
+            .Where(o => heroManager == null || !heroManager.IsItemEquippedAnywhere(o.instanceId)) // экипированные на герое предметы — не топливо
             .Select(o => (ownership: o, data: itemCollectionManager.GetItemById(o.itemId)))
-            .Where(c => c.data != null && c.data.category == ItemCategory.Equipment) // предмети досвіду героя сюди не годяться
+            .Where(c => c.data != null && c.data.category == ItemCategory.Equipment) // предметы опыта героя сюда не годятся
             .ToList();
 
         if (emptyLabelHolder != null)
@@ -336,19 +336,19 @@ public class ItemSacrificeUI : MonoBehaviour
         RefreshDonorLabel(donorId, donorData, donorOwnership);
     }
 
-    // Перебудовує текст рядка донора з урахуванням того, скільки одиниць саме з нього зараз обрано
+    // Перестраивает текст строки донора с учётом того, сколько единиц именно из него сейчас выбрано
     private void RefreshDonorLabel(string donorId, ItemData donorData, ItemOwnershipData donorOwnership)
     {
         if (!donorLabels.TryGetValue(donorId, out var label)) return;
 
         int xp = donorData.sacrificeExperience * donorOwnership.level;
         int selected = selectedDonorCounts.TryGetValue(donorId, out int c) ? c : 0;
-        string selectedLine = selected > 0 ? $"\nОбрано: {selected}/{donorOwnership.quantity}" : "";
+        string selectedLine = selected > 0 ? $"\nSelected: {selected}/{donorOwnership.quantity}" : "";
 
         label.text = $"{donorData.itemName}\nLvl.{donorOwnership.level}  +{xp} Exp.{selectedLine}";
     }
 
-    // Сума досвіду лише за ОБРАНУ кількість одиниць з кожного стека (не за весь стек)
+    // Сумма опыта только за ВЫБРАННОЕ количество единиц с каждого стека (не за весь стек)
     private int SumSelectedXp()
     {
         int sum = 0;
@@ -362,11 +362,11 @@ public class ItemSacrificeUI : MonoBehaviour
         return sum;
     }
 
-    // Скільки предметів реально буде списано (сума обраних одиниць по всіх стеках) — для тексту підтвердження
+    // Сколько предметов реально будет списано (сумма выбранных единиц по всем стекам) — для текста подтверждения
     private int SumSelectedItemCount() => selectedDonorCounts.Values.Sum();
 
-    // Клік по донору додає РІВНО ОДНУ одиницю саме з нього. Якщо весь стек уже обрано —
-    // клік скидає вибір цього стека назад до 0 (щоб не потрібно було клікати по одному, щоб зняти вибір).
+    // Клик по донору добавляет РОВНО ОДНУ единицу именно из него. Если весь стек уже выбран —
+    // клик сбрасывает выбор этого стека назад до 0 (чтобы не нужно было кликать по одному, чтобы снять выбор).
     private void IncrementDonor(string donorId)
     {
         var donorStack = itemCollectionManager.GetStackByInstanceId(donorId);
@@ -454,12 +454,12 @@ public class ItemSacrificeUI : MonoBehaviour
         foreach (var kvp in countsToSacrifice)
         {
             string donorId = kvp.Key;
-            int quantityToSacrifice = kvp.Value; // саме стільки одиниць було обрано з цього стека, не весь стек
+            int quantityToSacrifice = kvp.Value; // именно столько единиц было выбрано из этого стека, не весь стек
 
             for (int i = 0; i < quantityToSacrifice; i++)
             {
-                // targetInstanceId може змінитись (стек ділиться на новий або зливається з існуючим) —
-                // SacrificeItem повертає актуальний instanceId, і наступний виклик має цілитись саме в нього.
+                // targetInstanceId может измениться (стек делится на новый или сливается с существующим) —
+                // SacrificeItem возвращает актуальный instanceId, и следующий вызов должен целиться именно в него.
                 if (itemCollectionManager.SacrificeItem(donorId, targetInstanceId, out int wasted, out string resultingId))
                 {
                     totalWasted += wasted;

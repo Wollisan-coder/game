@@ -8,7 +8,7 @@ public enum EquipmentSlotType
     Trinket
 }
 
-// Категорія предмета: звичайна екіпіровка або витратний предмет для прокачки героя
+// Категория предмета: обычная экипировка или расходный предмет для прокачки героя
 public enum ItemCategory
 {
     Equipment,
@@ -18,27 +18,27 @@ public enum ItemCategory
 [CreateAssetMenu(fileName = "NewItem", menuName = "Battle/Item")]
 public class ItemData : ScriptableObject
 {
-    [Header("Ідентифікатор (не змінювати після релізу!)")]
+    [Header("Идентификатор (не менять после релиза!)")]
     public string itemId;
 
-    [Header("Основні параметри")]
+    [Header("Основные параметры")]
     public string itemName;
     public ItemCategory category = ItemCategory.Equipment;
-    public EquipmentSlotType slotType; // враховується лише для category == Equipment
+    public EquipmentSlotType slotType; // учитывается только для category == Equipment
     public Sprite icon;
     [TextArea(2, 4)] public string description;
 
-    [Header("Рідкість і прокачка")]
+    [Header("Редкость и прокачка")]
     public Rarity rarity = Rarity.White;
-    public int sacrificeExperience = 10; // досвід, який предмет дає іншому предмету при пожертвуванні (масштабується рівнем предмета-донора)
+    public int sacrificeExperience = 10; // опыт, который предмет даёт другому предмету при пожертвовании (масштабируется уровнем предмета-донора)
 
-    [Header("Бонуси характеристик при екіпіровці (category == Equipment)")]
+    [Header("Бонусы характеристик при экипировке (category == Equipment)")]
     public int bonusHealth;
     public int bonusMana;
     public float bonusDamageMultiplier;
 
-    [Header("Досвід для героя (category == HeroExperience)")]
-    public int heroExperienceValue = 0; // скільки досвіду герой отримує при використанні цього предмета
+    [Header("Опыт для героя (category == HeroExperience)")]
+    public int heroExperienceValue = 0; // сколько опыта герой получает при использовании этого предмета
 
     private void OnValidate()
     {
@@ -48,7 +48,7 @@ public class ItemData : ScriptableObject
 
     public Color GetRarityColor() => RarityUtility.GetColor(rarity);
 
-    // Максимальний рівень предмета залежить від його рідкості
+    // Максимальный уровень предмета зависит от его редкости
     public int GetMaxLevel()
     {
         switch (rarity)

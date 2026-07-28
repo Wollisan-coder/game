@@ -7,10 +7,10 @@ public class BuildingManager : MonoBehaviour
 {
     public static BuildingManager Instance { get; private set; }
 
-    [Header("Каталог будівель")]
+    [Header("Каталог зданий")]
     public BuildingData[] allBuildings;
 
-    [Header("Стан володіння (заповнюється при завантаженні збереження)")]
+    [Header("Состояние владения (заполняется при загрузке сохранения)")]
     public List<BuildingOwnershipData> ownership = new List<BuildingOwnershipData>();
 
     private void Awake()
@@ -38,7 +38,7 @@ public class BuildingManager : MonoBehaviour
         return building != null && (AccountManager.Instance == null || AccountManager.Instance.level >= building.requiredAccountLevel);
     }
 
-    // Перше спорудження будівлі — списує ресурси на постройку
+    // Первое возведение здания — списывает ресурсы на постройку
     public bool Build(BuildingData building)
     {
         if (building == null || IsBuilt(building.buildingId)) return false;
@@ -48,7 +48,7 @@ public class BuildingManager : MonoBehaviour
         if (!PlayerCurrencies.Instance.Spend(CurrencyType.Wood, building.buildCostWood)) return false;
         if (!PlayerCurrencies.Instance.Spend(CurrencyType.Stone, building.buildCostStone))
         {
-            PlayerCurrencies.Instance.Add(CurrencyType.Wood, building.buildCostWood); // повертаємо дерево — транзакційність
+            PlayerCurrencies.Instance.Add(CurrencyType.Wood, building.buildCostWood); // возвращаем дерево — транзакционность
             return false;
         }
 
@@ -73,7 +73,7 @@ public class BuildingManager : MonoBehaviour
         if (data == null || !data.isBuilt || PlayerCurrencies.Instance == null) return false;
         if (data.level >= building.maxLevel) return false;
 
-        CollectProduction(building); // забираємо накопичене за старою потужністю/складом, перш ніж вони зміняться
+        CollectProduction(building); // забираем накопленное по старой мощности/складу, прежде чем они изменятся
 
         var (wood, stone) = building.GetUpgradeCost(data.level + 1);
 
@@ -89,7 +89,7 @@ public class BuildingManager : MonoBehaviour
         return true;
     }
 
-    // Скільки продукції накопичено зараз (без списання) — для UI. Капається складом.
+    // Сколько продукции накоплено сейчас (без списания) — для UI. Ограничивается складом.
     public float GetPendingAmount(BuildingData building)
     {
         var data = GetOwnership(building.buildingId);
@@ -101,7 +101,7 @@ public class BuildingManager : MonoBehaviour
         return Mathf.Clamp(produced, 0f, building.GetStorageCap(data.level));
     }
 
-    // Забирає накопичену продукцію на баланс гравця. Повертає скільки саме зараховано.
+    // Забирает накопленную продукцию на баланс игрока. Возвращает сколько именно зачислено.
     public int CollectProduction(BuildingData building)
     {
         var data = GetOwnership(building.buildingId);

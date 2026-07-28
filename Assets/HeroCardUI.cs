@@ -4,32 +4,32 @@ using TMPro;
 
 public class HeroCardUI : MonoBehaviour
 {
-    [Header("Дані персонажа")]
+    [Header("Данные персонажа")]
     public HeroData heroData;
 
-    [Header("Посилання")]
+    [Header("Ссылки")]
     public BattleManager battleManager;
 
-    [Header("UI елементи")]
+    [Header("UI элементы")]
     public Image portraitImage;
     public Image fillImage;       // мана
-    public Image healthFillImage; // HP — окремий від мани
-    public Image shieldFillImage; // щит — % від максимального HP героя
-    public TMP_Text healthText;   // числове значення "поточне/максимальне" HP поверх смужки
-    public Button activateButton; // якщо в героя одна основна навичка (skills[0])
+    public Image healthFillImage; // HP — отдельно от маны
+    public Image shieldFillImage; // щит — % от максимального HP героя
+    public TMP_Text healthText;   // числовое значение "текущее/максимальное" HP поверх полоски
+    public Button activateButton; // если у героя один основной навык (skills[0])
     public Image buttonOverlay;
 
-    [Header("Стан загибелі")]
+    [Header("Состояние гибели")]
     public Color deadTintColor = new Color(0.25f, 0.25f, 0.25f, 1f);
 
-    [Header("Мигання кнопки активації")]
+    [Header("Мигание кнопки активации")]
     public float buttonMinAlpha = 0.05f;
     public float buttonMaxAlpha = 0.35f;
     public float buttonPulseSpeed = 2f;
 
-    [Header("Прозорість мани залежно від заповнення")]
-    public float manaMinAlpha = 0.15f;   // прозорість, коли мана порожня
-    public float manaMaxAlpha = 0.6f;    // пікова прозорість, коли мана повна (без мерехтіння)
+    [Header("Прозрачность маны в зависимости от заполнения")]
+    public float manaMinAlpha = 0.15f;   // прозрачность, когда мана пуста
+    public float manaMaxAlpha = 0.6f;    // пиковая прозрачность, когда мана полна (без мерцания)
 
     private HeroRuntimeState heroState;
     private SkillData primarySkill;
@@ -60,7 +60,7 @@ public class HeroCardUI : MonoBehaviour
 
     private void Update()
     {
-        if (heroState != null && heroState.currentHealth <= 0) return; // мертвий герой — без анімацій
+        if (heroState != null && heroState.currentHealth <= 0) return; // мёртвый герой — без анимаций
 
         UpdateButtonPulse();
         UpdateManaFill();
@@ -74,7 +74,7 @@ public class HeroCardUI : MonoBehaviour
 
         if (isManaFull)
         {
-            // мерехтіння тільки коли мана повна
+            // мерцание только когда мана полна
             float t = (Mathf.Sin(Time.time * buttonPulseSpeed) + 1f) / 2f;
             float alpha = Mathf.Lerp(buttonMinAlpha, buttonMaxAlpha, t);
 
@@ -84,7 +84,7 @@ public class HeroCardUI : MonoBehaviour
         }
         else
         {
-            // статично, без мерехтіння, поки мана не повна
+            // статично, без мерцания, пока мана не полна
             Color c = buttonOverlay.color;
             c.a = buttonMinAlpha;
             buttonOverlay.color = c;
@@ -99,8 +99,8 @@ public class HeroCardUI : MonoBehaviour
             ? (float)heroState.currentResource / heroState.maxResource
             : 0f;
 
-        // Без миготіння: альфа лінійно росте разом із заповненням мани,
-        // від manaMinAlpha (порожньо) до manaMaxAlpha (повна мана)
+        // Без мигания: альфа линейно растёт вместе с заполнением маны,
+        // от manaMinAlpha (пусто) до manaMaxAlpha (полная мана)
         float alpha = Mathf.Lerp(manaMinAlpha, manaMaxAlpha, fillRatio);
 
         Color c = fillImage.color;
@@ -108,7 +108,7 @@ public class HeroCardUI : MonoBehaviour
         fillImage.color = c;
     }
 
-    // Береться навичка, обрана гравцем як активна у вікні інвентаря (за замовчуванням — перша)
+    // Берётся навык, выбранный игроком как активный в окне инвентаря (по умолчанию — первый)
     private SkillData ResolveActiveSkill()
     {
         if (heroData.skills == null || heroData.skills.Length == 0) return null;
@@ -126,9 +126,9 @@ public class HeroCardUI : MonoBehaviour
 
     private void ApplyHeroData()
     {
-        if (heroData == null) 
+        if (heroData == null)
         {
-            Debug.LogWarning($"HeroCardUI на {gameObject.name}: HeroData не призначено!");
+            Debug.LogWarning($"HeroCardUI на {gameObject.name}: HeroData не назначено!");
             return;
         }
 
@@ -141,7 +141,7 @@ public class HeroCardUI : MonoBehaviour
         if (fillImage != null)
         {
             Color c = heroData.themeColor;
-            c.a = manaMinAlpha; // стартова альфа — одразу ледь помітна, а не суцільний колір
+            c.a = manaMinAlpha; // стартовая альфа — сразу едва заметна, а не сплошной цвет
             fillImage.color = c;
         }
 
@@ -183,10 +183,10 @@ public class HeroCardUI : MonoBehaviour
     private void OnActivateClicked()
     {
         if (primarySkill == null || heroState == null || battleManager == null) return;
-        if (heroState.currentHealth <= 0) return; // мертвий герой не може використовувати навички
+        if (heroState.currentHealth <= 0) return; // мёртвый герой не может использовать навыки
 
         bool success = battleManager.TryUseSkill(heroState, primarySkill);
         if (!success)
-            Debug.Log($"Недостатньо ресурсу для навички {primarySkill.skillName}");
+            Debug.Log($"Недостаточно ресурса для навыка {primarySkill.skillName}");
     }
 }

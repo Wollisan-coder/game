@@ -6,18 +6,18 @@ using TMPro;
 
 public class ItemPickerUI : MonoBehaviour
 {
-    [Header("Посилання")]
+    [Header("Ссылки")]
     public ItemCollectionManager itemCollectionManager;
 
-    [Header("Список предметів")]
+    [Header("Список предметов")]
     public Transform itemsContainer;
     public GameObject itemEntryPrefab;
 
     [Header("Кнопки")]
     public Button closeButton;
-    public Button unequipButton; // зняти поточний предмет із цього слота
+    public Button unequipButton; // снять текущий предмет с этого слота
 
-    private Button upgradeButton;      // будується програмно — прокачати предмет, що зараз в слоті
+    private Button upgradeButton;      // строится программно — прокачать предмет, который сейчас в слоте
     private Image upgradeButtonBg;
     private TMP_Text upgradeButtonText;
     private ItemSacrificeUI sacrificeUI;
@@ -32,9 +32,9 @@ public class ItemPickerUI : MonoBehaviour
 
         CreateUpgradeButtonIfNeeded();
 
-        // Панель вже збережена вимкненою в сцені (m_IsActive: 0) — не гасимо її тут ще раз:
-        // якщо викликати SetActive(false) з Awake(), а Awake() вперше запускається САМЕ під час
-        // першого Open()->SetActive(true), цей виклик одразу скасовує щойно виконану активацію.
+        // Панель уже сохранена выключенной в сцене (m_IsActive: 0) — не гасим её здесь ещё раз:
+        // если вызвать SetActive(false) из Awake(), а Awake() впервые запускается ИМЕННО во время
+        // первого Open()->SetActive(true), этот вызов сразу отменяет только что выполненную активацию.
     }
 
     public void Open(EquipmentSlotType slotType, HeroInventoryUI ownerUI)
@@ -42,7 +42,7 @@ public class ItemPickerUI : MonoBehaviour
         currentSlot = slotType;
         owner = ownerUI;
 
-        transform.SetAsLastSibling(); // інакше панель, з якої відкрито (наприклад, HeroInventoryUI), може перекрити цю зверху
+        transform.SetAsLastSibling(); // иначе панель, из которой открыто (например, HeroInventoryUI), может перекрыть эту сверху
         gameObject.SetActive(true);
         RefreshUpgradeButtonTheme();
         Populate();
@@ -68,13 +68,13 @@ public class ItemPickerUI : MonoBehaviour
 
             if (stacks.Count == 0)
             {
-                // Не отримано жодної копії — один "заблокований" рядок без можливості вибору
+                // Не получено ни одной копии — одна "заблокированная" строка без возможности выбора
                 GameObject lockedObj = Instantiate(itemEntryPrefab, itemsContainer);
                 lockedObj.GetComponent<ItemPickerEntryUI>().Setup(item, false, 0, 0, null);
                 continue;
             }
 
-            // Кожен стек (окремий рівень) — окремий рядок, щоб предмети різного рівня не зливались в одну ячейку
+            // Каждый стек (отдельный уровень) — отдельная строка, чтобы предметы разного уровня не сливались в одну ячейку
             foreach (var stack in stacks)
             {
                 GameObject entryObj = Instantiate(itemEntryPrefab, itemsContainer);
@@ -89,8 +89,8 @@ public class ItemPickerUI : MonoBehaviour
 
     private void OnItemSelected(string itemInstanceId)
     {
-        // Якщо в стеку більше 1 копії — екіпірувати можна лише ОДНУ, тож відділяємо її в окремий стек,
-        // а решта копій лишаються вільними (доступними) в інвентарі предметів.
+        // Если в стеке больше 1 копии — экипировать можно только ОДНУ, поэтому отделяем её в отдельный стек,
+        // а остальные копии остаются свободными (доступными) в инвентаре предметов.
         string toEquip = itemCollectionManager.SplitOneForEquip(itemInstanceId) ?? itemInstanceId;
         owner.EquipItem(currentSlot, toEquip);
         Close();
@@ -115,8 +115,8 @@ public class ItemPickerUI : MonoBehaviour
         sacrificeUI.Open(equippedInstanceId, Populate);
     }
 
-    // Кнопку "Upgrade" будуємо програмно поруч із Unequip/Close (копіюючи їхній трансформ),
-    // щоб не редагувати вручну розмітку ItemPickerPanel у сцені.
+    // Кнопку "Upgrade" строим программно рядом с Unequip/Close (копируя их трансформ),
+    // чтобы не редактировать вручную разметку ItemPickerPanel в сцене.
     private void CreateUpgradeButtonIfNeeded()
     {
         if (upgradeButton != null) return;

@@ -260,6 +260,6 @@ public class HeroExperienceItemPickerUI : MonoBehaviour
         if (!itemCollectionManager.ConsumeItem(instanceId)) return;
 
         onApplied?.Invoke();
-        Populate(); // вікно лишається відкритим — можна одразу використати ще один предмет
+        Populate(); // окно остаётся открытым — можно сразу использовать ещё один предмет
     }
 }

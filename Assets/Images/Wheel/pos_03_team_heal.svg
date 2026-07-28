@@ -1,0 +1,23 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bgGlow3" cx="50%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#2a6d3d"/>
+      <stop offset="100%" stop-color="#0f2a18"/>
+    </radialGradient>
+    <linearGradient id="heartGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ff9bb0"/>
+      <stop offset="100%" stop-color="#ff3d6a"/>
+    </linearGradient>
+  </defs>
+  <circle cx="100" cy="100" r="94" fill="url(#bgGlow3)" stroke="#f4d47c" stroke-width="6"/>
+  <!-- heart -->
+  <path d="M100 145 C 40 105, 55 55, 90 62 C 97 64, 100 72, 100 78 C 100 72, 103 64, 110 62 C 145 55, 160 105, 100 145 Z"
+        fill="url(#heartGrad)" stroke="#ffffff" stroke-width="3"/>
+  <!-- plus cross -->
+  <rect x="90" y="80" width="20" height="46" rx="4" fill="#ffffff"/>
+  <rect x="77" y="93" width="46" height="20" rx="4" fill="#ffffff"/>
+  <!-- three small allies around -->
+  <circle cx="55" cy="150" r="9" fill="#7cf29a" stroke="#fff" stroke-width="2"/>
+  <circle cx="100" cy="165" r="9" fill="#7cf29a" stroke="#fff" stroke-width="2"/>
+  <circle cx="145" cy="150" r="9" fill="#7cf29a" stroke="#fff" stroke-width="2"/>
+</svg>

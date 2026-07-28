@@ -6,7 +6,7 @@ using TMPro;
 
 public class ItemDetailUI : MonoBehaviour
 {
-    [Header("UI елементи")]
+    [Header("UI элементы")]
     public Image icon;
     public TMP_Text nameText;
     public TMP_Text slotTypeText;
@@ -17,19 +17,19 @@ public class ItemDetailUI : MonoBehaviour
     public Button closeButton;
 
     private ItemData currentItem;
-    private ItemOwnershipData currentStack; // null = предмет не отриманий (locked)
+    private ItemOwnershipData currentStack; // null = предмет не получен (locked)
     private Image rarityFrame;
-    private TMP_Text infoText;      // Rarity + Lvl + прогрес Exp (або кількість — для витратних предметів)
+    private TMP_Text infoText;      // Rarity + Lvl + прогресс Exp (или количество — для расходных предметов)
 
-    private Button actionButton;    // "Upgrade" (Equipment) або "Use" (HeroExperience) — залежно від категорії
+    private Button actionButton;    // "Upgrade" (Equipment) или "Use" (HeroExperience) — в зависимости от категории
     private Image actionBg;
     private TMP_Text actionText;
 
     private ItemSacrificeUI sacrificeUI;
     private HeroExperienceUseUI heroExperienceUseUI;
 
-    // Викликається при закритті цього попапу — щоб екран-каталог позаду міг перебудувати сітку
-    // (наприклад, якщо апгрейд/використання предмета створило/змінило стек, поки попап був відкритий)
+    // Вызывается при закрытии этого попапа — чтобы экран-каталог позади мог перестроить сетку
+    // (например, если апгрейд/использование предмета создало/изменило стек, пока попап был открыт)
     public System.Action OnClosed;
 
     private void Awake()
@@ -39,19 +39,19 @@ public class ItemDetailUI : MonoBehaviour
 
         EnsureExtraUI();
 
-        // Панель вже збережена вимкненою в сцені (m_IsActive: 0) — не гасимо її тут ще раз:
-        // якщо викликати SetActive(false) з Awake(), а Awake() вперше запускається САМЕ під час
-        // першого Open()->SetActive(true), цей виклик одразу скасовує щойно виконану активацію.
+        // Панель уже сохранена выключенной в сцене (m_IsActive: 0) — не гасим её здесь ещё раз:
+        // если вызвать SetActive(false) из Awake(), а Awake() впервые запускается ИМЕННО во время
+        // первого Open()->SetActive(true), этот вызов сразу отменяет только что выполненную активацию.
     }
 
-    // stack — конкретний стек (рівень) предмета, який належить гравцю; null, якщо предмет ще не отриманий
+    // stack — конкретный стек (уровень) предмета, принадлежащий игроку; null, если предмет ещё не получен
     public void Open(ItemData item, ItemOwnershipData stack)
     {
         if (item == null) return;
 
         currentItem = item;
         currentStack = stack;
-        transform.SetAsLastSibling(); // інакше панель, з якої відкрито (каталог тощо), може перекрити цю зверху
+        transform.SetAsLastSibling(); // иначе панель, из которой открыто (каталог и т.д.), может перекрыть эту сверху
         gameObject.SetActive(true);
         Refresh();
     }
@@ -80,10 +80,10 @@ public class ItemDetailUI : MonoBehaviour
             }
             else
             {
-                // Показуємо лише ті характеристики, які предмет реально підвищує (не 0)
+                // Показываем только те характеристики, которые предмет реально повышает (не 0)
                 var lines = new List<string>();
                 if (item.bonusHealth != 0) lines.Add($"HP: +{item.bonusHealth}");
-                if (item.bonusMana != 0) lines.Add($"Мана: +{item.bonusMana}");
+                if (item.bonusMana != 0) lines.Add($"Mana: +{item.bonusMana}");
                 if (item.bonusDamageMultiplier != 0) lines.Add($"Damage: +{item.bonusDamageMultiplier:0.##}");
 
                 statsText.text = string.Join("\n", lines);
@@ -91,7 +91,7 @@ public class ItemDetailUI : MonoBehaviour
         }
 
         if (ownedStatusText != null)
-            ownedStatusText.text = owned ? "Отримано" : "Не отримано";
+            ownedStatusText.text = owned ? "Owned" : "Not owned";
 
         ItemBadgeUtility.ApplyRarityFrame(icon, item.GetRarityColor(), ref rarityFrame);
 
@@ -209,13 +209,13 @@ public class ItemDetailUI : MonoBehaviour
         string itemId = currentItem.itemId;
         sacrificeUI.Open(currentStack.instanceId, () =>
         {
-            // instanceId цілі міг змінитись (поділ/злиття стеків) — беремо актуальний зі sacrificeUI
+            // instanceId цели мог измениться (разделение/слияние стеков) — берём актуальный из sacrificeUI
             var refreshedStack = manager.GetStackByInstanceId(sacrificeUI.CurrentTargetInstanceId);
             var refreshedData = manager.GetItemById(itemId);
             if (refreshedData != null && refreshedStack != null)
                 Open(refreshedData, refreshedStack);
             else
-                Close(); // цільовий стек більше не існує (наприклад, витрачено все паливо і донор зник)
+                Close(); // целевой стек больше не существует (например, потрачено всё топливо и донор исчез)
         });
     }
 
@@ -236,7 +236,7 @@ public class ItemDetailUI : MonoBehaviour
             if (refreshedData != null && refreshedStack != null)
                 Open(refreshedData, refreshedStack);
             else
-                Close(); // останню копію витрачено
+                Close(); // последняя копия потрачена
         });
     }
 

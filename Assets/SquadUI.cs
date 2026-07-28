@@ -4,7 +4,7 @@ public class SquadUI : MonoBehaviour
 {
     public HeroCollectionManager collectionManager;
     public MainMenuUI mainMenuUI;
-    public HeroInventoryUI inventoryUI; // спільний попап на всю сцену — той самий, що й у HeroCollectionUI
+    public HeroInventoryUI inventoryUI; // общий попап на всю сцену — тот же, что и в HeroCollectionUI
     public SquadSlotUI[] slots;
 
         private void Awake()
@@ -26,7 +26,7 @@ public class SquadUI : MonoBehaviour
 
     public void RefreshSlots()
     {
-        // Кількість слотів завжди фіксована (4) — Бараки піднімають ліміт ваги загону, а не кількість слотів
+        // Количество слотов всегда фиксировано (4) — Бараки поднимают лимит веса отряда, а не количество слотов
         for (int i = 0; i < slots.Length; i++)
         {
             if (collectionManager != null && i < collectionManager.squad.Count && collectionManager.squad[i] != null)

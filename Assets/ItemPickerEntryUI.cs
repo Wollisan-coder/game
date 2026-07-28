@@ -7,7 +7,7 @@ public class ItemPickerEntryUI : MonoBehaviour
     public Image iconImage;
     public TMP_Text nameText;
     public TMP_Text descriptionText;
-    public GameObject lockOverlay; // показується, якщо предмет ще не отриманий
+    public GameObject lockOverlay; // показывается, если предмет ещё не получен
     public Button selectButton;
 
     private Image rarityFrame;

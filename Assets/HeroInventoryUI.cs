@@ -6,23 +6,23 @@ using TMPro;
 
 public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
-    [Header("Посилання")]
+    [Header("Ссылки")]
     public HeroCollectionManager collectionManager;
 
-    [Header("Картка героя")]
+    [Header("Карточка героя")]
     public Image portraitImage;
     public TMP_Text heroNameText;
     public TMP_Text healthText;
     public TMP_Text levelText;
     public TMP_Text descriptionText;
 
-    [Header("Навички")]
+    [Header("Навыки")]
     public Transform skillsContainer;
     public GameObject skillEntryPrefab;
 
-    [Header("Інвентар (предмети)")]
+    [Header("Инвентарь (предметы)")]
     public Transform itemsContainer;
-    public GameObject itemSlotPrefab; // слот з компонентом ItemSlotUI
+    public GameObject itemSlotPrefab; // слот с компонентом ItemSlotUI
     public ItemPickerUI itemPicker;
     public ItemCollectionManager itemCollectionManager;
 
@@ -34,15 +34,15 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         EquipmentSlotType.Trinket
     };
 
-    [Header("Кнопка закриття")]
+    [Header("Кнопка закрытия")]
     public Button closeButton;
 
-    private Button heroUpgradeButton; // будується програмно — прокачати героя предметом досвіду
+    private Button heroUpgradeButton; // строится программно — прокачать героя предметом опыта
     private Image heroUpgradeBg;
     private TMP_Text heroUpgradeText;
     private HeroExperienceItemPickerUI experienceItemPickerUI;
 
-    private const float SwipeThreshold = 80f; // мінімальна довжина свайпу по X (пікселі), щоб зарахувати перемикання героя
+    private const float SwipeThreshold = 80f; // минимальная длина свайпа по X (пиксели), чтобы засчитать переключение героя
 
     private HeroData currentHero;
     private HeroOwnershipData currentOwnership;
@@ -55,17 +55,17 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         CreateUpgradeButtonIfNeeded();
         CreateHeroNavButtonsIfNeeded();
 
-        // Панель вже збережена вимкненою в сцені (m_IsActive: 0) — не гасимо її тут ще раз:
-        // якщо викликати SetActive(false) з Awake(), а Awake() вперше запускається САМЕ під час
-        // першого Open()->SetActive(true), цей виклик одразу скасовує щойно виконану активацію.
+        // Панель уже сохранена выключенной в сцене (m_IsActive: 0) — не гасим её здесь ещё раз:
+        // если вызвать SetActive(false) из Awake(), а Awake() впервые запускается ИМЕННО во время
+        // первого Open()->SetActive(true), этот вызов сразу отменяет только что выполненную активацию.
     }
 
-    // IBeginDragHandler/IDragHandler навмисно порожні — нам потрібен лише сумарний зсув на OnEndDrag,
-    // але Unity визначає ціль перетягування саме через IBeginDragHandler, тож без нього OnEndDrag не спрацює.
+    // IBeginDragHandler/IDragHandler намеренно пустые — нам нужен только суммарный сдвиг в OnEndDrag,
+    // но Unity определяет цель перетаскивания именно через IBeginDragHandler, поэтому без него OnEndDrag не сработает.
     public void OnBeginDrag(PointerEventData eventData) { }
     public void OnDrag(PointerEventData eventData) { }
 
-    // Свайп по X всередині панелі — перемикає на сусіднього героя (вліво = попередній, вправо = наступний)
+    // Свайп по X внутри панели — переключает на соседнего героя (влево = предыдущий, вправо = следующий)
     public void OnEndDrag(PointerEventData eventData)
     {
         float deltaX = eventData.position.x - eventData.pressPosition.x;
@@ -74,8 +74,8 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         NavigateHero(deltaX > 0 ? -1 : 1);
     }
 
-    // Переходить до попереднього/наступного (за напрямком) розблокованого героя в тому ж порядку,
-    // що й у колекції (collectionManager.allHeroes), з переходом по колу.
+    // Переходит к предыдущему/следующему (по направлению) разблокированному герою в том же порядке,
+    // что и в коллекции (collectionManager.allHeroes), с переходом по кругу.
     private void NavigateHero(int direction)
     {
         if (currentHero == null || collectionManager == null) return;
@@ -97,7 +97,7 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         currentHero = hero;
         currentOwnership = collectionManager.ownership.Find(o => o.heroId == hero.heroId);
 
-        transform.SetAsLastSibling(); // піднімаємо над іншими панелями (Squad, Collection тощо), інакше вони перехоплюють клік
+        transform.SetAsLastSibling(); // поднимаем над другими панелями (Squad, Collection и т.д.), иначе они перехватывают клик
         gameObject.SetActive(true);
         Refresh();
     }
@@ -123,11 +123,11 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
             if (currentOwnership != null && collectionManager != null)
             {
                 int nextThreshold = collectionManager.ExperienceToNextLevel(level);
-                levelText.text = $"Рівень: {level} ({currentOwnership.experience}/{nextThreshold} Exp)";
+                levelText.text = $"Level: {level} ({currentOwnership.experience}/{nextThreshold} Exp)";
             }
             else
             {
-                levelText.text = $"Рівень: {level}";
+                levelText.text = $"Level: {level}";
             }
         }
 
@@ -187,7 +187,7 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
             itemPicker.Open(slotType, this);
     }
 
-    // Instance ID стека, екіпірованого у вказаний слот цього героя (null, якщо слот порожній)
+    // Instance ID стека, экипированного в указанный слот этого героя (null, если слот пуст)
     public string GetEquippedItemInstanceId(EquipmentSlotType slotType)
     {
         return currentOwnership != null ? currentOwnership.GetEquippedItemInstanceId(slotType) : null;
@@ -197,7 +197,7 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     {
         if (currentOwnership == null) return;
 
-        // Конкретний стек унікальний — якщо він уже екіпірований на іншому герої, знімаємо його звідти ("переносимо" сюди)
+        // Конкретный стек уникален — если он уже экипирован на другом герое, снимаем его оттуда ("переносим" сюда)
         if (!string.IsNullOrEmpty(itemInstanceId) && collectionManager != null)
             collectionManager.UnequipItemFromAllHeroes(itemInstanceId, currentHero.heroId);
 
@@ -215,7 +215,7 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     public void SetPassiveSkill(int index)
     {
         if (currentOwnership == null) return;
-        // Повторний клік по тій самій навичці знімає позначку пасивної
+        // Повторный клик по тому же навыку снимает отметку пассивного
         currentOwnership.passiveSkillIndex = currentOwnership.passiveSkillIndex == index ? -1 : index;
         PopulateSkills();
     }
@@ -227,8 +227,8 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         experienceItemPickerUI.Open(currentHero.heroId, Refresh);
     }
 
-    // Кнопку "Upgrade" будуємо програмно поруч із Close (копіюючи його трансформ),
-    // щоб не редагувати вручну розмітку панелі героя у сцені.
+    // Кнопку "Upgrade" строим программно рядом с Close (копируя его трансформ),
+    // чтобы не редактировать вручную разметку панели героя в сцене.
     private void CreateUpgradeButtonIfNeeded()
     {
         if (heroUpgradeButton != null) return;
@@ -265,9 +265,9 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         experienceItemPickerUI = gameObject.AddComponent<HeroExperienceItemPickerUI>();
     }
 
-    // Стрілки "<" / ">" по боках від портрета — будуються програмно, щоб не редагувати вручну розмітку панелі.
-    // Прив'язані до parent'а портрета, зліва/справа по центру висоти — якщо портрет не займає всю ширину
-    // картки, позицію можна буде підправити в Inspector (це прості RectTransform-и, а не частина коду).
+    // Стрелки "<" / ">" по бокам от портрета — строятся программно, чтобы не редактировать вручную разметку панели.
+    // Привязаны к parent'у портрета, слева/справа по центру высоты — если портрет не занимает всю ширину
+    // карточки, позицию можно будет поправить в Inspector (это простые RectTransform-ы, а не часть кода).
     private void CreateHeroNavButtonsIfNeeded()
     {
         if (portraitImage == null) return;

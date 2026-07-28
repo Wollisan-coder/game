@@ -23,7 +23,7 @@ public class BattleHeroCardsSpawner : MonoBehaviour
             var cardUI = cardObj.GetComponent<HeroCardUI>();
             cardUI.heroData = heroState.data;
             cardUI.battleManager = battleManager;
-            // Start() у HeroCardUI сам підхопить heroData через ApplyHeroData()
+            // Start() в HeroCardUI сам подхватит heroData через ApplyHeroData()
         }
     }
 }

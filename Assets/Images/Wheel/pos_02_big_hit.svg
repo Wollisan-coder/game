@@ -1,0 +1,25 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bgGlow2" cx="50%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#6d2a2a"/>
+      <stop offset="100%" stop-color="#2a0f0f"/>
+    </radialGradient>
+    <linearGradient id="blade" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#c9c9c9"/>
+    </linearGradient>
+  </defs>
+  <circle cx="100" cy="100" r="94" fill="url(#bgGlow2)" stroke="#f4d47c" stroke-width="6"/>
+  <!-- explosion burst -->
+  <g fill="#ff8a3d">
+    <polygon points="100,100 130,40 138,75 175,55 145,90 185,100 145,110 175,145 138,125 130,160 100,100"/>
+    <polygon points="100,100 70,40 62,75 25,55 55,90 15,100 55,110 25,145 62,125 70,160 100,100" opacity="0.85"/>
+  </g>
+  <!-- sword -->
+  <g transform="rotate(45 100 100)">
+    <rect x="94" y="40" width="12" height="80" fill="url(#blade)" stroke="#7a7a7a" stroke-width="2"/>
+    <polygon points="94,40 106,40 100,25" fill="#ffffff" stroke="#7a7a7a" stroke-width="2"/>
+    <rect x="80" y="118" width="40" height="10" rx="3" fill="#7a4a1e"/>
+    <rect x="95" y="126" width="10" height="26" fill="#5a3414"/>
+  </g>
+</svg>

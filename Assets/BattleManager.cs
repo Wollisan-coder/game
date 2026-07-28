@@ -5,62 +5,96 @@ using System.Linq;
 
 public class BattleManager : MonoBehaviour
 {
-    [Header("Гравець")]
+    [Header("Игрок")]
     public int playerMaxHP = 100;
     public int playerHP;
     public int playerShield = 0;
 
-    [Header("Ворог")]
+    [Header("Враг")]
     public int enemyMaxHP = 80;
     public int enemyHP;
     public int enemyMinAttack = 5;
     public int enemyMaxAttack = 12;
     public int enemyShield = 0;
 
-    [Header("Дебафф урону героїв від скіла ворога")]
+    [Header("Дебафф урона героев от скилла врага")]
     public float heroDamageMultiplier = 1f;
     public int heroDamageMultiplierTurnsRemaining = 0;
 
-    [Header("Герої в бою")]
-    public HeroData[] heroRoster; // призначити в Inspector усіх героїв, що беруть участь у бою
+    [Header("Герои в бою")]
+    public HeroData[] heroRoster; // назначить в Inspector всех героев, участвующих в бою
     public List<HeroRuntimeState> activeHeroes = new List<HeroRuntimeState>();
 
-    [Header("Урон за фішку (базовий — якщо героя цього кольору немає або він загинув)")]
+    [Header("Урон за фишку (базовый — если героя этого цвета нет или он погиб)")]
     public int[] baseDamagePerGem = { 5, 5, 5, 5, 5 };
 
-    [Header("Урон за фішку (якщо герой цього кольору живий)")]
+    [Header("Урон за фишку (если герой этого цвета жив)")]
     public int[] aliveDamagePerGem = { 8, 8, 8, 8, 8 };
 
-    [Header("Лікування за фішку Pink")]
+    [Header("Лечение за фишку Pink")]
     public int pinkHealPerGem = 3;
 
-    [Header("Тимчасовий баф урона")]
+    [Header("Временный бафф урона")]
     public float damageMultiplier = 1f;
     public int damageMultiplierTurnsRemaining = 0;
 
-    [Header("Посилання на сітку")]
+    [Header("Ссылка на сетку")]
     public GridManager gridManager;
 
-    [Header("Вороги (для цієї сутички)")]
-    public EnemyData[] possibleEnemies;   // наперед заданий пул для випадкового бою
-    public bool forceRandomEnemy = false; // true = ігнорувати вибір з колекції, завжди рандом
-    public EnemyData currentEnemy;        // фактично обраний ворог цього бою
+    [Header("Враги (для этой стычки)")]
+    public EnemyData[] possibleEnemies;   // заранее заданный пул для случайного боя
+    public bool forceRandomEnemy = false; // true = игнорировать выбор из коллекции, всегда рандом
+    public EnemyData currentEnemy;        // фактически выбранный враг этого боя
 
-    [Header("Нагорода за перемогу")]
-    public int accountExperienceReward = 20; // плейсхолдер — легко змінити в інспекторі
+    [Header("Награда за победу")]
+    public int accountExperienceReward = 20; // плейсхолдер — легко поменять в инспекторе
 
     public System.Action OnStateChanged;
-    public System.Action<string> OnBattleLog; // виклик з текстом рядка при кожному нанесеному/отриманому уроні
+    public System.Action<string> OnBattleLog; // вызов с текстом строки при каждом нанесённом/полученном уроне
 
     private HeroRuntimeState lastAttackedHero;
     private int consecutiveHitsOnLastHero;
 
-    [Header("Переворот дошки (ефекти) — раз за бій")]
+    [Header("Переворот доски (эффекты) — раз за бой")]
     public bool boardFlipUsedThisBattle = false;
+
+    [Header("Гномы — броня врага / невязвимость / отражение урона")]
+    public float enemyIncomingDamageMultiplier = 1f; // >1 = враг получает больше урона (ReduceEnemyArmor)
+    public int enemyArmorDebuffTurnsRemaining = 0;
+    public bool playerInvulnerableNextEnemyTurn = false;
+    public float damageReflectPercent = 0f;
+    public int damageReflectTurnsRemaining = 0;
+
+    [Header("Зверолюди / общее — оглушение, количество матчей за ход, доп. ходы")]
+    public bool enemyStunnedNextTurn = false;
+    public int lastTurnMatchCount = 0;
+    public int freeExtraTurnsRemaining = 0; // ExtraTurn/DoubleFreeTurn — следующий(е) ход(ы) без ответа врага
+
+    [Header("Демоны — точность врага / слабость / перенос дебаффа")]
+    public float enemyMissChancePercent = 0f;
+    public int enemyMissChanceTurnsRemaining = 0;
+    public float nextHitDamageMultiplier = 1f; // WeaknessMarkNextHit — одноразовый, тратится в DealDamageToEnemy
+    public float enemyDamageMultiplier = 1f;   // дебафф собственного урона врага (TransferDebuffToEnemy)
+    public int enemyDamageMultiplierTurnsRemaining = 0;
+
+    [Header("Ангелы — иммунитет команды к дебаффам")]
+    public int teamDebuffImmuneTurnsRemaining = 0;
+
+    [Header("Гемблинг-колесо — щит команды на N ходов, оглушение/блок скилла героя")]
+    public int extendedShieldTurnsRemaining = 0; // пока > 0, щит НЕ сбрасывается после хода врага (ShieldTeamTurns)
+
+    [System.Serializable]
+    private class PendingDamage
+    {
+        public int turnsRemaining;
+        public int amount;
+    }
+
+    private List<PendingDamage> pendingEnemyDamage = new List<PendingDamage>();
 
         private EnemyData ResolveEnemy()
     {
-        // 1. Конкретний ворог, обраний гравцем у колекції (якщо не форсуємо рандом)
+        // 1. Конкретный враг, выбранный игроком в коллекции (если не форсируем рандом)
         if (!forceRandomEnemy &&
             EnemyCollectionManager.Instance != null &&
             EnemyCollectionManager.Instance.selectedEnemy != null)
@@ -68,11 +102,11 @@ public class BattleManager : MonoBehaviour
             return EnemyCollectionManager.Instance.selectedEnemy;
         }
 
-        // 2. Інакше — випадковий з наперед заданого масиву
+        // 2. Иначе — случайный из заранее заданного массива
         if (possibleEnemies != null && possibleEnemies.Length > 0)
             return possibleEnemies[Random.Range(0, possibleEnemies.Length)];
 
-        return null; // жодного джерела — залишаються значення з інспектора
+        return null; // нет ни одного источника — остаются значения из инспектора
     }
 
 
@@ -90,7 +124,7 @@ public class BattleManager : MonoBehaviour
         }
         enemyHP = enemyMaxHP;
 
-        // Беремо тільки реально вибраних героїв (без порожніх слотів null)
+        // Берём только реально выбранных героев (без пустых слотов null)
         if (HeroCollectionManager.Instance != null)
             heroRoster = HeroCollectionManager.Instance.squad.Where(h => h != null).ToArray();
 
@@ -109,7 +143,7 @@ public class BattleManager : MonoBehaviour
 
             var heroState = new HeroRuntimeState(hero, level);
 
-            // Бонуси від екіпірованих предметів (не змінюють сам ассет HeroData, лише цю копію на бій)
+            // Бонусы от экипированных предметов (не меняют сам ассет HeroData, только эту копию на бой)
             if (ownership != null && ItemCollectionManager.Instance != null)
             {
                 foreach (var equipped in ownership.equippedItems)
@@ -137,36 +171,43 @@ public class BattleManager : MonoBehaviour
 
         public void DealDamageToEnemy(int amount)
     {
-        int absorbed = Mathf.Min(enemyShield, amount);
+        float multiplier = enemyIncomingDamageMultiplier * nextHitDamageMultiplier;
+        int scaledAmount = Mathf.RoundToInt(amount * multiplier);
+        nextHitDamageMultiplier = 1f; // метка слабости — одноразовая
+
+        int absorbed = Mathf.Min(enemyShield, scaledAmount);
         enemyShield -= absorbed;
-        int applied = amount - absorbed;
+        int applied = scaledAmount - absorbed;
         enemyHP = Mathf.Max(0, enemyHP - applied);
 
         if (applied > 0)
-            OnBattleLog?.Invoke($"Ворогу нанесено {applied} урону");
+            OnBattleLog?.Invoke($"Enemy took {applied} damage");
     }
 
-    // Базовий урон, якщо живого героя цього кольору немає; підвищений — якщо є
+    // Базовый урон, если живого героя этого цвета нет; повышенный — если есть
+    // Оглушённый (stunnedTurnsRemaining) герой считается недоступным — как будто его цвета нет на поле
     private int GetDamagePerGem(int type)
     {
-        bool hasAliveHeroOfColor = activeHeroes.Any(h => h.currentHealth > 0 && (int)h.data.resourceType == type);
+        bool hasAliveHeroOfColor = activeHeroes.Any(h => h.currentHealth > 0 && h.stunnedTurnsRemaining <= 0 && (int)h.data.resourceType == type);
         return hasAliveHeroOfColor ? aliveDamagePerGem[type] : baseDamagePerGem[type];
     }
 
     public void ResolvePlayerTurn(Dictionary<int, int> matchedTypeCounts)
     {
+        lastTurnMatchCount = matchedTypeCounts.Values.Sum();
+
         foreach (var pair in matchedTypeCounts)
         {
             int type = pair.Key;
             int count = pair.Value;
 
-            if (type == 5) // Pink — лікування + мана всім живим героям 0-4
+            if (type == 5) // Pink — лечение + мана всем живым героям 0-4
             {
                 Heal(count * pinkHealPerGem);
 
                 foreach (var hero in activeHeroes)
                 {
-                    if (hero.currentHealth > 0 && !hero.blockManaGainThisTurn && (int)hero.data.resourceType <= 4)
+                    if (hero.currentHealth > 0 && hero.stunnedTurnsRemaining <= 0 && !hero.blockManaGainThisTurn && (int)hero.data.resourceType <= 4)
                         hero.currentResource = Mathf.Min(hero.currentResource + count, hero.maxResource);
                 }
             }
@@ -176,17 +217,17 @@ public class BattleManager : MonoBehaviour
                 int finalDamage = Mathf.RoundToInt(baseDamage * damageMultiplier * heroDamageMultiplier);
                 DealDamageToEnemy(finalDamage);
 
-                // Кожен живий активний герой цього кольору отримує повну порцію ресурсу
-                // (окрім тих, хто щойно використав навичку цього ходу — їм мана не нараховується)
+                // Каждый живой активный герой этого цвета получает полную порцию ресурса
+                // (кроме тех, кто только что использовал навык в этот ход — им мана не начисляется)
                 foreach (var hero in activeHeroes)
                 {
-                    if (hero.currentHealth > 0 && !hero.blockManaGainThisTurn && (int)hero.data.resourceType == type)
+                    if (hero.currentHealth > 0 && hero.stunnedTurnsRemaining <= 0 && !hero.blockManaGainThisTurn && (int)hero.data.resourceType == type)
                         hero.currentResource = Mathf.Min(hero.currentResource + count, hero.maxResource);
                 }
             }
         }
 
-        // Блокування мани діяло рівно один хід — знімаємо його для наступного
+        // Блокировка маны действовала ровно один ход — снимаем её для следующего
         foreach (var hero in activeHeroes)
             hero.blockManaGainThisTurn = false;
 
@@ -203,18 +244,84 @@ public class BattleManager : MonoBehaviour
                 heroDamageMultiplier = 1f;
         }
 
+        if (enemyArmorDebuffTurnsRemaining > 0)
+        {
+            enemyArmorDebuffTurnsRemaining--;
+            if (enemyArmorDebuffTurnsRemaining <= 0)
+                enemyIncomingDamageMultiplier = 1f;
+        }
+
+        if (damageReflectTurnsRemaining > 0)
+        {
+            damageReflectTurnsRemaining--;
+            if (damageReflectTurnsRemaining <= 0)
+                damageReflectPercent = 0f;
+        }
+
+        if (enemyMissChanceTurnsRemaining > 0)
+        {
+            enemyMissChanceTurnsRemaining--;
+            if (enemyMissChanceTurnsRemaining <= 0)
+                enemyMissChancePercent = 0f;
+        }
+
+        if (enemyDamageMultiplierTurnsRemaining > 0)
+        {
+            enemyDamageMultiplierTurnsRemaining--;
+            if (enemyDamageMultiplierTurnsRemaining <= 0)
+                enemyDamageMultiplier = 1f;
+        }
+
+        if (teamDebuffImmuneTurnsRemaining > 0)
+            teamDebuffImmuneTurnsRemaining--;
+
+        foreach (var hero in activeHeroes)
+        {
+            if (hero.borrowedSkillTurnsRemaining > 0)
+            {
+                hero.borrowedSkillTurnsRemaining--;
+                if (hero.borrowedSkillTurnsRemaining <= 0)
+                    hero.borrowedSkill = null;
+            }
+
+            if (hero.stunnedTurnsRemaining > 0)
+                hero.stunnedTurnsRemaining--;
+
+            if (hero.skillBlockedTurnsRemaining > 0)
+                hero.skillBlockedTurnsRemaining--;
+        }
+
+        for (int i = pendingEnemyDamage.Count - 1; i >= 0; i--)
+        {
+            pendingEnemyDamage[i].turnsRemaining--;
+            if (pendingEnemyDamage[i].turnsRemaining <= 0)
+            {
+                DealDamageToEnemy(pendingEnemyDamage[i].amount);
+                pendingEnemyDamage.RemoveAt(i);
+            }
+        }
+
         OnStateChanged?.Invoke();
 
-        if (enemyHP > 0)
-            StartCoroutine(EnemyTurnRoutine());
-        else
+        if (enemyHP <= 0)
+        {
             OnEnemyDefeated();
+        }
+        else if (freeExtraTurnsRemaining > 0)
+        {
+            freeExtraTurnsRemaining--;
+            OnBattleLog?.Invoke("Extra turn — no enemy response!");
+        }
+        else
+        {
+            StartCoroutine(EnemyTurnRoutine());
+        }
     }
 
     public void Heal(int amount) => playerHP = Mathf.Min(playerMaxHP, playerHP + amount);
     public void AddShield(int amount) => playerShield += amount;
 
-    // Ефекти для панелі перевороту дошки (BoardEffectOption)
+    // Эффекты для панели переворота доски (BoardEffectOption)
     public void ApplyDamageBuff(float multiplier, int turns)
     {
         damageMultiplier = multiplier;
@@ -224,6 +331,8 @@ public class BattleManager : MonoBehaviour
 
     public void ApplyWeakenHeroes(float multiplier, int turns)
     {
+        if (teamDebuffImmuneTurnsRemaining > 0) return; // команда иммунна к дебаффам (Ангелы)
+
         heroDamageMultiplier = multiplier;
         heroDamageMultiplierTurnsRemaining = turns;
         OnStateChanged?.Invoke();
@@ -248,18 +357,72 @@ public class BattleManager : MonoBehaviour
         OnStateChanged?.Invoke();
     }
 
+    public void FullManaAllHeroes()
+    {
+        foreach (var hero in activeHeroes)
+            hero.currentResource = hero.maxResource;
+        OnStateChanged?.Invoke();
+    }
+
+    public void HealTeamPercent(float percent)
+    {
+        Heal(Mathf.RoundToInt(playerMaxHP * percent));
+    }
+
+    public void ApplyTeamShieldForTurns(int amount, int turns)
+    {
+        AddShield(amount);
+        extendedShieldTurnsRemaining = turns;
+        OnStateChanged?.Invoke();
+    }
+
+    public void StunRandomHero(int turns)
+    {
+        var hero = GetRandomAliveHero();
+        if (hero != null) hero.stunnedTurnsRemaining = turns;
+        OnStateChanged?.Invoke();
+    }
+
+    public void BlockRandomHeroSkill(int turns)
+    {
+        var hero = GetRandomAliveHero();
+        if (hero != null) hero.skillBlockedTurnsRemaining = turns;
+        OnStateChanged?.Invoke();
+    }
+
+    public void ApplyEnemyDamageBuff(float multiplier, int turns)
+    {
+        enemyDamageMultiplier = multiplier;
+        enemyDamageMultiplierTurnsRemaining = turns;
+        OnStateChanged?.Invoke();
+    }
+
     private IEnumerator EnemyTurnRoutine()
     {
         yield return new WaitForSeconds(0.5f);
 
-        EnemySkillData skill = PickEnemySkill();
-        if (skill != null)
-            UseEnemySkill(skill);
+        if (enemyStunnedNextTurn)
+        {
+            enemyStunnedNextTurn = false;
+            OnBattleLog?.Invoke("Enemy is stunned and skips its turn!");
+        }
         else
-            BasicEnemyAttack(); // якщо скіли не задані — стара проста атака
+        {
+            EnemySkillData skill = PickEnemySkill();
+            if (skill != null)
+                UseEnemySkill(skill);
+            else
+                BasicEnemyAttack(); // если скиллы не заданы — старая простая атака
+        }
 
-        // Щит діє від активації до наступного ходу гравця — після ходу ворога знімається
-        playerShield = 0;
+        // Щит действует от активации до следующего хода игрока — после хода врага снимается,
+        // если только не активен продлённый щит (ShieldTeamTurns) на несколько ходов вперёд
+        if (extendedShieldTurnsRemaining > 0)
+            extendedShieldTurnsRemaining--;
+        else
+            playerShield = 0;
+
+        playerInvulnerableNextEnemyTurn = false; // действовала ровно один ход врага
 
         OnStateChanged?.Invoke();
 
@@ -291,8 +454,13 @@ public class BattleManager : MonoBehaviour
         switch (skill.effectType)
         {
             case EnemySkillEffectType.Damage:
-                // Скіл б'є по випадковому живому герою, але НЕ враховується у забороні "3 рази поспіль"
-                ApplyDamageToHero(GetRandomAliveHero(), Mathf.RoundToInt(skill.effectValue * currentEnemy.damageMultiplier));
+                // Скилл бьёт по случайному живому герою, но НЕ учитывается в запрете "3 раза подряд"
+                if (RollEnemyMiss())
+                {
+                    OnBattleLog?.Invoke("Enemy missed!");
+                    break;
+                }
+                ApplyDamageToHero(GetRandomAliveHero(), Mathf.RoundToInt(skill.effectValue * currentEnemy.damageMultiplier * enemyDamageMultiplier));
                 break;
 
             case EnemySkillEffectType.ShieldSelf:
@@ -300,6 +468,7 @@ public class BattleManager : MonoBehaviour
                 break;
 
             case EnemySkillEffectType.WeakenHeroes:
+                if (teamDebuffImmuneTurnsRemaining > 0) break; // команда иммунна к дебаффам (Ангелы)
                 heroDamageMultiplier = 1f - skill.damageReductionPercent;
                 heroDamageMultiplierTurnsRemaining = skill.debuffDurationTurns;
                 break;
@@ -308,14 +477,20 @@ public class BattleManager : MonoBehaviour
 
     private void BasicEnemyAttack()
     {
+        if (RollEnemyMiss())
+        {
+            OnBattleLog?.Invoke("Enemy missed!");
+            return;
+        }
+
         int rawDamage = Random.Range(enemyMinAttack, enemyMaxAttack + 1);
-        float multiplier = currentEnemy != null ? currentEnemy.damageMultiplier : 1f;
+        float multiplier = (currentEnemy != null ? currentEnemy.damageMultiplier : 1f) * enemyDamageMultiplier;
         int finalDamage = Mathf.RoundToInt(rawDamage * multiplier);
 
         ApplyDamageToHero(PickBasicAttackTarget(), finalDamage);
     }
 
-    // Випадковий живий герой; exclude дозволяє прибрати конкретного героя з вибірки
+    // Случайный живой герой; exclude позволяет убрать конкретного героя из выборки
     private HeroRuntimeState GetRandomAliveHero(HeroRuntimeState exclude = null)
     {
         var candidates = activeHeroes.Where(h => h.currentHealth > 0 && h != exclude).ToList();
@@ -323,12 +498,12 @@ public class BattleManager : MonoBehaviour
         if (candidates.Count == 0)
             candidates = activeHeroes.Where(h => h.currentHealth > 0).ToList();
 
-        if (candidates.Count == 0) return null; // усі герої загинули
+        if (candidates.Count == 0) return null; // все герои погибли
 
         return candidates[Random.Range(0, candidates.Count)];
     }
 
-    // Звичайна атака ворога не може влучити в одного героя 3 рази поспіль
+    // Обычная атака врага не может попасть в одного героя 3 раза подряд
     private HeroRuntimeState PickBasicAttackTarget()
     {
         HeroRuntimeState exclude = consecutiveHitsOnLastHero >= 2 ? lastAttackedHero : null;
@@ -345,7 +520,13 @@ public class BattleManager : MonoBehaviour
 
     private void ApplyDamageToHero(HeroRuntimeState hero, int rawDamage)
     {
-        if (hero == null) return; // усі герої загинули — атакувати нікого
+        if (hero == null) return; // все герои погибли — атаковать некого
+
+        if (playerInvulnerableNextEnemyTurn)
+        {
+            OnBattleLog?.Invoke("Attack blocked — invulnerable!");
+            return;
+        }
 
         int absorbed = Mathf.Min(playerShield, rawDamage);
         playerShield -= absorbed;
@@ -353,15 +534,30 @@ public class BattleManager : MonoBehaviour
         hero.TakeDamage(applied);
 
         if (applied > 0)
-            OnBattleLog?.Invoke($"{hero.data.heroName} отримав {applied} урону");
+        {
+            OnBattleLog?.Invoke($"{hero.data.heroName} took {applied} damage");
+
+            if (damageReflectTurnsRemaining > 0 && damageReflectPercent > 0f)
+            {
+                int reflected = Mathf.RoundToInt(applied * damageReflectPercent);
+                if (reflected > 0)
+                    DealDamageToEnemy(reflected);
+            }
+        }
 
         if (hero.currentHealth <= 0)
             OnHeroDefeated(hero);
     }
 
+    // Шанс промаха врага (Демоны: ReduceEnemyAccuracy) — проверять перед применением урона от врага
+    private bool RollEnemyMiss()
+    {
+        return enemyMissChanceTurnsRemaining > 0 && Random.value < enemyMissChancePercent;
+    }
+
     private void OnHeroDefeated(HeroRuntimeState hero)
     {
-        Debug.Log($"Герой {hero.data.heroName} загинув!");
+        Debug.Log($"Герой {hero.data.heroName} погиб!");
 
         if (activeHeroes.All(h => h.currentHealth <= 0))
             OnPlayerDefeated();
@@ -369,23 +565,65 @@ public class BattleManager : MonoBehaviour
 
     private void OnEnemyDefeated()
     {
-        Debug.Log("Ворог переможений!");
+        Debug.Log("Враг побеждён!");
         AccountManager.Instance?.GrantExperience(accountExperienceReward);
     }
-    private void OnPlayerDefeated() => Debug.Log("Гравець програв бій.");
+    private void OnPlayerDefeated() => Debug.Log("Игрок проиграл бой.");
 
-    // Тепер прив'язано до конкретного героя, а не до глобального ресурсу
+    // Теперь привязано к конкретному герою, а не к глобальному ресурсу
     public bool TryUseSkill(HeroRuntimeState hero, SkillData skill)
     {
         if (hero.currentHealth <= 0)
             return false;
 
-        if (hero.currentResource < skill.cost)
+        if (hero.stunnedTurnsRemaining > 0 || hero.skillBlockedTurnsRemaining > 0)
+            return false; // герой оглушён (StunRandomHero) или скилл заблокирован (BlockHeroSkill)
+
+        int actualCost = Mathf.RoundToInt(skill.cost * (1f - hero.costReductionPercent));
+
+        if (hero.currentResource < actualCost)
             return false;
 
-        hero.currentResource -= skill.cost;
-        hero.blockManaGainThisTurn = true; // цього героя не можна поповнити маною на цьому ході
+        hero.costReductionPercent = 0f; // скидка (ReduceAllyNextSkillCost) тратится вместе с этим использованием
+        hero.currentResource -= actualCost;
+        hero.blockManaGainThisTurn = true; // этому герою нельзя пополнить ману в этот ход
+        hero.lastUsedSkill = skill; // для CopyAllyLastSkill
 
+        ApplySkillEffect(hero, skill);
+
+        OnStateChanged?.Invoke();
+
+        bool skipsImmediateEnemyTurn =
+            skill.effectType == SkillEffectType.ConvertAndDestroyRed ||
+            skill.effectType == SkillEffectType.DestroyRows ||
+            skill.effectType == SkillEffectType.DestroyRandomGems ||
+            skill.effectType == SkillEffectType.DestroyHarmfulTile ||
+            skill.effectType == SkillEffectType.FavorableReshuffle ||
+            skill.effectType == SkillEffectType.ExtraTurn ||
+            skill.effectType == SkillEffectType.DoubleFreeTurn;
+
+        if (!skipsImmediateEnemyTurn)
+        {
+            if (enemyHP <= 0)
+                OnEnemyDefeated();
+            else
+                StartCoroutine(EnemyTurnRoutine());
+        }
+
+        return true;
+    }
+
+    // Случайный живой герой, кроме exclude (без фолбэка на самого exclude — в отличие от GetRandomAliveHero)
+    private HeroRuntimeState GetRandomOtherLivingHero(HeroRuntimeState exclude)
+    {
+        var candidates = activeHeroes.Where(h => h.currentHealth > 0 && h != exclude).ToList();
+        return candidates.Count > 0 ? candidates[Random.Range(0, candidates.Count)] : null;
+    }
+
+    // Вся логика эффектов скилла — отдельно от оплаты/пометки хода, чтобы CopyAllyLastSkill могло
+    // бесплатно применить скилл союзника, вызвав этот же метод напрямую
+    private void ApplySkillEffect(HeroRuntimeState hero, SkillData skill)
+    {
         switch (skill.effectType)
         {
             case SkillEffectType.Damage:
@@ -409,31 +647,166 @@ public class BattleManager : MonoBehaviour
                 break;
 
             case SkillEffectType.ShieldPercent:
-                int shieldAmount = Mathf.RoundToInt(playerMaxHP * skill.shieldPercentOfMaxHP);
-                AddShield(shieldAmount);
+                AddShield(Mathf.RoundToInt(playerMaxHP * skill.shieldPercentOfMaxHP));
                 break;
 
             case SkillEffectType.DamageBuffTurns:
                 damageMultiplier = skill.damageMultiplier;
                 damageMultiplierTurnsRemaining = skill.buffDurationTurns;
                 break;
+
+            // --- Эльфы ---
+            case SkillEffectType.DestroyRandomGems:
+                StartCoroutine(gridManager.ExecuteDestroyRandomGemsSkill(skill.effectValue));
+                break;
+
+            case SkillEffectType.DestroyHarmfulTile:
+                StartCoroutine(gridManager.ExecuteDestroyHarmfulTileSkill());
+                break;
+
+            case SkillEffectType.ConvertCellToJoker:
+                gridManager.ConvertRandomCellToJoker();
+                break;
+
+            case SkillEffectType.FavorableReshuffle:
+                StartCoroutine(gridManager.ExecuteFavorableReshuffleSkill());
+                break;
+
+            // --- Гномы/феи ---
+            case SkillEffectType.ReduceEnemyArmor:
+                enemyIncomingDamageMultiplier = 1f + skill.shieldPercentOfMaxHP;
+                enemyArmorDebuffTurnsRemaining = skill.buffDurationTurns;
+                break;
+
+            case SkillEffectType.Invulnerability:
+                playerInvulnerableNextEnemyTurn = true;
+                break;
+
+            case SkillEffectType.ShieldAndReflect:
+                AddShield(skill.effectValue);
+                damageReflectPercent = skill.shieldPercentOfMaxHP;
+                damageReflectTurnsRemaining = skill.buffDurationTurns;
+                break;
+
+            // --- Орки ---
+            case SkillEffectType.MultiHit:
+                for (int i = 0; i < skill.hitCount; i++)
+                    DealDamageToEnemy(Mathf.RoundToInt(skill.effectValue * hero.damageMultiplier));
+                break;
+
+            case SkillEffectType.DamagePercentCurrentEnemyHP:
+                DealDamageToEnemy(Mathf.RoundToInt(enemyHP * skill.shieldPercentOfMaxHP));
+                break;
+
+            case SkillEffectType.SacrificeForDamage:
+                int sacrificeAmount = Mathf.RoundToInt(playerHP * skill.shieldPercentOfMaxHP);
+                playerHP = Mathf.Max(1, playerHP - sacrificeAmount); // не убивает игрока самим скиллом
+                DealDamageToEnemy(Mathf.RoundToInt(skill.effectValue * skill.damageMultiplier));
+                break;
+
+            // --- Звероlюди ---
+            case SkillEffectType.ExtraTurn:
+                break; // само использование не провоцирует ответ врага (см. TryUseSkill)
+
+            case SkillEffectType.StunEnemy:
+                enemyStunnedNextTurn = true;
+                break;
+
+            case SkillEffectType.DamageScalingWithMatches:
+                DealDamageToEnemy(skill.effectValue * Mathf.Max(1, lastTurnMatchCount));
+                break;
+
+            case SkillEffectType.DoubleFreeTurn:
+                freeExtraTurnsRemaining += 1; // + само использование тоже без ответа врага
+                break;
+
+            // --- Дракониды ---
+            case SkillEffectType.DelayedDamageMark:
+                pendingEnemyDamage.Add(new PendingDamage { turnsRemaining = skill.buffDurationTurns, amount = skill.effectValue });
+                break;
+
+            case SkillEffectType.DamagePercentMaxEnemyHP:
+                DealDamageToEnemy(Mathf.RoundToInt(enemyMaxHP * skill.shieldPercentOfMaxHP));
+                break;
+
+            case SkillEffectType.CleanseDebuffsAndDamage:
+                heroDamageMultiplier = 1f;
+                heroDamageMultiplierTurnsRemaining = 0;
+                DealDamageToEnemy(skill.effectValue);
+                break;
+
+            // --- Демоны ---
+            case SkillEffectType.ReduceEnemyAccuracy:
+                enemyMissChancePercent = skill.shieldPercentOfMaxHP;
+                enemyMissChanceTurnsRemaining = skill.buffDurationTurns;
+                break;
+
+            case SkillEffectType.StealEnemyShield:
+                int stolenShield = enemyShield;
+                enemyShield = 0;
+                AddShield(stolenShield);
+                break;
+
+            case SkillEffectType.WeaknessMarkNextHit:
+                nextHitDamageMultiplier = skill.damageMultiplier;
+                break;
+
+            case SkillEffectType.TransferDebuffToEnemy:
+                if (heroDamageMultiplierTurnsRemaining > 0)
+                {
+                    enemyDamageMultiplier = heroDamageMultiplier;
+                    enemyDamageMultiplierTurnsRemaining = heroDamageMultiplierTurnsRemaining;
+                    heroDamageMultiplier = 1f;
+                    heroDamageMultiplierTurnsRemaining = 0;
+                }
+                break;
+
+            // --- Ангелы ---
+            case SkillEffectType.FullManaRefill:
+                hero.currentResource = hero.maxResource;
+                break;
+
+            case SkillEffectType.TeamDebuffImmunity:
+                teamDebuffImmuneTurnsRemaining = skill.buffDurationTurns;
+                break;
+
+            case SkillEffectType.ReviveHero:
+                var deadHero = activeHeroes.FirstOrDefault(h => h.currentHealth <= 0);
+                if (deadHero != null)
+                    deadHero.currentHealth = Mathf.Max(1, Mathf.RoundToInt(deadHero.maxHealth * skill.shieldPercentOfMaxHP));
+                break;
+
+            // --- Люди ---
+            case SkillEffectType.ManaTransfer:
+                var manaTarget = GetRandomOtherLivingHero(hero);
+                if (manaTarget != null)
+                    manaTarget.currentResource = Mathf.Min(manaTarget.maxResource, manaTarget.currentResource + skill.effectValue);
+                break;
+
+            case SkillEffectType.ReduceAllyNextSkillCost:
+                var costTarget = GetRandomOtherLivingHero(hero);
+                if (costTarget != null)
+                    costTarget.costReductionPercent = skill.shieldPercentOfMaxHP;
+                break;
+
+            case SkillEffectType.CopyAllyLastSkill:
+                var copyTarget = activeHeroes.FirstOrDefault(h => h != hero && h.currentHealth > 0 && h.lastUsedSkill != null);
+                if (copyTarget != null && copyTarget.lastUsedSkill.effectType != SkillEffectType.CopyAllyLastSkill)
+                    ApplySkillEffect(hero, copyTarget.lastUsedSkill);
+                break;
+
+            case SkillEffectType.BorrowAllyLegendarySkill:
+                var legendaryDonor = activeHeroes.FirstOrDefault(h => h != hero && h.currentHealth > 0 && h.data.skills != null && h.data.skills.Length >= 4);
+                if (legendaryDonor != null)
+                {
+                    hero.borrowedSkill = legendaryDonor.data.skills[3];
+                    hero.borrowedSkillTurnsRemaining = skill.buffDurationTurns;
+                }
+                break;
         }
-
-        OnStateChanged?.Invoke();
-
-        if (skill.effectType != SkillEffectType.ConvertAndDestroyRed &&
-            skill.effectType != SkillEffectType.DestroyRows)
-        {
-            if (enemyHP <= 0)
-                OnEnemyDefeated();
-            else
-                StartCoroutine(EnemyTurnRoutine());
-        }
-
-        return true;
     }
 
-    // Допоміжний метод — знайти стан конкретного героя за його HeroData
+    // Вспомогательный метод — найти состояние конкретного героя по его HeroData
     public HeroRuntimeState GetHeroState(HeroData data)
     {
         return activeHeroes.Find(h => h.data == data);

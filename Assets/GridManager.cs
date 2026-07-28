@@ -12,16 +12,16 @@ public class GridManager : MonoBehaviour
     [Header("Префабы")]
     public GameObject[] itemPrefabs; // Массив 3D-префабов разных типов
 
-    [Header("Бій")]
+    [Header("Бой")]
     public BattleManager battleManager;
 
-    [Header("Тип 'Red' в масиві itemPrefabs")]
-public int redTypeIndex = 0; // перевір, що Element 0 = RedGem у твоєму масиві
+    [Header("Тип 'Red' в массиве itemPrefabs")]
+public int redTypeIndex = 0; // проверь, что Element 0 = RedGem в твоём массиве
 
-    // Поки true — ввід (клік по фішці) ігнорується: йде свап/падіння/каскад
+    // Пока true — ввод (клик по фишке) игнорируется: идёт свап/падение/каскад
     public bool isBusy;
 
-    [Header("Підказка ходу (якщо гравець довго не грає)")]
+    [Header("Подсказка хода (если игрок долго не играет)")]
     public float hintDelay = 6f;
     private float idleTimer = 0f;
     private Item hintItem;
@@ -41,7 +41,7 @@ public int redTypeIndex = 0; // перевір, що Element 0 = RedGem у тв�
             ShowHint();
     }
 
-    // Викликається з Item.OnMouseDown() при будь-якому кліку гравця — скидає таймер і ховає підказку
+    // Вызывается из Item.OnMouseDown() при любом клике игрока — сбрасывает таймер и прячет подсказку
     public void ResetIdleTimer()
     {
         idleTimer = 0f;
@@ -67,14 +67,14 @@ public int redTypeIndex = 0; // перевір, що Element 0 = RedGem у тв�
         hintItem = null;
     }
 
-    // Безпечний доступ до сітки ззовні (наприклад, з Item під час свайпу)
+    // Безопасный доступ к сетке снаружи (например, из Item во время свайпа)
     public Item GetItemAt(int x, int y)
     {
         if (x < 0 || x >= width || y < 0 || y >= height) return null;
         return grid[x, y];
     }
 
-    // Шукає першу фішку, яку можна пересунути так, щоб зібрати 3+ в ряд одного кольору
+    // Ищет первую фишку, которую можно передвинуть так, чтобы собрать 3+ в ряд одного цвета
     private Item FindHintItem()
     {
         for (int x = 0; x < width; x++)
@@ -96,14 +96,14 @@ public IEnumerator ExecuteConvertAndDestroySkill(int convertCount)
 {
     isBusy = true;
 
-    // Збираємо всі не-червоні фішки на полі
+    // Собираем все не-красные фишки на поле
     List<Item> nonRed = new List<Item>();
     for (int x = 0; x < width; x++)
         for (int y = 0; y < height; y++)
             if (grid[x, y] != null && grid[x, y].type != redTypeIndex)
                 nonRed.Add(grid[x, y]);
 
-    // Перемішуємо список (Fisher-Yates), щоб вибір був випадковим
+    // Перемешиваем список (Fisher-Yates), чтобы выбор был случайным
     for (int i = nonRed.Count - 1; i > 0; i--)
     {
         int r = Random.Range(0, i + 1);
@@ -112,7 +112,7 @@ public IEnumerator ExecuteConvertAndDestroySkill(int convertCount)
 
     int actualCount = Mathf.Min(convertCount, nonRed.Count);
 
-    // Конвертуємо обрані фішки в червоні (пересоздаём на тому ж місці)
+    // Конвертируем выбранные фишки в красные (пересоздаём на том же месте)
     for (int i = 0; i < actualCount; i++)
     {
         Item old = nonRed[i];
@@ -126,7 +126,7 @@ public IEnumerator ExecuteConvertAndDestroySkill(int convertCount)
 
     yield return new WaitForSeconds(0.35f);
 
-    // Збираємо всі червоні фішки (і старі, і щойно конвертовані)
+    // Собираем все красные фишки (и старые, и только что конвертированные)
     List<Item> allRed = new List<Item>();
     for (int x = 0; x < width; x++)
         for (int y = 0; y < height; y++)
@@ -156,7 +156,7 @@ private IEnumerator PopInAnimation(Transform t)
     {
         elapsed += Time.deltaTime;
         float p = elapsed / duration;
-        // невеликий "перескок" через 1 для приємного pop-ефекту
+        // небольшой "перескок" через 1 для приятного pop-эффекта
         float scaleMod = Mathf.Sin(p * Mathf.PI * 0.5f) * 1.1f;
         t.localScale = targetScale * Mathf.Min(scaleMod, 1f);
         yield return null;
@@ -169,23 +169,23 @@ private IEnumerator PopInAnimation(Transform t)
 
     private Item[,] grid;
 
-    [Header("Перегородка під фішками (ховає їх при перевороті дошки)")]
-    public float occluderYOffset = -0.05f; // трохи нижче площини фішок (Y=0)
-    public float occluderMargin = 0f;      // запас по краях понад розмір сітки
+    [Header("Перегородка под фишками (прячет их при перевороте доски)")]
+    public float occluderYOffset = -0.05f; // чуть ниже плоскости фишек (Y=0)
+    public float occluderMargin = 0f;      // запас по краям сверх размера сетки
     public Color occluderColor = new Color(0.15f, 0.15f, 0.15f);
 
     private void Start()
     {
-        Debug.Log("Start викликано на " + gameObject.name);
+        Debug.Log("Start вызван на " + gameObject.name);
         grid = new Item[width, height];
         CreateChipOccluder();
         GenerateBoard();
         StartCoroutine(InitialDeadlockCheck());
     }
 
-    // Суцільна непрозора панель під фішками — частина тієї ж риг-ієрархії (дитина GridManager),
-    // тож обертається разом з дошкою й фішками при перевороті та завжди ховає їх знизу,
-    // незалежно від точності пивота самого перевороту.
+    // Сплошная непрозрачная панель под фишками — часть той же риг-иерархии (дочерний объект GridManager),
+    // поэтому вращается вместе с доской и фишками при перевороте и всегда прячет их снизу,
+    // независимо от точности пивота самого переворота.
     private void CreateChipOccluder()
     {
         GameObject occluder = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -279,6 +279,9 @@ private IEnumerator PopInAnimation(Transform t)
 // Обмен двух соседних фишек местами
     public IEnumerator SwapItems(Item a, Item b)
 {
+    if (a.isFrozen || b.isFrozen)
+        yield break; // замороженную фишку нельзя двигать (FreezeRandomRowOrColumn)
+
     isBusy = true;
 
     int aX = a.x, aY = a.y;
@@ -299,7 +302,7 @@ private IEnumerator PopInAnimation(Transform t)
 
     if (matches.Count > 0)
     {
-        turnMatchedTypes.Clear(); // старт обліку нового ходу
+        turnMatchedTypes.Clear(); // старт учёта нового хода
         yield return StartCoroutine(ProcessMatches(matches));
     }
     else
@@ -318,6 +321,9 @@ private IEnumerator PopInAnimation(Transform t)
     }
 }
 
+    // Джокер (isJoker) матчится с фишкой любого цвета — ConvertCellToJoker (Эльфы)
+    private bool TypesMatch(Item a, Item b) => a.isJoker || b.isJoker || a.type == b.type;
+
     // Поиск всех фишек, собранных по 3 и более в ряд
     public List<Item> FindMatches()
     {
@@ -334,7 +340,7 @@ private IEnumerator PopInAnimation(Transform t)
 
                 if (a != null && b != null && c != null)
                 {
-                    if (a.type == b.type && b.type == c.type)
+                    if (TypesMatch(a, b) && TypesMatch(b, c) && TypesMatch(a, c))
                     {
                         matchedItems.Add(a);
                         matchedItems.Add(b);
@@ -355,7 +361,7 @@ private IEnumerator PopInAnimation(Transform t)
 
                 if (a != null && b != null && c != null)
                 {
-                    if (a.type == b.type && b.type == c.type)
+                    if (TypesMatch(a, b) && TypesMatch(b, c) && TypesMatch(a, c))
                     {
                         matchedItems.Add(a);
                         matchedItems.Add(b);
@@ -378,10 +384,10 @@ public IEnumerator PlayDestroyAnimation()
     {
         t += Time.deltaTime;
         float p = t / duration;
-        // трохи "розпухає", потім стискається до нуля — приємний pop-ефект
+        // немного "распухает", потом стягивается до нуля — приятный pop-эффект
         float scaleMod = Mathf.Lerp(1f, 0f, p) + Mathf.Sin(p * Mathf.PI) * 0.3f;
         transform.localScale = startScale * Mathf.Max(scaleMod, 0f);
-        transform.Rotate(Vector3.up, 360f * Time.deltaTime); // легке обертання для ефекту
+        transform.Rotate(Vector3.up, 360f * Time.deltaTime); // лёгкое вращение для эффекта
         yield return null;
     }
 
@@ -456,20 +462,21 @@ public IEnumerator PlayDestroyAnimation()
     }
     else
     {
-        // Каскади завершились — це реальний кінець ходу гравця
+        // Каскады завершились — это реальный конец хода игрока
         if (battleManager != null && turnMatchedTypes.Count > 0)
         {
+            TickFrozenTiles();
             battleManager.ResolvePlayerTurn(turnMatchedTypes);
         }
 
-        // Перевіряємо, чи лишився хоч один можливий хід — якщо ні, перегенеровуємо поле
+        // Проверяем, остался ли хоть один возможный ход — если нет, перегенерируем поле
         yield return StartCoroutine(ReshuffleIfNoMoves());
 
         isBusy = false;
     }
 }
 
-// Чи існує хоча б один сусідній обмін, що дасть матч 3+
+// Есть ли хотя бы один соседний обмен, который даст матч 3+
 private bool HasPossibleMoves()
 {
     for (int x = 0; x < width; x++)
@@ -487,7 +494,7 @@ private bool HasPossibleMoves()
     return false;
 }
 
-// Тимчасово міняє місцями в логічній сітці (без анімації), перевіряє матч, повертає як було
+// Временно меняет местами в логической сетке (без анимации), проверяет матч, возвращает как было
 private bool WouldCreateMatch(int x1, int y1, int x2, int y2)
 {
     Item a = grid[x1, y1];
@@ -504,14 +511,14 @@ private bool WouldCreateMatch(int x1, int y1, int x2, int y2)
     return hasMatch;
 }
 
-// Якщо на полі немає жодного можливого ходу — перегенеровуємо його (без нарахування ходу гравцю)
+// Если на поле нет ни одного возможного хода — перегенерируем его (без начисления хода игроку)
 private IEnumerator ReshuffleIfNoMoves()
 {
     int safetyCounter = 0;
 
     while (!HasPossibleMoves() && safetyCounter < 20)
     {
-        Debug.Log("Немає можливих ходів — перегенеровую поле.");
+        Debug.Log("Нет возможных ходов — перегенерирую поле.");
         yield return StartCoroutine(ReshuffleBoard());
         safetyCounter++;
     }
@@ -531,7 +538,7 @@ private IEnumerator ReshuffleBoard()
         }
     }
 
-    yield return null; // дати Destroy() відпрацювати перед новим спавном
+    yield return null; // дать Destroy() отработать перед новым спавном
 
     for (int x = 0; x < width; x++)
         for (int y = 0; y < height; y++)
@@ -565,7 +572,7 @@ private void OnDrawGizmos()
     }
 }
 
-            // Знищує всі фішки в діапазоні рядів [rowStart, rowEnd] включно (по осі Y сітки)
+            // Уничтожает все фишки в диапазоне рядов [rowStart, rowEnd] включительно (по оси Y сетки)
         public IEnumerator ExecuteDestroyRowsSkill(int rowStart, int rowEnd)
         {
             isBusy = true;
@@ -595,4 +602,155 @@ private void OnDrawGizmos()
             }
 }
 
-}    
+// Уничтожает N случайных фишек на поле (Эльфы, T1)
+public IEnumerator ExecuteDestroyRandomGemsSkill(int count)
+{
+    isBusy = true;
+
+    List<Item> allItems = new List<Item>();
+    for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+            if (grid[x, y] != null)
+                allItems.Add(grid[x, y]);
+
+    for (int i = allItems.Count - 1; i > 0; i--)
+    {
+        int r = Random.Range(0, i + 1);
+        (allItems[i], allItems[r]) = (allItems[r], allItems[i]);
+    }
+
+    int actualCount = Mathf.Min(count, allItems.Count);
+    List<Item> toDestroy = allItems.GetRange(0, actualCount);
+
+    if (toDestroy.Count > 0)
+    {
+        turnMatchedTypes.Clear();
+        yield return StartCoroutine(ProcessMatches(toDestroy));
+    }
+    else
+    {
+        isBusy = false;
+    }
+}
+
+// Уничтожает первую найденную "вредную" фишку (Эльфы, T2) — заготовка под будущую систему дебаффов поля.
+// Пока на поле нет ни одной isHarmful-фишки, скилл просто ничего не делает.
+public IEnumerator ExecuteDestroyHarmfulTileSkill()
+{
+    isBusy = true;
+
+    Item harmful = null;
+    for (int x = 0; x < width && harmful == null; x++)
+        for (int y = 0; y < height && harmful == null; y++)
+            if (grid[x, y] != null && grid[x, y].isHarmful)
+                harmful = grid[x, y];
+
+    if (harmful != null)
+    {
+        turnMatchedTypes.Clear();
+        yield return StartCoroutine(ProcessMatches(new List<Item> { harmful }));
+    }
+    else
+    {
+        isBusy = false;
+    }
+}
+
+// Превращает случайную фишку в джокер (Эльфы, T3) — не уничтожает ничего и не вызывает каскад
+public void ConvertRandomCellToJoker()
+{
+    List<Item> candidates = new List<Item>();
+    for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+            if (grid[x, y] != null && !grid[x, y].isJoker)
+                candidates.Add(grid[x, y]);
+
+    if (candidates.Count == 0) return;
+
+    candidates[Random.Range(0, candidates.Count)].MarkAsJoker();
+}
+
+// Полный шафл доски с гарантированным крупным (4 в ряд) матчем в пользу игрока (Эльфы, T4)
+public IEnumerator ExecuteFavorableReshuffleSkill()
+{
+    isBusy = true;
+
+    for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+            if (grid[x, y] != null)
+            {
+                Destroy(grid[x, y].gameObject);
+                grid[x, y] = null;
+            }
+
+    yield return null;
+
+    for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+        {
+            int randomType = GetValidRandomType(x, y);
+            SpawnItem(x, y, randomType);
+        }
+
+    yield return new WaitForSeconds(0.25f);
+
+    // Форсируем гарантированный матч 4-в-ряд в случайной строке
+    int guaranteedType = Random.Range(0, itemPrefabs.Length);
+    int rowY = Random.Range(0, height);
+    int startX = Random.Range(0, width - 3);
+
+    List<Item> guaranteedMatch = new List<Item>();
+    for (int i = 0; i < 4; i++)
+    {
+        int gx = startX + i;
+        Destroy(grid[gx, rowY].gameObject);
+        SpawnItem(gx, rowY, guaranteedType);
+        guaranteedMatch.Add(grid[gx, rowY]);
+    }
+
+    yield return new WaitForSeconds(0.1f);
+
+    turnMatchedTypes.Clear();
+    yield return StartCoroutine(ProcessMatches(guaranteedMatch));
+}
+
+// Замораживает случайную строку либо столбец на N ходов (негативный эффект гемблинг-колеса)
+public void FreezeRandomRowOrColumn(int turns)
+{
+    List<Item> toFreeze = new List<Item>();
+
+    if (Random.value < 0.5f)
+    {
+        int y = Random.Range(0, height);
+        for (int x = 0; x < width; x++)
+            if (grid[x, y] != null) toFreeze.Add(grid[x, y]);
+    }
+    else
+    {
+        int x = Random.Range(0, width);
+        for (int y = 0; y < height; y++)
+            if (grid[x, y] != null) toFreeze.Add(grid[x, y]);
+    }
+
+    foreach (var item in toFreeze)
+        item.Freeze(turns);
+}
+
+// Уменьшает счётчик заморозки на замороженных фишках в конце каждого реального хода игрока
+private void TickFrozenTiles()
+{
+    for (int x = 0; x < width; x++)
+    {
+        for (int y = 0; y < height; y++)
+        {
+            Item item = grid[x, y];
+            if (item == null || !item.isFrozen) continue;
+
+            item.frozenTurnsRemaining--;
+            if (item.frozenTurnsRemaining <= 0)
+                item.Unfreeze();
+        }
+    }
+}
+
+}

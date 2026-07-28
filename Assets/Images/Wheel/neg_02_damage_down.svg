@@ -1,0 +1,25 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bgGlowN2" cx="50%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#4a1a1a"/>
+      <stop offset="100%" stop-color="#1c0808"/>
+    </radialGradient>
+  </defs>
+  <circle cx="100" cy="100" r="94" fill="url(#bgGlowN2)" stroke="#8a2a2a" stroke-width="6"/>
+  <!-- broken sword -->
+  <g transform="rotate(45 100 100)">
+    <rect x="94" y="90" width="12" height="45" fill="#9a9a9a" stroke="#5a5a5a" stroke-width="2"/>
+    <polygon points="94,60 106,60 100,45" fill="#9a9a9a" stroke="#5a5a5a" stroke-width="2"/>
+    <rect x="94" y="65" width="12" height="18" fill="#9a9a9a" stroke="#5a5a5a" stroke-width="2" transform="translate(6,-4) rotate(20 100 74)"/>
+    <rect x="80" y="140" width="40" height="10" rx="3" fill="#7a4a1e"/>
+    <rect x="95" y="148" width="10" height="20" fill="#5a3414"/>
+  </g>
+  <!-- crack lines -->
+  <g stroke="#ff5a5a" stroke-width="4" stroke-linecap="round">
+    <line x1="100" y1="70" x2="88" y2="85"/>
+    <line x1="100" y1="70" x2="112" y2="82"/>
+  </g>
+  <!-- down arrow with percent -->
+  <polygon points="60,45 80,45 80,65 92,65 70,90 48,65 60,65" fill="#ff5a5a"/>
+  <text x="140" y="65" font-family="Arial, sans-serif" font-size="30" font-weight="bold" fill="#ff5a5a" text-anchor="middle">%</text>
+</svg>

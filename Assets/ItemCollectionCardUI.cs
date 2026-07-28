@@ -16,7 +16,7 @@ public class ItemCollectionCardUI : MonoBehaviour
     private TMP_Text levelText;
     private TMP_Text quantityText;
 
-    // stack — конкретний стек (рівень) цього предмета; null, якщо жодної копії не отримано (картка заблокована)
+    // stack — конкретный стек (уровень) этого предмета; null, если ни одной копии не получено (карточка заблокирована)
     public void Setup(ItemData data, ItemOwnershipData ownedStack, ItemDetailUI detail)
     {
         itemData = data;

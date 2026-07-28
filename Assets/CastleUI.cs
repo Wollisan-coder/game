@@ -88,12 +88,12 @@ public class CastleUI : MonoBehaviour
         accountText.alignment = TextAlignmentOptions.MidlineRight;
         accountText.color = Color.white;
 
-        // --- Навігація — так само, як кнопки внизу SquadPanel: якір (0.5,0), розмір 200x100, y=50 ---
+        // --- Навигация — так же, как кнопки внизу SquadPanel: якорь (0.5,0), размер 200x100, y=50 ---
         CreateNavButton(panelRect, "Squad", new Vector2(-220, 50), () => { owner?.ShowSquad(); });
         CreateNavButton(panelRect, "Inventory", new Vector2(0, 50), () => { owner?.ShowItemCollection(); });
         CreateNavButton(panelRect, "Collection", new Vector2(220, 50), () => { owner?.ShowCollection(); });
 
-        // --- Сітка будівель ---
+        // --- Сетка зданий ---
         var scrollObj = new GameObject("Scroll View", typeof(RectTransform));
         var scrollRect = (RectTransform)scrollObj.transform;
         scrollRect.SetParent(panelRect, false);
@@ -168,7 +168,7 @@ public class CastleUI : MonoBehaviour
         var text = textObj.AddComponent<TextMeshProUGUI>();
         text.text = label;
         text.alignment = TextAlignmentOptions.Center;
-        text.color = Color.black; // текст кнопок замку — окремо від глобального ConfirmationDialog.ButtonTextColor
+        text.color = Color.black; // текст кнопок замка — отдельно от глобального ConfirmationDialog.ButtonTextColor
     }
 
     public void Refresh()
@@ -358,6 +358,6 @@ public class CastleUI : MonoBehaviour
         text.text = label;
         text.fontSize = 12;
         text.alignment = TextAlignmentOptions.Center;
-        text.color = Color.black; // текст кнопок замку — окремо від глобального ConfirmationDialog.ButtonTextColor
+        text.color = Color.black; // текст кнопок замка — отдельно от глобального ConfirmationDialog.ButtonTextColor
     }
 }

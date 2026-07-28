@@ -1,0 +1,20 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bgGlowN4" cx="50%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#4a1a2a"/>
+      <stop offset="100%" stop-color="#200a12"/>
+    </radialGradient>
+  </defs>
+  <circle cx="100" cy="100" r="94" fill="url(#bgGlowN4)" stroke="#8a2a2a" stroke-width="6"/>
+  <!-- skull (enemy) -->
+  <path d="M100 55 C 130 55 145 78 145 100 C145 115 138 122 132 128 L132 140 L68 140 L68 128 C 62 122 55 115 55 100 C 55 78 70 55 100 55 Z"
+        fill="#e8e4d8" stroke="#8a8272" stroke-width="3"/>
+  <circle cx="82" cy="98" r="9" fill="#2a2016"/>
+  <circle cx="118" cy="98" r="9" fill="#2a2016"/>
+  <polygon points="100,105 94,120 106,120" fill="#2a2016"/>
+  <rect x="70" y="132" width="8" height="14" fill="#e8e4d8"/>
+  <rect x="90" y="132" width="8" height="14" fill="#e8e4d8"/>
+  <rect x="110" y="132" width="8" height="14" fill="#e8e4d8"/>
+  <!-- red up arrow -->
+  <polygon points="155,150 175,150 175,130 187,130 165,105 143,130 155,130" fill="#ff3d3d"/>
+</svg>
