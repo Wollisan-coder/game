@@ -55,6 +55,9 @@ public class BattleManager : MonoBehaviour
     private HeroRuntimeState lastAttackedHero;
     private int consecutiveHitsOnLastHero;
 
+    [Header("Переворот дошки (ефекти) — раз за бій")]
+    public bool boardFlipUsedThisBattle = false;
+
         private EnemyData ResolveEnemy()
     {
         // 1. Конкретний ворог, обраний гравцем у колекції (якщо не форсуємо рандом)
@@ -76,6 +79,7 @@ public class BattleManager : MonoBehaviour
             private void Awake()
     {
         playerHP = playerMaxHP;
+        boardFlipUsedThisBattle = false;
 
         currentEnemy = ResolveEnemy();
         if (currentEnemy != null)
@@ -209,6 +213,40 @@ public class BattleManager : MonoBehaviour
 
     public void Heal(int amount) => playerHP = Mathf.Min(playerMaxHP, playerHP + amount);
     public void AddShield(int amount) => playerShield += amount;
+
+    // Ефекти для панелі перевороту дошки (BoardEffectOption)
+    public void ApplyDamageBuff(float multiplier, int turns)
+    {
+        damageMultiplier = multiplier;
+        damageMultiplierTurnsRemaining = turns;
+        OnStateChanged?.Invoke();
+    }
+
+    public void ApplyWeakenHeroes(float multiplier, int turns)
+    {
+        heroDamageMultiplier = multiplier;
+        heroDamageMultiplierTurnsRemaining = turns;
+        OnStateChanged?.Invoke();
+    }
+
+    public void AddEnemyShield(int amount)
+    {
+        enemyShield += amount;
+        OnStateChanged?.Invoke();
+    }
+
+    public void BlockManaForAllHeroes()
+    {
+        foreach (var hero in activeHeroes)
+            hero.blockManaGainThisTurn = true;
+        OnStateChanged?.Invoke();
+    }
+
+    public void DamageRandomHero(int amount)
+    {
+        ApplyDamageToHero(GetRandomAliveHero(), amount);
+        OnStateChanged?.Invoke();
+    }
 
     private IEnumerator EnemyTurnRoutine()
     {

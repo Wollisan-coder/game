@@ -5,8 +5,8 @@ using UnityEngine;
 public class GridManager : MonoBehaviour
 {
     [Header("Настройки сетки")]
-    public int width = 7;
-    public int height = 7;
+    public int width = 8;
+    public int height = 8;
     public float cellSize = 1.0f; // Расстояние между центрами фишек
 
     [Header("Префабы")]
@@ -20,6 +20,77 @@ public int redTypeIndex = 0; // перевір, що Element 0 = RedGem у тв�
 
     // Поки true — ввід (клік по фішці) ігнорується: йде свап/падіння/каскад
     public bool isBusy;
+
+    [Header("Підказка ходу (якщо гравець довго не грає)")]
+    public float hintDelay = 6f;
+    private float idleTimer = 0f;
+    private Item hintItem;
+    private bool hintActive = false;
+
+    private void Update()
+    {
+        if (isBusy)
+        {
+            idleTimer = 0f;
+            return;
+        }
+
+        idleTimer += Time.deltaTime;
+
+        if (!hintActive && idleTimer >= hintDelay)
+            ShowHint();
+    }
+
+    // Викликається з Item.OnMouseDown() при будь-якому кліку гравця — скидає таймер і ховає підказку
+    public void ResetIdleTimer()
+    {
+        idleTimer = 0f;
+        ClearHint();
+    }
+
+    private void ShowHint()
+    {
+        Item hint = FindHintItem();
+        if (hint == null) return;
+
+        hintItem = hint;
+        hintItem.SetHighlighted(true);
+        hintActive = true;
+    }
+
+    private void ClearHint()
+    {
+        if (hintActive && hintItem != null)
+            hintItem.SetHighlighted(false);
+
+        hintActive = false;
+        hintItem = null;
+    }
+
+    // Безпечний доступ до сітки ззовні (наприклад, з Item під час свайпу)
+    public Item GetItemAt(int x, int y)
+    {
+        if (x < 0 || x >= width || y < 0 || y >= height) return null;
+        return grid[x, y];
+    }
+
+    // Шукає першу фішку, яку можна пересунути так, щоб зібрати 3+ в ряд одного кольору
+    private Item FindHintItem()
+    {
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                if (x < width - 1 && WouldCreateMatch(x, y, x + 1, y))
+                    return grid[x, y];
+
+                if (y < height - 1 && WouldCreateMatch(x, y, x, y + 1))
+                    return grid[x, y];
+            }
+        }
+
+        return null;
+    }
 
 public IEnumerator ExecuteConvertAndDestroySkill(int convertCount)
 {
@@ -98,12 +169,43 @@ private IEnumerator PopInAnimation(Transform t)
 
     private Item[,] grid;
 
+    [Header("Перегородка під фішками (ховає їх при перевороті дошки)")]
+    public float occluderYOffset = -0.05f; // трохи нижче площини фішок (Y=0)
+    public float occluderMargin = 0f;      // запас по краях понад розмір сітки
+    public Color occluderColor = new Color(0.15f, 0.15f, 0.15f);
+
     private void Start()
     {
         Debug.Log("Start викликано на " + gameObject.name);
         grid = new Item[width, height];
+        CreateChipOccluder();
         GenerateBoard();
         StartCoroutine(InitialDeadlockCheck());
+    }
+
+    // Суцільна непрозора панель під фішками — частина тієї ж риг-ієрархії (дитина GridManager),
+    // тож обертається разом з дошкою й фішками при перевороті та завжди ховає їх знизу,
+    // незалежно від точності пивота самого перевороту.
+    private void CreateChipOccluder()
+    {
+        GameObject occluder = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        occluder.name = "ChipOccluder";
+        Destroy(occluder.GetComponent<Collider>());
+
+        occluder.transform.SetParent(transform, false);
+
+        float centerX = (width - 1) * cellSize / 2f;
+        float centerZ = (height - 1) * cellSize / 2f;
+        occluder.transform.position = new Vector3(centerX, occluderYOffset, centerZ);
+        occluder.transform.rotation = Quaternion.identity;
+        occluder.transform.localScale = new Vector3(
+            width * cellSize + occluderMargin,
+            0.02f,
+            height * cellSize + occluderMargin);
+
+        Renderer rend = occluder.GetComponent<Renderer>();
+        rend.material = new Material(rend.material);
+        rend.material.color = occluderColor;
     }
 
     private IEnumerator InitialDeadlockCheck()

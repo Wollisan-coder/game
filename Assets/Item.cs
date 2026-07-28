@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using System.Collections;
 
 public class Item : MonoBehaviour
@@ -21,10 +22,54 @@ public class Item : MonoBehaviour
         baseScale = transform.localScale;
     }
 
+    [Header("Свайп")]
+    public float swipeThresholdPixels = 50f; // менший рух миші/пальця — вважається тапом, не свайпом
+
+    private Vector3 mouseDownScreenPos;
+
     private void OnMouseDown()
     {
+        gridManager?.ResetIdleTimer(); // будь-який клік скидає таймер підказки і ховає її
+
         if (gridManager != null && gridManager.isBusy) return; // поле ще анімується — ігноруємо клік
 
+        mouseDownScreenPos = Mouse.current.position.ReadValue();
+    }
+
+    private void OnMouseUp()
+    {
+        if (gridManager != null && gridManager.isBusy) return;
+
+        Vector3 delta = (Vector3)Mouse.current.position.ReadValue() - mouseDownScreenPos;
+
+        if (delta.magnitude >= swipeThresholdPixels)
+            HandleSwipe(delta);
+        else
+            HandleTap();
+    }
+
+    // Свайп напряму рухає фішку до сусіда в бік свайпу, минаючи систему тап-тап-вибору
+    private void HandleSwipe(Vector3 screenDelta)
+    {
+        if (firstSelected != null)
+        {
+            firstSelected.SetSelected(false);
+            firstSelected = null;
+        }
+
+        int dx = 0, dy = 0;
+        if (Mathf.Abs(screenDelta.x) > Mathf.Abs(screenDelta.y))
+            dx = screenDelta.x > 0 ? 1 : -1;
+        else
+            dy = screenDelta.y > 0 ? 1 : -1;
+
+        Item target = gridManager != null ? gridManager.GetItemAt(x + dx, y + dy) : null;
+        if (target != null)
+            gridManager.StartCoroutine(gridManager.SwapItems(this, target));
+    }
+
+    private void HandleTap()
+    {
         if (firstSelected == null)
         {
             firstSelected = this;
@@ -62,6 +107,31 @@ public class Item : MonoBehaviour
         {
             t += Time.deltaTime * 4f;
             float scaleMod = 1f + Mathf.Sin(t) * 0.1f; // пульсація ±10%
+            transform.localScale = baseScale * scaleMod;
+            yield return null;
+        }
+    }
+
+    private Coroutine hintAnimCoroutine;
+
+    // Викликається з GridManager, коли ця фішка — підказка можливого ходу
+    public void SetHighlighted(bool isHighlighted)
+    {
+        if (hintAnimCoroutine != null) StopCoroutine(hintAnimCoroutine);
+
+        if (isHighlighted)
+            hintAnimCoroutine = StartCoroutine(HintPulseRoutine());
+        else
+            transform.localScale = baseScale;
+    }
+
+    private IEnumerator HintPulseRoutine()
+    {
+        float t = 0f;
+        while (true)
+        {
+            t += Time.deltaTime * 3f;
+            float scaleMod = 1f + Mathf.Sin(t) * 0.15f; // помітніша пульсація, ніж звичайне виділення
             transform.localScale = baseScale * scaleMod;
             yield return null;
         }
