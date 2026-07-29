@@ -27,13 +27,15 @@ public static class ConfirmationDialog
 
     // Информационное сообщение с единственной кнопкой "Ok" — без варианта выбора.
     // windowHeight — по умолчанию 170, увеличивайте для более длинных/многострочных сообщений (например, результат x10-призыва).
-    public static void ShowInfo(Transform parent, string message, float windowHeight = 170)
+    // onClosed — необязательный коллбэк, вызывается после закрытия (например, переход на другую сцену только после Ok).
+    public static void ShowInfo(Transform parent, string message, float windowHeight = 170, System.Action onClosed = null)
     {
         var (overlay, windowRect) = BuildBase(parent, message, windowHeight);
 
         CreateButton(windowRect, "Ok", new Vector2(0.5f, 0.14f), ButtonColor, () =>
         {
             Object.Destroy(overlay);
+            onClosed?.Invoke();
         });
     }
 

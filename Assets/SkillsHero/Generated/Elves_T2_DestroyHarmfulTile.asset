@@ -15,7 +15,7 @@ MonoBehaviour:
   skillName: Purge Corruption
   description: 'Elves, tier 2: DestroyHarmfulTile'
   costType: 2
-  cost: 40
+  cost: 25
   effectType: 8
   effectValue: 0
   rowStart: 0

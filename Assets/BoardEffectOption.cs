@@ -111,6 +111,8 @@ public class BoardEffectOption : MonoBehaviour
     {
         if (battleManager == null) return;
 
+        HeroRuntimeState targetedHero = null; // назначается только для эффектов, бьющих в конкретного героя
+
         switch (effectType)
         {
             case BoardEffectType.HealPlayer:
@@ -126,7 +128,7 @@ public class BoardEffectOption : MonoBehaviour
                 battleManager.DealDamageToEnemy(amount);
                 break;
             case BoardEffectType.DamageRandomHero:
-                battleManager.DamageRandomHero(amount);
+                targetedHero = battleManager.DamageRandomHero(amount);
                 break;
             case BoardEffectType.EnemyShield:
                 battleManager.AddEnemyShield(amount);
@@ -155,14 +157,18 @@ public class BoardEffectOption : MonoBehaviour
                     battleManager.gridManager.FreezeRandomRowOrColumn(turns);
                 break;
             case BoardEffectType.StunRandomHero:
-                battleManager.StunRandomHero(turns);
+                targetedHero = battleManager.StunRandomHero(turns);
                 break;
             case BoardEffectType.EnemyDamageBuff:
                 battleManager.ApplyEnemyDamageBuff(multiplier, turns);
                 break;
             case BoardEffectType.BlockHeroSkill:
-                battleManager.BlockRandomHeroSkill(turns);
+                targetedHero = battleManager.BlockRandomHeroSkill(turns);
                 break;
         }
+
+        // Единая строка лога для любого эффекта колеса — какой эффект и (если бил в конкретного героя) на кого
+        string targetSuffix = targetedHero != null ? $" → {targetedHero.data.heroName}" : string.Empty;
+        battleManager.OnBattleLog?.Invoke($"Board effect: {GetDisplayName()}{targetSuffix}");
     }
 }

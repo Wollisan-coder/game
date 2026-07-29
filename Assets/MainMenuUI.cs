@@ -7,6 +7,7 @@ public class MainMenuUI : MonoBehaviour
     public GameObject squadPanel;
     public GameObject enemyCollectionPanel; // новая панель врагов
     public GameObject itemCollectionPanel;  // каталог предметов
+    public GameObject worldMapPanel;        // карта мира (узлы MapNodeUI)
     public SquadUI squadUI;
 
     [Header("Название боевой сцены")]
@@ -28,6 +29,7 @@ public class MainMenuUI : MonoBehaviour
         squadPanel.SetActive(false);
         if (enemyCollectionPanel != null) enemyCollectionPanel.SetActive(false);
         if (itemCollectionPanel != null) itemCollectionPanel.SetActive(false);
+        if (worldMapPanel != null) worldMapPanel.SetActive(false);
         castleUI?.Hide();
     }
 
@@ -37,6 +39,7 @@ public class MainMenuUI : MonoBehaviour
         squadPanel.SetActive(true);
         if (enemyCollectionPanel != null) enemyCollectionPanel.SetActive(false);
         if (itemCollectionPanel != null) itemCollectionPanel.SetActive(false);
+        if (worldMapPanel != null) worldMapPanel.SetActive(false);
         castleUI?.Hide();
 
         if (squadUI != null)
@@ -49,6 +52,7 @@ public class MainMenuUI : MonoBehaviour
         squadPanel.SetActive(false);
         if (enemyCollectionPanel != null) enemyCollectionPanel.SetActive(true);
         if (itemCollectionPanel != null) itemCollectionPanel.SetActive(false);
+        if (worldMapPanel != null) worldMapPanel.SetActive(false);
         castleUI?.Hide();
     }
 
@@ -58,6 +62,7 @@ public class MainMenuUI : MonoBehaviour
         squadPanel.SetActive(false);
         if (enemyCollectionPanel != null) enemyCollectionPanel.SetActive(false);
         if (itemCollectionPanel != null) itemCollectionPanel.SetActive(true);
+        if (worldMapPanel != null) worldMapPanel.SetActive(false);
         castleUI?.Hide();
     }
 
@@ -67,9 +72,20 @@ public class MainMenuUI : MonoBehaviour
         squadPanel.SetActive(false);
         if (enemyCollectionPanel != null) enemyCollectionPanel.SetActive(false);
         if (itemCollectionPanel != null) itemCollectionPanel.SetActive(false);
+        if (worldMapPanel != null) worldMapPanel.SetActive(false);
 
         EnsureCastleUI();
         castleUI.Open(this);
+    }
+
+    public void ShowWorldMap()
+    {
+        collectionPanel.SetActive(false);
+        squadPanel.SetActive(false);
+        if (enemyCollectionPanel != null) enemyCollectionPanel.SetActive(false);
+        if (itemCollectionPanel != null) itemCollectionPanel.SetActive(false);
+        if (worldMapPanel != null) worldMapPanel.SetActive(true);
+        castleUI?.Hide();
     }
 
     private void EnsureCastleUI()

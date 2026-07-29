@@ -15,7 +15,7 @@ MonoBehaviour:
   skillName: Gem Shatter
   description: 'Elves, tier 1: DestroyRandomGems'
   costType: 2
-  cost: 25
+  cost: 15
   effectType: 7
   effectValue: 3
   rowStart: 0

@@ -9,14 +9,21 @@ public class Item : MonoBehaviour
     public int type;
 
     [Header("Состояние фишки (для скиллов рас)")]
-    public bool isHarmful; // заготовка под будущую систему дебаффов поля — DestroyHarmfulTile ищет именно такие фишки
     public bool isJoker;   // джокер (ConvertCellToJoker) — матчится с фишкой любого цвета
+
+    [Header("Вредные фишки поля (per-enemy дебаффы, см. HarmfulTileSpawnRule)")]
+    public HarmfulTileType harmfulType = HarmfulTileType.None;
+    public int harmfulValue;      // Spike/Trap: урон герою; Anchor: сколько матчей по соседству нужно, чтобы снять
+    public int anchorMatchStreak; // Anchor: сколько таких матчей уже пережила подряд
 
     [Header("Заморозка (гемблинг-колесо: FreezeRandomRowOrColumn)")]
     public bool isFrozen;
     public int frozenTurnsRemaining;
     private Color frozenOriginalColor;
     private bool hasFrozenOriginalColor;
+
+    [Header("Иконка ловушки (Trap) — назначить в инспекторе на префабе, объект под фишкой, по умолчанию выключен")]
+    public GameObject trapIndicator;
 
     // Замораживает фишку на turns ходов — её нельзя свайпать/менять местами, пока не разморозится
     public void Freeze(int turns)
@@ -43,6 +50,9 @@ public class Item : MonoBehaviour
         isFrozen = false;
         frozenTurnsRemaining = 0;
 
+        if (harmfulType == HarmfulTileType.Ice)
+            ClearHarmful(); // лёд как вредная фишка снимается вместе с разморозкой (в т.ч. досрочно, соседним матчем)
+
         if (!hasFrozenOriginalColor) return;
 
         var rend = GetComponentInChildren<Renderer>();
@@ -50,6 +60,57 @@ public class Item : MonoBehaviour
 
         rend.material = new Material(rend.material);
         SetTintColor(rend.material, frozenOriginalColor);
+    }
+
+    // Спавнится боем по HarmfulTileSpawnRule врага (EnemyData.harmfulTileSpawns) — переиспользует Freeze/isFrozen
+    public void MarkAsIceHarmful(int freezeTurns)
+    {
+        harmfulType = HarmfulTileType.Ice;
+        Freeze(freezeTurns);
+    }
+
+    public void MarkAsSpikeHarmful(int damagePerTurn)
+    {
+        harmfulType = HarmfulTileType.Spike;
+        harmfulValue = damagePerTurn;
+        TintHarmful(new Color(1f, 0.4f, 0.15f));
+    }
+
+    // Сама фишка не тонируется (остаётся обычного цвета) — вместо этого под ней показывается иконка ловушки
+    public void MarkAsTrapHarmful(int damageOnMatch)
+    {
+        harmfulType = HarmfulTileType.Trap;
+        harmfulValue = damageOnMatch;
+
+        if (trapIndicator != null)
+            trapIndicator.SetActive(true);
+    }
+
+    public void MarkAsAnchorHarmful(int requiredAdjacentMatches)
+    {
+        harmfulType = HarmfulTileType.Anchor;
+        harmfulValue = Mathf.Max(1, requiredAdjacentMatches);
+        anchorMatchStreak = 0;
+        TintHarmful(new Color(0.4f, 0.4f, 0.45f));
+    }
+
+    public void ClearHarmful()
+    {
+        harmfulType = HarmfulTileType.None;
+        harmfulValue = 0;
+        anchorMatchStreak = 0;
+
+        if (trapIndicator != null)
+            trapIndicator.SetActive(false);
+    }
+
+    private void TintHarmful(Color color)
+    {
+        var rend = GetComponentInChildren<Renderer>();
+        if (rend == null) return;
+
+        rend.material = new Material(rend.material);
+        SetTintColor(rend.material, color);
     }
 
     // У разных шейдеров (в т.ч. glTF Shader Graph без стандартных _BaseColor/_Color)
@@ -94,6 +155,9 @@ public class Item : MonoBehaviour
     {
         gridManager = FindAnyObjectByType<GridManager>();
         baseScale = transform.localScale;
+
+        if (trapIndicator != null)
+            trapIndicator.SetActive(false);
     }
 
     [Header("Свайп")]

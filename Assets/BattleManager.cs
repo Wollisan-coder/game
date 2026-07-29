@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using System.Linq;
 
 public class BattleManager : MonoBehaviour
@@ -46,8 +47,13 @@ public class BattleManager : MonoBehaviour
     public bool forceRandomEnemy = false; // true = игнорировать выбор из коллекции, всегда рандом
     public EnemyData currentEnemy;        // фактически выбранный враг этого боя
 
-    [Header("Награда за победу")]
+    [Header("Награда за победу (используется, только если у currentEnemy не задан свой loot)")]
     public int accountExperienceReward = 20; // плейсхолдер — легко поменять в инспекторе
+
+    [Header("Сцена, куда возвращаемся после боя")]
+    public string mainMenuSceneName = "MainMenuScene";
+
+    private bool battleEnded; // защита от повторного срабатывания (реальная победа + debug-кнопка одновременно)
 
     public System.Action OnStateChanged;
     public System.Action<string> OnBattleLog; // вызов с текстом строки при каждом нанесённом/полученном уроне
@@ -351,10 +357,12 @@ public class BattleManager : MonoBehaviour
         OnStateChanged?.Invoke();
     }
 
-    public void DamageRandomHero(int amount)
+    public HeroRuntimeState DamageRandomHero(int amount)
     {
-        ApplyDamageToHero(GetRandomAliveHero(), amount);
+        var hero = GetRandomAliveHero();
+        ApplyDamageToHero(hero, amount);
         OnStateChanged?.Invoke();
+        return hero;
     }
 
     public void FullManaAllHeroes()
@@ -376,18 +384,20 @@ public class BattleManager : MonoBehaviour
         OnStateChanged?.Invoke();
     }
 
-    public void StunRandomHero(int turns)
+    public HeroRuntimeState StunRandomHero(int turns)
     {
         var hero = GetRandomAliveHero();
         if (hero != null) hero.stunnedTurnsRemaining = turns;
         OnStateChanged?.Invoke();
+        return hero;
     }
 
-    public void BlockRandomHeroSkill(int turns)
+    public HeroRuntimeState BlockRandomHeroSkill(int turns)
     {
         var hero = GetRandomAliveHero();
         if (hero != null) hero.skillBlockedTurnsRemaining = turns;
         OnStateChanged?.Invoke();
+        return hero;
     }
 
     public void ApplyEnemyDamageBuff(float multiplier, int turns)
@@ -566,9 +576,82 @@ public class BattleManager : MonoBehaviour
     private void OnEnemyDefeated()
     {
         Debug.Log("Враг побеждён!");
-        AccountManager.Instance?.GrantExperience(accountExperienceReward);
+        EndBattleVictory();
     }
-    private void OnPlayerDefeated() => Debug.Log("Игрок проиграл бой.");
+
+    // Публичный — можно повесить прямо на debug-кнопку в инспекторе, чтобы протестировать
+    // экран победы и выдачу добычи, не проходя бой целиком.
+    public void EndBattleVictory()
+    {
+        if (battleEnded) return;
+        battleEnded = true;
+
+        LootReward loot = currentEnemy != null ? currentEnemy.loot : null;
+        int accountXp = loot != null ? loot.accountExperience : accountExperienceReward;
+        int heroXp = loot != null ? loot.heroExperience : 0;
+
+        var rewardLines = new List<string>();
+
+        AccountManager.Instance?.GrantExperience(accountXp);
+        rewardLines.Add($"Account XP +{accountXp}");
+
+        if (heroXp > 0)
+        {
+            foreach (var hero in activeHeroes)
+                HeroCollectionManager.Instance?.GrantExperience(hero.data.heroId, heroXp);
+
+            rewardLines.Add($"Hero XP +{heroXp} each");
+        }
+
+        if (loot != null && loot.currency != null)
+        {
+            foreach (var entry in loot.currency)
+            {
+                if (entry.amount <= 0) continue;
+                PlayerCurrencies.Instance?.Add(entry.type, entry.amount);
+                rewardLines.Add($"{entry.type} +{entry.amount}");
+            }
+        }
+
+        if (loot != null && loot.items != null)
+        {
+            foreach (var entry in loot.items)
+            {
+                if (entry.item == null || entry.count <= 0) continue;
+                ItemCollectionManager.Instance?.AddItemCopy(entry.item, entry.count);
+                rewardLines.Add($"{entry.item.itemName} x{entry.count}");
+            }
+        }
+
+        WorldMapManager.Instance?.CompleteCurrentNode();
+
+        string summary = "Victory!\n" + string.Join("\n", rewardLines);
+        OnBattleLog?.Invoke(summary.Replace("\n", " | "));
+
+        var canvas = FindAnyObjectByType<Canvas>();
+        Transform root = canvas != null ? canvas.transform : transform;
+        ConfirmationDialog.ShowInfo(root, summary, 260, () => SceneManager.LoadScene(mainMenuSceneName));
+    }
+    private void OnPlayerDefeated()
+    {
+        Debug.Log("Игрок проиграл бой.");
+        EndBattleDefeat();
+    }
+
+    // Публичный — можно повесить прямо на debug-кнопку в инспекторе, аналогично EndBattleVictory().
+    // Добычи и отметки ноды карты пройденной нет — только возврат в меню.
+    public void EndBattleDefeat()
+    {
+        if (battleEnded) return;
+        battleEnded = true;
+
+        const string summary = "Defeat...";
+        OnBattleLog?.Invoke(summary);
+
+        var canvas = FindAnyObjectByType<Canvas>();
+        Transform root = canvas != null ? canvas.transform : transform;
+        ConfirmationDialog.ShowInfo(root, summary, 170, () => SceneManager.LoadScene(mainMenuSceneName));
+    }
 
     // Теперь привязано к конкретному герою, а не к глобальному ресурсу
     public bool TryUseSkill(HeroRuntimeState hero, SkillData skill)

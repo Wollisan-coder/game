@@ -16,6 +16,12 @@ public class EnemyData : ScriptableObject
     public int price = 100;             // цена/сложность за разблокировку
     public EnemySkillData[] skills;     // количество умений = длина массива
 
+    [Header("Вредные фишки поля (спавнятся на старте боя)")]
+    public HarmfulTileSpawnRule[] harmfulTileSpawns;
+
+    [Header("Добыча за победу")]
+    public LootReward loot = new LootReward();
+
     [Header("Визуал")]
     public Sprite portrait;
     public Color themeColor = Color.white;

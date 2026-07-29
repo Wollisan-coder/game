@@ -15,7 +15,7 @@ MonoBehaviour:
   skillName: Stone Shield
   description: 'Dwarves, tier 1: Shield'
   costType: 3
-  cost: 25
+  cost: 15
   effectType: 2
   effectValue: 20
   rowStart: 0

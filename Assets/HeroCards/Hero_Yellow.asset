@@ -19,7 +19,7 @@ MonoBehaviour:
   damageMultiplier: 1
   weight: 1
   skills:
-  - {fileID: 11400000, guid: e52228987976432489aeebd08274ab64, type: 2}
+  - {fileID: 11400000, guid: 13733307bd2a2314fb3985f9ca98014c, type: 2}
   portrait: {fileID: 21300000, guid: e077271d8c63408419ad620505d46d9b, type: 3}
   themeColor: {r: 0.81769806, g: 0.8207547, b: 0.31359026, a: 1}
   resourceType: 3

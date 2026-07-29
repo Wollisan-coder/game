@@ -154,11 +154,14 @@ public class BoardFlipShuffleGate : MonoBehaviour
     {
         if (option == null) return;
 
-        if (!option.IsBlurred)
-        {
-            ShowDescriptionPopup(option);
-            return;
-        }
+        // ВРЕМЕННО ДЛЯ ТЕСТИРОВАНИЯ: блюр выключен (см. ShuffleButtonGrid.ShuffleRoutine), поэтому IsBlurred
+        // больше не говорит правду — обход, чтобы клик всё равно срабатывал как реальный выбор, а не попап.
+        // Раскомментировать эту проверку обратно вместе с BlurAllOptions() перед релизом.
+        // if (!option.IsBlurred)
+        // {
+        //     ShowDescriptionPopup(option);
+        //     return;
+        // }
 
         if (awaitingFlipBack) return; // вариант уже выбран этим переворотом — остальные заблюренные недоступны
 

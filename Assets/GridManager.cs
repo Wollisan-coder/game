@@ -136,7 +136,7 @@ public IEnumerator ExecuteConvertAndDestroySkill(int convertCount)
     if (allRed.Count > 0)
     {
         turnMatchedTypes.Clear();
-        yield return StartCoroutine(ProcessMatches(allRed));
+        yield return StartCoroutine(ProcessMatches(allRed, isSkillDestroy: true));
     }
     else
     {
@@ -212,7 +212,44 @@ private IEnumerator PopInAnimation(Transform t)
     {
         isBusy = true;
         yield return StartCoroutine(ReshuffleIfNoMoves());
+
+        // Спавним вредные фишки только после того, как доска гарантированно устаканилась —
+        // ReshuffleBoard() уничтожает и пересоздаёт ВСЕ фишки, включая уже размеченные вредными
+        SpawnHarmfulTilesFromEnemy();
+
         isBusy = false;
+    }
+
+    // Разово в начале боя размечает случайные существующие фишки как вредные согласно currentEnemy.harmfulTileSpawns
+    private void SpawnHarmfulTilesFromEnemy()
+    {
+        if (battleManager == null || battleManager.currentEnemy == null) return;
+
+        HarmfulTileSpawnRule[] rules = battleManager.currentEnemy.harmfulTileSpawns;
+        if (rules == null) return;
+
+        List<Item> available = new List<Item>();
+        for (int x = 0; x < width; x++)
+            for (int y = 0; y < height; y++)
+                if (grid[x, y] != null) available.Add(grid[x, y]);
+
+        foreach (var rule in rules)
+        {
+            for (int i = 0; i < rule.count && available.Count > 0; i++)
+            {
+                int index = Random.Range(0, available.Count);
+                Item item = available[index];
+                available.RemoveAt(index);
+
+                switch (rule.type)
+                {
+                    case HarmfulTileType.Ice: item.MarkAsIceHarmful(rule.value); break;
+                    case HarmfulTileType.Spike: item.MarkAsSpikeHarmful(rule.value); break;
+                    case HarmfulTileType.Trap: item.MarkAsTrapHarmful(rule.value); break;
+                    case HarmfulTileType.Anchor: item.MarkAsAnchorHarmful(rule.value); break;
+                }
+            }
+        }
     }
 
     // Генерация поля без начальных совпадений "3 в ряд"
@@ -282,6 +319,9 @@ private IEnumerator PopInAnimation(Transform t)
     if (a.isFrozen || b.isFrozen)
         yield break; // замороженную фишку нельзя двигать (FreezeRandomRowOrColumn)
 
+    if (a.harmfulType == HarmfulTileType.Anchor || b.harmfulType == HarmfulTileType.Anchor)
+        yield break; // якорь нельзя сдвинуть обычным свайпом
+
     isBusy = true;
 
     int aX = a.x, aY = a.y;
@@ -321,8 +361,15 @@ private IEnumerator PopInAnimation(Transform t)
     }
 }
 
-    // Джокер (isJoker) матчится с фишкой любого цвета — ConvertCellToJoker (Эльфы)
-    private bool TypesMatch(Item a, Item b) => a.isJoker || b.isJoker || a.type == b.type;
+    // Джокер (isJoker) матчится с фишкой любого цвета — ConvertCellToJoker (Эльфы).
+    // Якорь никогда не участвует в обычных матчах — "нельзя удалить обычным матчем" (см. HarmfulTileSpawnRule).
+    private bool TypesMatch(Item a, Item b)
+    {
+        if (a.harmfulType == HarmfulTileType.Anchor || b.harmfulType == HarmfulTileType.Anchor)
+            return false;
+
+        return a.isJoker || b.isJoker || a.type == b.type;
+    }
 
     // Поиск всех фишек, собранных по 3 и более в ряд
     public List<Item> FindMatches()
@@ -395,15 +442,27 @@ public IEnumerator PlayDestroyAnimation()
 }
 
     // Обработка уничтожения и падения
-    private IEnumerator ProcessMatches(List<Item> matches)
+    // isSkillDestroy: true, когда фишки убираются скиллом (не обычным матчем игрока) — в этом случае
+    // Trap не наносит урон герою, ведь наказание за ловушку привязано именно к попаданию в матч, а не к её снятию.
+    private IEnumerator ProcessMatches(List<Item> matches, bool isSkillDestroy = false)
 {
     List<Coroutine> animations = new List<Coroutine>();
 
+    ThawAdjacentIce(matches);       // сосед матчится рядом со льдом — лёд тает досрочно, сам не уничтожаясь
+    TickAnchorsAdjacentToMatches(matches); // якорь не входит в матч сам, но считает матчи по соседству
+
     foreach (var item in matches)
     {
-        if (!turnMatchedTypes.ContainsKey(item.type))
-            turnMatchedTypes[item.type] = 0;
-        turnMatchedTypes[item.type]++;
+        if (item.harmfulType == HarmfulTileType.Trap && !isSkillDestroy)
+        {
+            battleManager?.DamageRandomHero(item.harmfulValue); // ловушка: урон герою вместо пользы от матча
+        }
+        else
+        {
+            if (!turnMatchedTypes.ContainsKey(item.type))
+                turnMatchedTypes[item.type] = 0;
+            turnMatchedTypes[item.type]++;
+        }
 
         grid[item.x, item.y] = null;
         animations.Add(StartCoroutine(item.PlayDestroyAnimation()));
@@ -417,6 +476,56 @@ public IEnumerator PlayDestroyAnimation()
 
     yield return StartCoroutine(CollapseGrid());
 }
+
+    // Лёд, оказавшийся рядом с местом матча (но не входивший в него сам), тает раньше срока
+    private void ThawAdjacentIce(List<Item> matches)
+    {
+        foreach (var matched in matches)
+        {
+            foreach (var neighbor in GetNeighborItems(matched.x, matched.y))
+            {
+                if (neighbor != null && neighbor.harmfulType == HarmfulTileType.Ice && !matches.Contains(neighbor))
+                    neighbor.Unfreeze();
+            }
+        }
+    }
+
+    // Якорь исключён из TypesMatch, поэтому сам никогда не попадает в matches — считаем матчи по соседству
+    // с ним отдельно; при достижении harmfulValue снимается вместе с текущим матчем.
+    private void TickAnchorsAdjacentToMatches(List<Item> matches)
+    {
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                Item item = grid[x, y];
+                if (item == null || item.harmfulType != HarmfulTileType.Anchor) continue;
+
+                bool adjacentMatch = false;
+                foreach (var neighbor in GetNeighborItems(x, y))
+                {
+                    if (neighbor != null && matches.Contains(neighbor)) { adjacentMatch = true; break; }
+                }
+
+                if (!adjacentMatch) continue;
+
+                item.anchorMatchStreak++;
+                if (item.anchorMatchStreak >= item.harmfulValue)
+                {
+                    item.ClearHarmful();
+                    matches.Add(item);
+                }
+            }
+        }
+    }
+
+    private IEnumerable<Item> GetNeighborItems(int x, int y)
+    {
+        yield return GetItemAt(x + 1, y);
+        yield return GetItemAt(x - 1, y);
+        yield return GetItemAt(x, y + 1);
+        yield return GetItemAt(x, y - 1);
+    }
 
     // Логика падения фишек вниз и генерация новых сверху
     private IEnumerator CollapseGrid()
@@ -463,9 +572,12 @@ public IEnumerator PlayDestroyAnimation()
     else
     {
         // Каскады завершились — это реальный конец хода игрока
-        if (battleManager != null && turnMatchedTypes.Count > 0)
+        // Не гейтим на turnMatchedTypes.Count>0: матч из одних Trap-фишек не пишет в этот словарь
+        // (уходит в прямой урон герою), но ход всё равно должен резолвиться как реальный.
+        if (battleManager != null)
         {
             TickFrozenTiles();
+            TickHarmfulTiles();
             battleManager.ResolvePlayerTurn(turnMatchedTypes);
         }
 
@@ -594,7 +706,7 @@ private void OnDrawGizmos()
             if (toDestroy.Count > 0)
             {
                 turnMatchedTypes.Clear();
-                yield return StartCoroutine(ProcessMatches(toDestroy));
+                yield return StartCoroutine(ProcessMatches(toDestroy, isSkillDestroy: true));
             }
             else
             {
@@ -625,7 +737,7 @@ public IEnumerator ExecuteDestroyRandomGemsSkill(int count)
     if (toDestroy.Count > 0)
     {
         turnMatchedTypes.Clear();
-        yield return StartCoroutine(ProcessMatches(toDestroy));
+        yield return StartCoroutine(ProcessMatches(toDestroy, isSkillDestroy: true));
     }
     else
     {
@@ -633,8 +745,8 @@ public IEnumerator ExecuteDestroyRandomGemsSkill(int count)
     }
 }
 
-// Уничтожает первую найденную "вредную" фишку (Эльфы, T2) — заготовка под будущую систему дебаффов поля.
-// Пока на поле нет ни одной isHarmful-фишки, скилл просто ничего не делает.
+// Уничтожает первую найденную "вредную" фишку (Эльфы, T2) — это и есть тот самый "спец-скилл",
+// который по дизайну умеет снять Anchor без N матчей подряд.
 public IEnumerator ExecuteDestroyHarmfulTileSkill()
 {
     isBusy = true;
@@ -642,13 +754,13 @@ public IEnumerator ExecuteDestroyHarmfulTileSkill()
     Item harmful = null;
     for (int x = 0; x < width && harmful == null; x++)
         for (int y = 0; y < height && harmful == null; y++)
-            if (grid[x, y] != null && grid[x, y].isHarmful)
+            if (grid[x, y] != null && grid[x, y].harmfulType != HarmfulTileType.None)
                 harmful = grid[x, y];
 
     if (harmful != null)
     {
         turnMatchedTypes.Clear();
-        yield return StartCoroutine(ProcessMatches(new List<Item> { harmful }));
+        yield return StartCoroutine(ProcessMatches(new List<Item> { harmful }, isSkillDestroy: true));
     }
     else
     {
@@ -711,7 +823,7 @@ public IEnumerator ExecuteFavorableReshuffleSkill()
     yield return new WaitForSeconds(0.1f);
 
     turnMatchedTypes.Clear();
-    yield return StartCoroutine(ProcessMatches(guaranteedMatch));
+    yield return StartCoroutine(ProcessMatches(guaranteedMatch, isSkillDestroy: true));
 }
 
 // Замораживает случайную строку либо столбец на N ходов (негативный эффект гемблинг-колеса)
@@ -749,6 +861,20 @@ private void TickFrozenTiles()
             item.frozenTurnsRemaining--;
             if (item.frozenTurnsRemaining <= 0)
                 item.Unfreeze();
+        }
+    }
+}
+
+// Шип наносит фиксированный урон герою каждый реальный ход, пока фишка остаётся на поле
+private void TickHarmfulTiles()
+{
+    for (int x = 0; x < width; x++)
+    {
+        for (int y = 0; y < height; y++)
+        {
+            Item item = grid[x, y];
+            if (item != null && item.harmfulType == HarmfulTileType.Spike)
+                battleManager?.DamageRandomHero(item.harmfulValue);
         }
     }
 }

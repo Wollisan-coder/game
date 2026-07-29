@@ -96,7 +96,7 @@ public class ShuffleButtonGrid : MonoBehaviour
             shuffleTargets[i].localScale = Vector3.one;
         }
 
-        BlurAllOptions(); // после шаффла позиции секретны — игрок выбирает вслепую
+        // BlurAllOptions(); // ВРЕМЕННО ОТКЛЮЧЕНО ДЛЯ ТЕСТИРОВАНИЯ — раскомментировать перед релизом
 
         isShuffling = false;
     }
