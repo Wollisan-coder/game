@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e8ab815f5e4b8574ebc2827fcfeb1365, type: 3}
-  m_Name: Fairy_0 8
+  m_Name: Orcs_0 15
   m_EditorClassIdentifier: Assembly-CSharp::MapNodeData
-  nodeId: Fairy_0 8
+  nodeId: Orcs_0 15
   nodeName: 
   description: 
   icon: {fileID: 0}
-  enemy: {fileID: 11400000, guid: 5f70f8cede4c7a84aa0c0c20b05b3c18, type: 2}
+  enemy: {fileID: 11400000, guid: 4336a140a3dbb9a47a528bdc96c9bef3, type: 2}
   requiredNodes:
-  - {fileID: 11400000, guid: fe994e51c63afa249b2ac50360843376, type: 2}
+  - {fileID: 11400000, guid: 30c3923666587c9449d599bf5914b3cd, type: 2}

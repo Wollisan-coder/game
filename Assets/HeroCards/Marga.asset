@@ -21,8 +21,8 @@ MonoBehaviour:
   skills:
   - {fileID: 11400000, guid: 94ef69067b8960c47949650f76fd1886, type: 2}
   - {fileID: 11400000, guid: 93c1304fe7201ee4fab2dff832b0c806, type: 2}
-  portrait: {fileID: 21300000, guid: 68c18de9479d95b4aaf77fbafce2a0bf, type: 3}
+  portrait: {fileID: 21300000, guid: 271c6c5b9aff76e4ab919b28c283bbee, type: 3}
   themeColor: {r: 0.8396226, g: 0.051486313, b: 0.067757785, a: 1}
   resourceType: 0
-  rarity: 2
+  rarity: 3
   description: 
