@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 98f2a619572e0984c9fe8cc8f1ab4142, type: 3}
+  m_Name: Delma
+  m_EditorClassIdentifier: Assembly-CSharp::HeroData
+  heroId: Delma
+  heroName: Delma
+  maxHealth: 200
+  maxResource: 15
+  damageMultiplier: 1.1
+  weight: 1
+  skills:
+  - {fileID: 11400000, guid: eaaed1524af27d2498b75b26a11258c5, type: 2}
+  portrait: {fileID: 21300000, guid: 637bee175e8e5a948b2eee9cd89ead8e, type: 3}
+  themeColor: {r: 0.8392157, g: 0.72124124, b: 0.050980408, a: 1}
+  resourceType: 3
+  rarity: 2
+  description: 'Green-haired Silent One with a ponytail and a pair of battle hammers
+    she calls by name ("Tuk" and "Tak"). Short even by dwarven standards, but just
+    as stubborn: if something stands in her way, she''ll either reforge it or smash
+    it to splinters.'

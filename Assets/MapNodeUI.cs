@@ -2,7 +2,9 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 
-// Вешается на каждую кнопку-ноду карты мира. Показывает locked/completed состояние и по клику уходит в бой.
+// Вешается на каждую кнопку-ноду карты. Показывает locked/completed состояние.
+// По клику либо уходит в бой (обычная нода), либо открывает внутреннюю карту города (если задан cityMapPanel) —
+// т.е. один и тот же компонент обслуживает и боевые ноды, и ноды-города, без дублирования логики замка/галочки.
 public class MapNodeUI : MonoBehaviour
 {
     public MapNodeData node;
@@ -13,8 +15,12 @@ public class MapNodeUI : MonoBehaviour
     public GameObject lockedOverlay;  // например, серая плашка/замок поверх иконки — показывается, пока нода закрыта
     public GameObject completedMark;  // например, галочка/звезда — показывается на уже пройденной ноде
 
-    [Header("Сцена боя")]
+    [Header("Сцена боя (для обычной ноды — оставить cityMapPanel пустым)")]
     public string battleSceneName = "SampleScene";
+
+    [Header("Нода-город (если задано — клик открывает внутреннюю карту вместо боя)")]
+    public GameObject worldMapContent; // что скрыть при входе в город (сама мировая карта/панель)
+    public GameObject cityMapPanel;    // что показать — панель с дочерними нодами этого города
 
     private void Awake()
     {
@@ -41,6 +47,17 @@ public class MapNodeUI : MonoBehaviour
     private void OnClicked()
     {
         if (WorldMapManager.Instance == null || node == null) return;
+
+        if (cityMapPanel != null)
+        {
+            // Нода-город: не запускаем бой, просто переключаем видимую панель на внутреннюю карту города
+            if (!WorldMapManager.Instance.IsUnlocked(node)) return;
+
+            if (worldMapContent != null) worldMapContent.SetActive(false);
+            cityMapPanel.SetActive(true);
+            return;
+        }
+
         if (!WorldMapManager.Instance.SelectNode(node)) return;
 
         SceneManager.LoadScene(battleSceneName);

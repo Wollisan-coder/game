@@ -11,11 +11,17 @@ public class WorldMapManager : MonoBehaviour
     [Header("Все ноды карты")]
     public MapNodeData[] allNodes;
 
+    [Header("Стартовая нода — где стоит маркер игрока, пока ничего не пройдено")]
+    public MapNodeData startingNode;
+
     [Header("ID пройденных нод (заполняется при загрузке сохранения)")]
     public List<string> completedNodeIds = new List<string>();
 
     // ID ноды, с которой запущен текущий бой — выставляется в SelectNode() перед переходом на боевую сцену
     public string currentNodeId;
+
+    // Дёргается при любом изменении прогресса (сейчас — только CompleteCurrentNode) — на это подписывается маркер игрока
+    public System.Action OnProgressChanged;
 
     private void Awake()
     {
@@ -57,6 +63,16 @@ public class WorldMapManager : MonoBehaviour
             completedNodeIds.Add(currentNodeId);
 
         SaveProgress();
+        OnProgressChanged?.Invoke();
+    }
+
+    // Где сейчас "находится" игрок на карте — последняя пройденная нода, либо стартовая, если ещё ничего не пройдено
+    public string GetCurrentPlayerNodeId()
+    {
+        if (completedNodeIds.Count > 0)
+            return completedNodeIds[completedNodeIds.Count - 1];
+
+        return startingNode != null ? startingNode.nodeId : null;
     }
 
     private void SaveProgress()
