@@ -2,7 +2,6 @@ using UnityEngine;
 
 public class SquadUI : MonoBehaviour
 {
-    public HeroCollectionManager collectionManager;
     public MainMenuUI mainMenuUI;
     public HeroInventoryUI inventoryUI; // общий попап на всю сцену — тот же, что и в HeroCollectionUI
     public SquadSlotUI[] slots;
@@ -26,6 +25,8 @@ public class SquadUI : MonoBehaviour
 
     public void RefreshSlots()
     {
+        var collectionManager = HeroCollectionManager.Instance;
+
         // Количество слотов всегда фиксировано (4) — Бараки поднимают лимит веса отряда, а не количество слотов
         for (int i = 0; i < slots.Length; i++)
         {

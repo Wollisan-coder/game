@@ -60,6 +60,10 @@ public class MapNodeUI : MonoBehaviour
 
         if (!WorldMapManager.Instance.SelectNode(node)) return;
 
+        // Запоминаем имя своей панели (WorldMapPanel либо конкретный CityMap_...), чтобы после боя
+        // MainMenuUI вернул игрока именно туда, а не на общую мировую карту по умолчанию.
+        WorldMapManager.Instance.lastActiveMapPanelName = transform.parent != null ? transform.parent.name : null;
+
         SceneManager.LoadScene(battleSceneName);
     }
 }

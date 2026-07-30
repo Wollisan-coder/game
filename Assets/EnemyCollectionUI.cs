@@ -2,7 +2,6 @@ using UnityEngine;
 
 public class EnemyCollectionUI : MonoBehaviour
 {
-    public EnemyCollectionManager collectionManager;
     public Transform gridContainer;
     public GameObject enemyCardUIPrefab;
 
@@ -13,6 +12,9 @@ public class EnemyCollectionUI : MonoBehaviour
 
     private void PopulateGrid()
     {
+        var collectionManager = EnemyCollectionManager.Instance;
+        if (collectionManager == null) return;
+
         foreach (Transform child in gridContainer)
             Destroy(child.gameObject);
 

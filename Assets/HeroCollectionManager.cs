@@ -51,6 +51,7 @@ public class HeroCollectionManager : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
+        LoadOwnership();
         InitializeOwnershipIfMissing();
         LoadSquad();
 
@@ -82,7 +83,10 @@ public class HeroCollectionManager : MonoBehaviour
     public void UnlockHero(HeroData hero)
     {
         var data = ownership.FirstOrDefault(o => o.heroId == hero.heroId);
-        if (data != null) data.isUnlocked = true;
+        if (data == null || data.isUnlocked) return;
+
+        data.isUnlocked = true;
+        SaveOwnership();
     }
 
     // Сколько опыта нужно набрать герою на указанном уровне, чтобы подняться на следующий
@@ -103,6 +107,7 @@ public class HeroCollectionManager : MonoBehaviour
             data.level++;
         }
 
+        SaveOwnership();
         return true;
     }
 
@@ -210,6 +215,66 @@ public class HeroCollectionManager : MonoBehaviour
             if (string.IsNullOrEmpty(ids[i])) continue;
             var hero = allHeroes.FirstOrDefault(h => h.heroId == ids[i]);
             if (hero != null) squad[i] = hero;
+        }
+    }
+
+    // Публичный — вызывать после любой прямой мутации HeroOwnershipData снаружи (экипировка/выбор скиллов
+    // в HeroInventoryUI), поскольку это обычные C#-объекты, которые UI меняет напрямую в обход менеджера.
+    public void SaveOwnership()
+    {
+        string serialized = string.Join(";", ownership.Select(SerializeHeroOwnership));
+        PlayerPrefs.SetString("hero_ownership", serialized);
+        PlayerPrefs.Save();
+    }
+
+    private static string SerializeHeroOwnership(HeroOwnershipData data)
+    {
+        string equipped = string.Join("|", data.equippedItems
+            .Where(e => !string.IsNullOrEmpty(e.itemInstanceId))
+            .Select(e => $"{(int)e.slotType},{e.itemInstanceId}"));
+
+        return $"{data.heroId}:{(data.isUnlocked ? 1 : 0)}:{data.level}:{data.experience}:{data.activeSkillIndex}:{data.passiveSkillIndex}:{equipped}";
+    }
+
+    private void LoadOwnership()
+    {
+        ownership.Clear();
+
+        string saved = PlayerPrefs.GetString("hero_ownership", "");
+        if (string.IsNullOrEmpty(saved)) return;
+
+        foreach (var entry in saved.Split(';'))
+        {
+            string[] parts = entry.Split(':');
+            if (parts.Length < 7) continue;
+
+            var data = new HeroOwnershipData
+            {
+                heroId = parts[0],
+                isUnlocked = parts[1] == "1",
+                level = int.Parse(parts[2]),
+                experience = int.Parse(parts[3]),
+                activeSkillIndex = int.Parse(parts[4]),
+                passiveSkillIndex = int.Parse(parts[5])
+            };
+
+            string equippedBlock = parts[6];
+            if (!string.IsNullOrEmpty(equippedBlock))
+            {
+                foreach (var itemEntry in equippedBlock.Split('|'))
+                {
+                    string[] itemParts = itemEntry.Split(',');
+                    if (itemParts.Length != 2) continue;
+
+                    data.equippedItems.Add(new EquippedItem
+                    {
+                        slotType = (EquipmentSlotType)int.Parse(itemParts[0]),
+                        itemInstanceId = itemParts[1]
+                    });
+                }
+            }
+
+            ownership.Add(data);
         }
     }
 }

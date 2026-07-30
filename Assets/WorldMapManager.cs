@@ -20,6 +20,11 @@ public class WorldMapManager : MonoBehaviour
     // ID ноды, с которой запущен текущий бой — выставляется в SelectNode() перед переходом на боевую сцену
     public string currentNodeId;
 
+    // Имя UI-панели (WorldMapPanel или конкретная CityMap_...), в которой лежала нода запущенного боя —
+    // выставляется в MapNodeUI.OnClicked() перед переходом на боевую сцену. GameObject-ссылку хранить нельзя
+    // (старая сцена уничтожается при перезагрузке), поэтому храним просто имя и ищем панель по нему заново.
+    public string lastActiveMapPanelName;
+
     // Дёргается при любом изменении прогресса (сейчас — только CompleteCurrentNode) — на это подписывается маркер игрока
     public System.Action OnProgressChanged;
 

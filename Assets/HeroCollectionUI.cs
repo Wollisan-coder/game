@@ -2,7 +2,6 @@ using UnityEngine;
 
 public class HeroCollectionUI : MonoBehaviour
 {
-    public HeroCollectionManager collectionManager;
     public Transform gridContainer;
     public GameObject heroCardUIPrefab;
     public HeroInventoryUI inventoryUI; // общий попап на всю сцену, назначить в Inspector
@@ -14,6 +13,9 @@ public class HeroCollectionUI : MonoBehaviour
 
     private void PopulateGrid()
     {
+        var collectionManager = HeroCollectionManager.Instance;
+        if (collectionManager == null) return;
+
         Debug.Log($"Количество героев в allHeroes: {collectionManager.allHeroes.Length}");
 
         foreach (Transform child in gridContainer)

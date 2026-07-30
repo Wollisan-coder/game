@@ -15,7 +15,7 @@ MonoBehaviour:
   skillName: Axe Strike
   description: 'Orcs, tier 1: Damage'
   costType: 0
-  cost: 25
+  cost: 15
   effectType: 0
   effectValue: 15
   rowStart: 0

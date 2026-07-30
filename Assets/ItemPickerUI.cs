@@ -6,9 +6,6 @@ using TMPro;
 
 public class ItemPickerUI : MonoBehaviour
 {
-    [Header("Ссылки")]
-    public ItemCollectionManager itemCollectionManager;
-
     [Header("Список предметов")]
     public Transform itemsContainer;
     public GameObject itemEntryPrefab;
@@ -55,16 +52,16 @@ public class ItemPickerUI : MonoBehaviour
 
     private void Populate()
     {
-        if (itemsContainer == null || itemEntryPrefab == null || itemCollectionManager == null) return;
+        if (itemsContainer == null || itemEntryPrefab == null || ItemCollectionManager.Instance == null) return;
 
         foreach (Transform child in itemsContainer)
             Destroy(child.gameObject);
 
-        List<ItemData> itemsOfType = itemCollectionManager.GetItemsOfType(currentSlot);
+        List<ItemData> itemsOfType = ItemCollectionManager.Instance.GetItemsOfType(currentSlot);
 
         foreach (var item in itemsOfType)
         {
-            var stacks = itemCollectionManager.GetStacks(item.itemId);
+            var stacks = ItemCollectionManager.Instance.GetStacks(item.itemId);
 
             if (stacks.Count == 0)
             {
@@ -91,7 +88,7 @@ public class ItemPickerUI : MonoBehaviour
     {
         // Если в стеке больше 1 копии — экипировать можно только ОДНУ, поэтому отделяем её в отдельный стек,
         // а остальные копии остаются свободными (доступными) в инвентаре предметов.
-        string toEquip = itemCollectionManager.SplitOneForEquip(itemInstanceId) ?? itemInstanceId;
+        string toEquip = ItemCollectionManager.Instance.SplitOneForEquip(itemInstanceId) ?? itemInstanceId;
         owner.EquipItem(currentSlot, toEquip);
         Close();
     }
@@ -104,7 +101,7 @@ public class ItemPickerUI : MonoBehaviour
 
     private void OnUpgradeClicked()
     {
-        if (owner == null || itemCollectionManager == null) return;
+        if (owner == null || ItemCollectionManager.Instance == null) return;
 
         string equippedInstanceId = owner.GetEquippedItemInstanceId(currentSlot);
         if (string.IsNullOrEmpty(equippedInstanceId)) return;
@@ -160,17 +157,17 @@ public class ItemPickerUI : MonoBehaviour
 
     private void RefreshUpgradeButtonVisibility()
     {
-        if (upgradeButton == null || owner == null || itemCollectionManager == null) return;
+        if (upgradeButton == null || owner == null || ItemCollectionManager.Instance == null) return;
 
         string equippedInstanceId = owner.GetEquippedItemInstanceId(currentSlot);
         var equippedStack = !string.IsNullOrEmpty(equippedInstanceId)
-            ? itemCollectionManager.GetStackByInstanceId(equippedInstanceId)
+            ? ItemCollectionManager.Instance.GetStackByInstanceId(equippedInstanceId)
             : null;
-        var equippedData = equippedStack != null ? itemCollectionManager.GetItemById(equippedStack.itemId) : null;
+        var equippedData = equippedStack != null ? ItemCollectionManager.Instance.GetItemById(equippedStack.itemId) : null;
 
         bool canUpgrade = equippedData != null && equippedStack != null
             && equippedStack.level < equippedData.GetMaxLevel()
-            && itemCollectionManager.ownership.Any(o => o.instanceId != equippedStack.instanceId);
+            && ItemCollectionManager.Instance.ownership.Any(o => o.instanceId != equippedStack.instanceId);
 
         upgradeButton.gameObject.SetActive(canUpgrade);
     }

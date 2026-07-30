@@ -6,9 +6,6 @@ using TMPro;
 
 public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
-    [Header("Ссылки")]
-    public HeroCollectionManager collectionManager;
-
     [Header("Карточка героя")]
     public Image portraitImage;
     public TMP_Text heroNameText;
@@ -16,15 +13,22 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     public TMP_Text levelText;
     public TMP_Text descriptionText;
 
-    [Header("Навыки")]
-    public Transform skillsContainer;
-    public GameObject skillEntryPrefab;
+    [Header("Навыки — вкладки активного (4 кнопки, по индексу heroData.skills[i])")]
+    public Button[] activeSkillTabs;
+    public Image[] activeSkillHighlights; // подсветка выбранной вкладки, тот же порядок (необязательно)
+
+    [Header("Навыки — кнопки выбора пассивного (4, тот же индекс; кнопка активного навыка сама прячется)")]
+    public Button[] passiveSkillButtons;
+    public Image[] passiveSkillHighlights; // необязательно
+
+    [Header("Описание навыка (обновляется по клику на вкладку активки или кнопку пассивки)")]
+    public TMP_Text skillManaCostText;
+    public TMP_Text skillDescriptionText;
 
     [Header("Инвентарь (предметы)")]
     public Transform itemsContainer;
     public GameObject itemSlotPrefab; // слот с компонентом ItemSlotUI
     public ItemPickerUI itemPicker;
-    public ItemCollectionManager itemCollectionManager;
 
     private static readonly EquipmentSlotType[] AllSlotTypes =
     {
@@ -75,12 +79,12 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     }
 
     // Переходит к предыдущему/следующему (по направлению) разблокированному герою в том же порядке,
-    // что и в коллекции (collectionManager.allHeroes), с переходом по кругу.
+    // что и в коллекции (HeroCollectionManager.Instance.allHeroes), с переходом по кругу.
     private void NavigateHero(int direction)
     {
-        if (currentHero == null || collectionManager == null) return;
+        if (currentHero == null || HeroCollectionManager.Instance == null) return;
 
-        var unlocked = collectionManager.allHeroes.Where(h => collectionManager.IsUnlocked(h)).ToList();
+        var unlocked = HeroCollectionManager.Instance.allHeroes.Where(h => HeroCollectionManager.Instance.IsUnlocked(h)).ToList();
         if (unlocked.Count < 2) return;
 
         int index = unlocked.FindIndex(h => h.heroId == currentHero.heroId);
@@ -92,10 +96,10 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
     public void Open(HeroData hero)
     {
-        if (hero == null || collectionManager == null) return;
+        if (hero == null || HeroCollectionManager.Instance == null) return;
 
         currentHero = hero;
-        currentOwnership = collectionManager.ownership.Find(o => o.heroId == hero.heroId);
+        currentOwnership = HeroCollectionManager.Instance.ownership.Find(o => o.heroId == hero.heroId);
 
         transform.SetAsLastSibling(); // поднимаем над другими панелями (Squad, Collection и т.д.), иначе они перехватывают клик
         gameObject.SetActive(true);
@@ -120,9 +124,9 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         {
             int level = currentOwnership != null ? currentOwnership.level : 1;
 
-            if (currentOwnership != null && collectionManager != null)
+            if (currentOwnership != null && HeroCollectionManager.Instance != null)
             {
-                int nextThreshold = collectionManager.ExperienceToNextLevel(level);
+                int nextThreshold = HeroCollectionManager.Instance.ExperienceToNextLevel(level);
                 levelText.text = $"Level: {level} ({currentOwnership.experience}/{nextThreshold} Exp)";
             }
             else
@@ -131,31 +135,96 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
             }
         }
 
-        PopulateSkills();
+        PopulateSkillSelectors();
         PopulateItems();
         RefreshUpgradeButtonTheme();
         RefreshUpgradeButtonVisibility();
     }
 
-    private void PopulateSkills()
+    private void PopulateSkillSelectors()
     {
-        if (skillsContainer == null || skillEntryPrefab == null) return;
-
-        foreach (Transform child in skillsContainer)
-            Destroy(child.gameObject);
-
-        if (currentHero.skills == null) return;
+        if (currentHero == null || currentHero.skills == null) return;
 
         int activeIndex = currentOwnership != null ? currentOwnership.activeSkillIndex : 0;
         int passiveIndex = currentOwnership != null ? currentOwnership.passiveSkillIndex : -1;
 
         for (int i = 0; i < currentHero.skills.Length; i++)
         {
-            GameObject entryObj = Instantiate(skillEntryPrefab, skillsContainer);
-            SkillEntryUI entry = entryObj.GetComponent<SkillEntryUI>();
-            entry.Setup(currentHero.skills[i], i, this);
-            entry.RefreshMarkers(activeIndex, passiveIndex);
+            int index = i; // копия для замыкания в лямбдах ниже
+
+            if (activeSkillTabs != null && index < activeSkillTabs.Length && activeSkillTabs[index] != null)
+            {
+                activeSkillTabs[index].onClick.RemoveAllListeners();
+                activeSkillTabs[index].onClick.AddListener(() => OnActiveSkillTabClicked(index));
+            }
+
+            if (activeSkillHighlights != null && index < activeSkillHighlights.Length && activeSkillHighlights[index] != null)
+                activeSkillHighlights[index].enabled = index == activeIndex;
+
+            if (passiveSkillButtons != null && index < passiveSkillButtons.Length && passiveSkillButtons[index] != null)
+            {
+                // Навык не может быть одновременно активным и пассивным — кнопка выбора пассивки для
+                // текущего активного навыка просто прячется, а не блокируется.
+                passiveSkillButtons[index].gameObject.SetActive(index != activeIndex);
+                passiveSkillButtons[index].onClick.RemoveAllListeners();
+                passiveSkillButtons[index].onClick.AddListener(() => OnPassiveSkillButtonClicked(index));
+            }
+
+            if (passiveSkillHighlights != null && index < passiveSkillHighlights.Length && passiveSkillHighlights[index] != null)
+                passiveSkillHighlights[index].enabled = index == passiveIndex;
         }
+
+        // По умолчанию (при открытии/обновлении панели) показываем описание текущего активного навыка
+        if (activeIndex >= 0 && activeIndex < currentHero.skills.Length)
+            ShowSkillInfo(currentHero.skills[activeIndex]);
+    }
+
+    private void ShowSkillInfo(SkillData skill)
+    {
+        if (skill == null) return;
+
+        if (skillManaCostText != null) skillManaCostText.text = $"{skill.cost}";
+        if (skillDescriptionText != null) skillDescriptionText.text = skill.description;
+    }
+
+    private void OnActiveSkillTabClicked(int index)
+    {
+        if (currentHero == null || currentOwnership == null || currentHero.skills == null) return;
+        if (index < 0 || index >= currentHero.skills.Length) return;
+
+        SkillData skill = currentHero.skills[index];
+        ShowSkillInfo(skill);
+
+        if (currentHero.maxResource < skill.cost)
+        {
+            var canvas = FindAnyObjectByType<Canvas>();
+            if (canvas != null)
+                ConfirmationDialog.ShowInfo(canvas.transform,
+                    $"Not enough mana for this skill (needs {skill.cost}, hero's max is {currentHero.maxResource}).");
+            return;
+        }
+
+        currentOwnership.activeSkillIndex = index;
+
+        // Навык не может остаться пассивным, если его же назначили активным
+        if (currentOwnership.passiveSkillIndex == index)
+            currentOwnership.passiveSkillIndex = -1;
+
+        HeroCollectionManager.Instance?.SaveOwnership();
+        PopulateSkillSelectors();
+    }
+
+    private void OnPassiveSkillButtonClicked(int index)
+    {
+        if (currentHero == null || currentOwnership == null || currentHero.skills == null) return;
+        if (index < 0 || index >= currentHero.skills.Length) return;
+
+        ShowSkillInfo(currentHero.skills[index]);
+
+        // Повторный клик по тому же навыку снимает отметку пассивного
+        currentOwnership.passiveSkillIndex = currentOwnership.passiveSkillIndex == index ? -1 : index;
+        HeroCollectionManager.Instance?.SaveOwnership();
+        PopulateSkillSelectors();
     }
 
     private void PopulateItems()
@@ -172,10 +241,10 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
             slot.Setup(slotType, this);
 
             string equippedInstanceId = currentOwnership != null ? currentOwnership.GetEquippedItemInstanceId(slotType) : null;
-            ItemOwnershipData equippedStack = (!string.IsNullOrEmpty(equippedInstanceId) && itemCollectionManager != null)
-                ? itemCollectionManager.GetStackByInstanceId(equippedInstanceId)
+            ItemOwnershipData equippedStack = (!string.IsNullOrEmpty(equippedInstanceId) && ItemCollectionManager.Instance != null)
+                ? ItemCollectionManager.Instance.GetStackByInstanceId(equippedInstanceId)
                 : null;
-            ItemData equippedItem = equippedStack != null ? itemCollectionManager.GetItemById(equippedStack.itemId) : null;
+            ItemData equippedItem = equippedStack != null ? ItemCollectionManager.Instance.GetItemById(equippedStack.itemId) : null;
 
             slot.Refresh(equippedItem);
         }
@@ -198,26 +267,12 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         if (currentOwnership == null) return;
 
         // Конкретный стек уникален — если он уже экипирован на другом герое, снимаем его оттуда ("переносим" сюда)
-        if (!string.IsNullOrEmpty(itemInstanceId) && collectionManager != null)
-            collectionManager.UnequipItemFromAllHeroes(itemInstanceId, currentHero.heroId);
+        if (!string.IsNullOrEmpty(itemInstanceId) && HeroCollectionManager.Instance != null)
+            HeroCollectionManager.Instance.UnequipItemFromAllHeroes(itemInstanceId, currentHero.heroId);
 
         currentOwnership.SetEquippedItem(slotType, itemInstanceId);
+        HeroCollectionManager.Instance?.SaveOwnership();
         PopulateItems();
-    }
-
-    public void SetActiveSkill(int index)
-    {
-        if (currentOwnership == null) return;
-        currentOwnership.activeSkillIndex = index;
-        PopulateSkills();
-    }
-
-    public void SetPassiveSkill(int index)
-    {
-        if (currentOwnership == null) return;
-        // Повторный клик по тому же навыку снимает отметку пассивного
-        currentOwnership.passiveSkillIndex = currentOwnership.passiveSkillIndex == index ? -1 : index;
-        PopulateSkills();
     }
 
     private void OnUpgradeClicked()
@@ -317,10 +372,10 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
     private void RefreshUpgradeButtonVisibility()
     {
-        if (heroUpgradeButton == null || itemCollectionManager == null) return;
+        if (heroUpgradeButton == null || ItemCollectionManager.Instance == null) return;
 
-        bool hasExperienceItems = itemCollectionManager.ownership.Any(o =>
-            o.quantity > 0 && itemCollectionManager.GetItemById(o.itemId)?.category == ItemCategory.HeroExperience);
+        bool hasExperienceItems = ItemCollectionManager.Instance.ownership.Any(o =>
+            o.quantity > 0 && ItemCollectionManager.Instance.GetItemById(o.itemId)?.category == ItemCategory.HeroExperience);
 
         heroUpgradeButton.gameObject.SetActive(hasExperienceItems);
     }

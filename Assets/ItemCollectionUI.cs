@@ -6,7 +6,6 @@ using TMPro;
 
 public class ItemCollectionUI : MonoBehaviour
 {
-    public ItemCollectionManager collectionManager;
     public Transform gridContainer;
     public GameObject itemCardPrefab;
     public ItemDetailUI detailUI;
@@ -129,6 +128,9 @@ public class ItemCollectionUI : MonoBehaviour
 
     private void PopulateGrid()
     {
+        var collectionManager = ItemCollectionManager.Instance;
+        if (collectionManager == null) return;
+
         foreach (Transform child in gridContainer)
             Destroy(child.gameObject);
 
