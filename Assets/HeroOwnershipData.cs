@@ -17,6 +17,10 @@ public class HeroOwnershipData
     public int level = 1;
     public int experience = 0; // накопленный опыт в пределах текущего уровня (от предметов-источников опыта)
 
+    [Header("Вознесение (только Purple/Orange — см. HeroAscensionUtility)")]
+    public int ascensionGems;  // "гемы" именно этого героя — копятся от дублей при призыве
+    public int ascensionLevel; // сколько раз уже вознесён (0 = база)
+
     [Header("Выбранные навыки")]
     public int activeSkillIndex = 0;   // навык, используемый кнопкой в бою
     public int passiveSkillIndex = -1; // -1 = не выбран

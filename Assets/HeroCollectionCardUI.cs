@@ -6,6 +6,11 @@ public class HeroCollectionCardUI : MonoBehaviour
     public Image portrait;
     public Image lockOverlay;
     public Button selectButton;
+
+    [Header("Рамка редкости — общий ассет RarityFrameSet на всю игру")]
+    public Image rarityFrame;
+    public RarityFrameSet rarityFrameSet;
+
     private HeroInventoryUI inventoryUI; // общий на всю сцену, передаётся из HeroCollectionUI при спавне
 
     private HeroData heroData;
@@ -28,6 +33,8 @@ public class HeroCollectionCardUI : MonoBehaviour
             selectButton.onClick.RemoveAllListeners();
             selectButton.onClick.AddListener(OnSelected);
         }
+
+        RarityUtility.ApplyFrame(rarityFrame, rarityFrameSet, data.rarity);
     }
 
     private void OnSelected()

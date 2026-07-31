@@ -15,6 +15,10 @@ public class CastleUI : MonoBehaviour
     private TMP_Text currencyText;
     private TMP_Text accountText;
 
+    private Button dailyRewardButton;
+    private Image dailyRewardButtonBg;
+    private TMP_Text dailyRewardButtonText;
+
     private CastleSummonUI summonUI;
 
     public void Open(MainMenuUI mainMenu)
@@ -89,9 +93,10 @@ public class CastleUI : MonoBehaviour
         accountText.color = Color.white;
 
         // --- Навигация — так же, как кнопки внизу SquadPanel: якорь (0.5,0), размер 200x100, y=50 ---
-        CreateNavButton(panelRect, "Squad", new Vector2(-220, 50), () => { owner?.ShowSquad(); });
-        CreateNavButton(panelRect, "Inventory", new Vector2(0, 50), () => { owner?.ShowItemCollection(); });
-        CreateNavButton(panelRect, "Collection", new Vector2(220, 50), () => { owner?.ShowCollection(); });
+        CreateNavButton(panelRect, "Squad", new Vector2(-330, 50), () => { owner?.ShowSquad(); });
+        CreateNavButton(panelRect, "Inventory", new Vector2(-110, 50), () => { owner?.ShowItemCollection(); });
+        CreateNavButton(panelRect, "Collection", new Vector2(110, 50), () => { owner?.ShowCollection(); });
+        CreateDailyRewardButton(panelRect, new Vector2(330, 50));
 
         // --- Сетка зданий ---
         var scrollObj = new GameObject("Scroll View", typeof(RectTransform));
@@ -171,6 +176,61 @@ public class CastleUI : MonoBehaviour
         text.color = Color.black; // текст кнопок замка — отдельно от глобального ConfirmationDialog.ButtonTextColor
     }
 
+    // Отдельно от CreateNavButton — держит ссылки на bg/text, чтобы Refresh() мог менять подпись/цвет
+    // в зависимости от того, забирали ли награду сегодня.
+    private void CreateDailyRewardButton(RectTransform parent, Vector2 anchoredPosition)
+    {
+        var btnObj = new GameObject("DailyReward", typeof(RectTransform));
+        var btnRect = (RectTransform)btnObj.transform;
+        btnRect.SetParent(parent, false);
+        btnRect.anchorMin = new Vector2(0.5f, 0f);
+        btnRect.anchorMax = new Vector2(0.5f, 0f);
+        btnRect.pivot = new Vector2(0.5f, 0.5f);
+        btnRect.sizeDelta = new Vector2(200, 100);
+        btnRect.anchoredPosition = anchoredPosition;
+
+        dailyRewardButtonBg = btnObj.AddComponent<Image>();
+        dailyRewardButton = btnObj.AddComponent<Button>();
+        dailyRewardButton.onClick.AddListener(OnDailyRewardClicked);
+
+        var textObj = new GameObject("Text", typeof(RectTransform));
+        var textRect = (RectTransform)textObj.transform;
+        textRect.SetParent(btnRect, false);
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+        dailyRewardButtonText = textObj.AddComponent<TextMeshProUGUI>();
+        dailyRewardButtonText.alignment = TextAlignmentOptions.Center;
+        dailyRewardButtonText.fontSize = 16;
+        dailyRewardButtonText.color = Color.black;
+    }
+
+    private void OnDailyRewardClicked()
+    {
+        if (AccountManager.Instance == null) return;
+
+        int granted = AccountManager.Instance.ClaimDailyReward();
+        if (granted > 0 && canvasRoot != null)
+            ConfirmationDialog.ShowInfo(canvasRoot, $"Daily reward claimed!\n+{granted} Progress Points");
+
+        Refresh();
+    }
+
+    private void RefreshDailyRewardButton()
+    {
+        if (dailyRewardButton == null || AccountManager.Instance == null) return;
+
+        bool claimed = AccountManager.Instance.HasClaimedDailyRewardToday();
+        int amount = AccountManager.Instance.GetDailyRewardAmount();
+
+        dailyRewardButton.interactable = !claimed;
+        if (dailyRewardButtonBg != null)
+            dailyRewardButtonBg.color = claimed ? new Color(1, 1, 1, 0.15f) : ConfirmationDialog.ButtonColor;
+        if (dailyRewardButtonText != null)
+            dailyRewardButtonText.text = claimed ? "Daily reward\nclaimed" : $"Daily reward\n+{amount} PP";
+    }
+
     public void Refresh()
     {
         if (panelRoot == null || !panelRoot.activeSelf) return;
@@ -183,7 +243,8 @@ public class CastleUI : MonoBehaviour
                 $"Wood: {PlayerCurrencies.Instance.GetBalance(CurrencyType.Wood)}   " +
                 $"Stone: {PlayerCurrencies.Instance.GetBalance(CurrencyType.Stone)}   " +
                 $"Shards: {PlayerCurrencies.Instance.GetBalance(CurrencyType.SummonShards)}   " +
-                $"Gems: {PlayerCurrencies.Instance.GetBalance(CurrencyType.PremiumGems)}";
+                $"Gems: {PlayerCurrencies.Instance.GetBalance(CurrencyType.PremiumGems)}   " +
+                $"PP: {PlayerCurrencies.Instance.GetBalance(CurrencyType.ProgressPoints)}";
         }
 
         if (accountText != null && AccountManager.Instance != null)
@@ -191,6 +252,8 @@ public class CastleUI : MonoBehaviour
             var acc = AccountManager.Instance;
             accountText.text = $"Lvl {acc.level} ({acc.experience}/{acc.ExperienceToNextLevel(acc.level)})   Energy: {acc.currentEnergy}/{acc.MaxEnergy}";
         }
+
+        RefreshDailyRewardButton();
 
         PopulateBuildings();
     }

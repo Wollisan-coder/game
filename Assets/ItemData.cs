@@ -28,14 +28,16 @@ public class ItemData : ScriptableObject
     public Sprite icon;
     [TextArea(2, 4)] public string description;
 
+    // White исключён из выдачи (Алтарь/Кузня больше не спавнят её) — новые ассеты по умолчанию создаются с Green
     [Header("Редкость и прокачка")]
-    public Rarity rarity = Rarity.White;
+    public Rarity rarity = Rarity.Green;
     public int sacrificeExperience = 10; // опыт, который предмет даёт другому предмету при пожертвовании (масштабируется уровнем предмета-донора)
 
     [Header("Бонусы характеристик при экипировке (category == Equipment)")]
     public int bonusHealth;
     public int bonusMana;
     public float bonusDamageMultiplier;
+    public int bonusArmor; // защита — по конвенции даётся бижутерией (Accessory), но суммируется с любого слота
 
     [Header("Опыт для героя (category == HeroExperience)")]
     public int heroExperienceValue = 0; // сколько опыта герой получает при использовании этого предмета

@@ -11,6 +11,7 @@ public class HeroRuntimeState
     public int currentHealth;
     public int maxResource;         // копия heroData.maxResource + бонусы от экипировки
     public float damageMultiplier;  // копия heroData.damageMultiplier + бонусы от экипировки
+    public int armor;               // целиком от экипировки (бижутерии) — у героя самого по себе брони нет
 
     public bool blockManaGainThisTurn; // true после использования навыка — пропускает следующее начисление маны
 

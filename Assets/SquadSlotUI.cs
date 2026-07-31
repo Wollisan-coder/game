@@ -10,6 +10,10 @@ public class SquadSlotUI : MonoBehaviour
     public Button selectButton;
     public GameObject emptyPlaceholder;
 
+    [Header("Рамка редкости — общий ассет RarityFrameSet на всю игру")]
+    public Image rarityFrame;
+    public RarityFrameSet rarityFrameSet;
+
     private HeroData heroData;
     private SquadUI parentUI;
     private HeroInventoryUI inventoryUI;
@@ -33,6 +37,8 @@ public class SquadSlotUI : MonoBehaviour
         removeButton.gameObject.SetActive(true);
         removeButton.onClick.RemoveAllListeners();
         removeButton.onClick.AddListener(OnRemoveClicked);
+
+        RarityUtility.ApplyFrame(rarityFrame, rarityFrameSet, data.rarity);
     }
 
     public void SetEmpty()
@@ -41,6 +47,8 @@ public class SquadSlotUI : MonoBehaviour
         portrait.gameObject.SetActive(false);
         emptyPlaceholder.SetActive(true);
         removeButton.gameObject.SetActive(false);
+
+        if (rarityFrame != null) rarityFrame.enabled = false;
     }
 
     private void Awake()

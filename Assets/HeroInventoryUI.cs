@@ -13,17 +13,28 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     public TMP_Text levelText;
     public TMP_Text descriptionText;
 
+    [Header("Рамка редкости — общий ассет RarityFrameSet на всю игру")]
+    public Image rarityFrame;
+    public RarityFrameSet rarityFrameSet;
+
+    [Header("Статы (база героя + бонусы от текущей экипировки) — справа под слотами предметов")]
+    public TMP_Text statsText;
+
     [Header("Навыки — вкладки активного (4 кнопки, по индексу heroData.skills[i])")]
     public Button[] activeSkillTabs;
     public Image[] activeSkillHighlights; // подсветка выбранной вкладки, тот же порядок (необязательно)
 
-    [Header("Навыки — кнопки выбора пассивного (4, тот же индекс; кнопка активного навыка сама прячется)")]
+    [Header("Навыки — кнопки выбора пассивного (4, тот же индекс; может совпадать с активным)")]
     public Button[] passiveSkillButtons;
     public Image[] passiveSkillHighlights; // необязательно
 
-    [Header("Описание навыка (обновляется по клику на вкладку активки или кнопку пассивки)")]
-    public TMP_Text skillManaCostText;
-    public TMP_Text skillDescriptionText;
+    [Header("Инфо — оба видны одновременно, каждый под свой текущий выбор (не только по клику)")]
+    public TMP_Text activeSkillInfoText;  // мана + описание текущего активного навыка
+    public TMP_Text passiveSkillInfoText; // мана + описание текущего пассивного навыка (пусто, если не выбран)
+
+    [Header("Скролл описаний (необязательно) — сбрасывается наверх при смене навыка")]
+    public ScrollRect activeSkillInfoScroll;
+    public ScrollRect passiveSkillInfoScroll;
 
     [Header("Инвентарь (предметы)")]
     public Transform itemsContainer;
@@ -46,17 +57,28 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     private TMP_Text heroUpgradeText;
     private HeroExperienceItemPickerUI experienceItemPickerUI;
 
+    private Button heroAscendButton; // строится программно — потратить гемы вознесения, поднять потолок уровня
+    private Image heroAscendBg;
+    private TMP_Text heroAscendText;
+
     private const float SwipeThreshold = 80f; // минимальная длина свайпа по X (пиксели), чтобы засчитать переключение героя
+    private const float SkillButtonTextPadding = 24f; // запас по ширине сверх самого текста названия навыка
 
     private HeroData currentHero;
     private HeroOwnershipData currentOwnership;
+
+    // Исходная (заданная в редакторе) ширина каждой кнопки — растём только сверх неё, никогда не сжимаем меньше
+    private float[] activeSkillTabBaseWidths;
+    private float[] passiveSkillButtonBaseWidths;
 
     private void Awake()
     {
         if (closeButton != null)
             closeButton.onClick.AddListener(Close);
 
+        CacheSkillButtonBaseWidths();
         CreateUpgradeButtonIfNeeded();
+        CreateAscendButtonIfNeeded();
         CreateHeroNavButtonsIfNeeded();
 
         // Панель уже сохранена выключенной в сцене (m_IsActive: 0) — не гасим её здесь ещё раз:
@@ -120,6 +142,8 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         if (healthText != null) healthText.text = $"HP: {currentHero.maxHealth}";
         if (descriptionText != null) descriptionText.text = currentHero.description;
 
+        RarityUtility.ApplyFrame(rarityFrame, rarityFrameSet, currentHero.rarity);
+
         if (levelText != null)
         {
             int level = currentOwnership != null ? currentOwnership.level : 1;
@@ -139,6 +163,7 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         PopulateItems();
         RefreshUpgradeButtonTheme();
         RefreshUpgradeButtonVisibility();
+        RefreshAscendButton();
     }
 
     private void PopulateSkillSelectors()
@@ -151,11 +176,16 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         for (int i = 0; i < currentHero.skills.Length; i++)
         {
             int index = i; // копия для замыкания в лямбдах ниже
+            string skillName = currentHero.skills[index] != null ? currentHero.skills[index].skillName : "";
 
             if (activeSkillTabs != null && index < activeSkillTabs.Length && activeSkillTabs[index] != null)
             {
                 activeSkillTabs[index].onClick.RemoveAllListeners();
                 activeSkillTabs[index].onClick.AddListener(() => OnActiveSkillTabClicked(index));
+
+                float baseWidth = activeSkillTabBaseWidths != null && index < activeSkillTabBaseWidths.Length
+                    ? activeSkillTabBaseWidths[index] : 0f;
+                SetButtonLabelAndFitWidth(activeSkillTabs[index], skillName, baseWidth);
             }
 
             if (activeSkillHighlights != null && index < activeSkillHighlights.Length && activeSkillHighlights[index] != null)
@@ -163,28 +193,98 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
             if (passiveSkillButtons != null && index < passiveSkillButtons.Length && passiveSkillButtons[index] != null)
             {
-                // Навык не может быть одновременно активным и пассивным — кнопка выбора пассивки для
-                // текущего активного навыка просто прячется, а не блокируется.
-                passiveSkillButtons[index].gameObject.SetActive(index != activeIndex);
+                // Один и тот же навык может одновременно быть и активным, и пассивным — кнопки не исключают друг друга.
                 passiveSkillButtons[index].onClick.RemoveAllListeners();
                 passiveSkillButtons[index].onClick.AddListener(() => OnPassiveSkillButtonClicked(index));
+
+                float baseWidth = passiveSkillButtonBaseWidths != null && index < passiveSkillButtonBaseWidths.Length
+                    ? passiveSkillButtonBaseWidths[index] : 0f;
+                SetButtonLabelAndFitWidth(passiveSkillButtons[index], skillName, baseWidth);
             }
 
             if (passiveSkillHighlights != null && index < passiveSkillHighlights.Length && passiveSkillHighlights[index] != null)
                 passiveSkillHighlights[index].enabled = index == passiveIndex;
         }
 
-        // По умолчанию (при открытии/обновлении панели) показываем описание текущего активного навыка
-        if (activeIndex >= 0 && activeIndex < currentHero.skills.Length)
-            ShowSkillInfo(currentHero.skills[activeIndex]);
+        // Оба инфо-блока всегда отражают текущий выбор, а не только последний клик — активный и пассивный видны разом
+        SkillData activeSkill = activeIndex >= 0 && activeIndex < currentHero.skills.Length ? currentHero.skills[activeIndex] : null;
+        SkillData passiveSkill = passiveIndex >= 0 && passiveIndex < currentHero.skills.Length ? currentHero.skills[passiveIndex] : null;
+
+        SetSkillInfoText(activeSkillInfoText, activeSkill);
+        SetSkillInfoText(passiveSkillInfoText, passiveSkill);
+
+        ResetScrollToTop(activeSkillInfoScroll);
+        ResetScrollToTop(passiveSkillInfoScroll);
     }
 
-    private void ShowSkillInfo(SkillData skill)
+    // Длинное описание может не влезть в видимую область скролла — при смене навыка возвращаем его наверх,
+    // иначе после переключения останется прокручено туда, где было у предыдущего (другого по длине) текста.
+    private static void ResetScrollToTop(ScrollRect scroll)
     {
-        if (skill == null) return;
+        if (scroll != null) scroll.verticalNormalizedPosition = 1f;
+    }
 
-        if (skillManaCostText != null) skillManaCostText.text = $"{skill.cost}";
-        if (skillDescriptionText != null) skillDescriptionText.text = skill.description;
+    // Запоминаем изначальную (заданную вручную в редакторе) ширину каждой кнопки один раз — чтобы потом
+    // расширять их под длинное название навыка, но никогда не ужимать обратно ниже авторского размера.
+    private void CacheSkillButtonBaseWidths()
+    {
+        if (activeSkillTabs != null)
+        {
+            activeSkillTabBaseWidths = new float[activeSkillTabs.Length];
+            for (int i = 0; i < activeSkillTabs.Length; i++)
+            {
+                var rect = activeSkillTabs[i] != null ? activeSkillTabs[i].GetComponent<RectTransform>() : null;
+                activeSkillTabBaseWidths[i] = rect != null ? rect.sizeDelta.x : 0f;
+            }
+        }
+
+        if (passiveSkillButtons != null)
+        {
+            passiveSkillButtonBaseWidths = new float[passiveSkillButtons.Length];
+            for (int i = 0; i < passiveSkillButtons.Length; i++)
+            {
+                var rect = passiveSkillButtons[i] != null ? passiveSkillButtons[i].GetComponent<RectTransform>() : null;
+                passiveSkillButtonBaseWidths[i] = rect != null ? rect.sizeDelta.x : 0f;
+            }
+        }
+    }
+
+    // Ставит название навыка на текстовую надпись внутри кнопки и, если оно не влезает в исходную ширину
+    // кнопки, увеличивает саму кнопку под текст (но никогда не сужает меньше исходного размера).
+    private static void SetButtonLabelAndFitWidth(Button button, string skillName, float baseWidth)
+    {
+        if (button == null) return;
+
+        var label = button.GetComponentInChildren<TMP_Text>();
+        if (label != null) label.text = skillName ?? "";
+        if (label == null) return;
+
+        float preferredWidth = label.GetPreferredValues(skillName ?? "").x + SkillButtonTextPadding;
+        float width = Mathf.Max(baseWidth, preferredWidth);
+
+        // Если кнопка лежит под Horizontal/Vertical Layout Group, та каждый layout-проход перетирает
+        // RectTransform.sizeDelta своим расчётом — реальный способ повлиять на итоговую ширину в этом
+        // случае это LayoutElement.preferredWidth, который Layout Group учитывает сама.
+        var layoutElement = button.GetComponent<LayoutElement>();
+        if (layoutElement == null)
+            layoutElement = button.gameObject.AddComponent<LayoutElement>();
+        layoutElement.preferredWidth = width;
+
+        // На случай, если родитель НЕ под Layout Group — правим и sizeDelta напрямую тоже (не мешает,
+        // если Layout Group реально управляет размером — она всё равно пересчитает поверх этого).
+        var rect = button.GetComponent<RectTransform>();
+        if (rect != null)
+        {
+            Vector2 size = rect.sizeDelta;
+            size.x = width;
+            rect.sizeDelta = size;
+        }
+    }
+
+    private static void SetSkillInfoText(TMP_Text label, SkillData skill)
+    {
+        if (label == null) return;
+        label.text = skill != null ? $"Mana: {skill.cost}\n{skill.description}" : "";
     }
 
     private void OnActiveSkillTabClicked(int index)
@@ -193,23 +293,18 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         if (index < 0 || index >= currentHero.skills.Length) return;
 
         SkillData skill = currentHero.skills[index];
-        ShowSkillInfo(skill);
 
-        if (currentHero.maxResource < skill.cost)
+        int totalMaxMana = GetTotalMaxMana();
+        if (totalMaxMana < skill.cost)
         {
             var canvas = FindAnyObjectByType<Canvas>();
             if (canvas != null)
                 ConfirmationDialog.ShowInfo(canvas.transform,
-                    $"Not enough mana for this skill (needs {skill.cost}, hero's max is {currentHero.maxResource}).");
+                    $"Not enough mana for this skill (needs {skill.cost}, hero's max is {totalMaxMana}).");
             return;
         }
 
         currentOwnership.activeSkillIndex = index;
-
-        // Навык не может остаться пассивным, если его же назначили активным
-        if (currentOwnership.passiveSkillIndex == index)
-            currentOwnership.passiveSkillIndex = -1;
-
         HeroCollectionManager.Instance?.SaveOwnership();
         PopulateSkillSelectors();
     }
@@ -219,10 +314,37 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         if (currentHero == null || currentOwnership == null || currentHero.skills == null) return;
         if (index < 0 || index >= currentHero.skills.Length) return;
 
-        ShowSkillInfo(currentHero.skills[index]);
+        // Повторный клик по уже выбранной пассивке снимает её — мана при этом только освобождается,
+        // проверка нехватки маны тут не нужна.
+        if (currentOwnership.passiveSkillIndex == index)
+        {
+            currentOwnership.passiveSkillIndex = -1;
+            HeroCollectionManager.Instance?.SaveOwnership();
+            PopulateSkillSelectors();
+            return;
+        }
 
-        // Повторный клик по тому же навыку снимает отметку пассивного
-        currentOwnership.passiveSkillIndex = currentOwnership.passiveSkillIndex == index ? -1 : index;
+        SkillData passiveSkill = currentHero.skills[index];
+
+        int activeIndex = currentOwnership.activeSkillIndex;
+        SkillData activeSkill = activeIndex >= 0 && activeIndex < currentHero.skills.Length
+            ? currentHero.skills[activeIndex] : null;
+        int requiredForActive = activeSkill != null ? activeSkill.cost : 0;
+
+        // Пассивка "съедает" часть maxResource в бою (см. BattleManager) — если после этого не хватит
+        // маны даже на уже выбранный активный навык, выбор пассивки нужно заблокировать попапом.
+        int remainingMana = GetTotalMaxMana() - passiveSkill.cost;
+        if (remainingMana < requiredForActive)
+        {
+            var canvas = FindAnyObjectByType<Canvas>();
+            if (canvas != null)
+                ConfirmationDialog.ShowInfo(canvas.transform,
+                    $"Not enough mana — this passive costs {passiveSkill.cost}, leaving only {remainingMana}, " +
+                    $"but the active skill needs {requiredForActive}.");
+            return;
+        }
+
+        currentOwnership.passiveSkillIndex = index;
         HeroCollectionManager.Instance?.SaveOwnership();
         PopulateSkillSelectors();
     }
@@ -248,6 +370,35 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
             slot.Refresh(equippedItem);
         }
+
+        RefreshStats();
+    }
+
+    // База героя + сумма бонусов от текущей экипировки (через общий HeroStatUtility — тот же расчёт,
+    // что использует BattleManager при старте боя, чтобы цифры в меню совпадали с реальными в бою).
+    private void RefreshStats()
+    {
+        if (statsText == null || currentHero == null) return;
+
+        var bonuses = HeroStatUtility.CalculateEquipmentBonuses(currentOwnership);
+
+        int totalHealth = currentHero.maxHealth + bonuses.health;
+        float totalDamage = currentHero.damageMultiplier + bonuses.damageMultiplier;
+
+        statsText.text =
+            $"HP: {totalHealth}\n" +
+            $"Mana: {GetTotalMaxMana()}\n" +
+            $"Damage x{totalDamage:0.00}\n" +
+            $"Armor: {bonuses.armor}";
+    }
+
+    // Итоговый максимум маны героя (база + бонус экипировки) — используется и для отображения статов,
+    // и для проверки "хватит ли маны" при выборе активного/пассивного навыка (раньше эти проверки
+    // сверялись с "голым" currentHero.maxResource без бонусов, из-за чего расходились с панелью статов).
+    private int GetTotalMaxMana()
+    {
+        if (currentHero == null) return 0;
+        return currentHero.maxResource + HeroStatUtility.CalculateEquipmentBonuses(currentOwnership).mana;
     }
 
     public void OpenItemPicker(EquipmentSlotType slotType)
@@ -318,6 +469,82 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         heroUpgradeButton.gameObject.SetActive(false);
 
         experienceItemPickerUI = gameObject.AddComponent<HeroExperienceItemPickerUI>();
+    }
+
+    private void OnAscendClicked()
+    {
+        if (currentHero == null || HeroCollectionManager.Instance == null) return;
+
+        bool success = HeroCollectionManager.Instance.AscendHero(currentHero.heroId);
+
+        var canvas = FindAnyObjectByType<Canvas>();
+        if (canvas != null)
+        {
+            string message = success
+                ? $"{currentHero.heroName} ascended! New level cap raised."
+                : "Not enough ascension gems (or already at max ascension).";
+            ConfirmationDialog.ShowInfo(canvas.transform, message);
+        }
+
+        Refresh();
+    }
+
+    // Кнопку "Ascend" строим программно над Upgrade (та уже стоит над Close), той же техникой копирования трансформа.
+    private void CreateAscendButtonIfNeeded()
+    {
+        if (heroAscendButton != null) return;
+
+        RectTransform referenceRect = heroUpgradeButton != null ? heroUpgradeButton.GetComponent<RectTransform>()
+            : closeButton != null ? closeButton.GetComponent<RectTransform>() : null;
+        if (referenceRect == null) return;
+
+        var ascendObj = new GameObject("HeroAscendButton", typeof(RectTransform));
+        var ascendRect = (RectTransform)ascendObj.transform;
+        ascendRect.SetParent(referenceRect.parent, false);
+        ascendRect.anchorMin = referenceRect.anchorMin;
+        ascendRect.anchorMax = referenceRect.anchorMax;
+        ascendRect.pivot = referenceRect.pivot;
+        ascendRect.sizeDelta = referenceRect.sizeDelta;
+        ascendRect.anchoredPosition = referenceRect.anchoredPosition + new Vector2(0, referenceRect.sizeDelta.y + 12f);
+
+        heroAscendBg = ascendObj.AddComponent<Image>();
+        heroAscendBg.color = ConfirmationDialog.ButtonColor;
+        heroAscendButton = ascendObj.AddComponent<Button>();
+        heroAscendButton.onClick.AddListener(OnAscendClicked);
+
+        var textObj = new GameObject("Text", typeof(RectTransform));
+        var textRect = (RectTransform)textObj.transform;
+        textRect.SetParent(ascendRect, false);
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+        heroAscendText = textObj.AddComponent<TextMeshProUGUI>();
+        heroAscendText.alignment = TextAlignmentOptions.Center;
+        heroAscendText.color = ConfirmationDialog.ButtonTextColor;
+        heroAscendText.fontSize = 14;
+
+        heroAscendButton.gameObject.SetActive(false);
+    }
+
+    // Видна только для Purple/Orange (Green/Blue вознесение не требуют — см. HeroAscensionUtility) и только
+    // пока не достигнут максимум. Подпись показывает гемы этого героя и сколько нужно для следующей ступени.
+    private void RefreshAscendButton()
+    {
+        if (heroAscendButton == null || currentHero == null || currentOwnership == null) return;
+
+        int maxAscension = HeroAscensionUtility.GetMaxAscension(currentHero.rarity);
+        bool relevant = maxAscension > 0 && currentOwnership.ascensionLevel < maxAscension;
+
+        heroAscendButton.gameObject.SetActive(relevant);
+        if (!relevant) return;
+
+        heroAscendButton.interactable = currentOwnership.ascensionGems >= HeroAscensionUtility.GemsPerAscension;
+        if (heroAscendText != null)
+        {
+            heroAscendText.text = $"Ascend\n{currentOwnership.ascensionGems}/{HeroAscensionUtility.GemsPerAscension} gems " +
+                $"({currentOwnership.ascensionLevel}/{maxAscension})";
+        }
     }
 
     // Стрелки "<" / ">" по бокам от портрета — строятся программно, чтобы не редактировать вручную разметку панели.

@@ -12,6 +12,11 @@ public class HeroCollectionManager : MonoBehaviour
     [Header("Состояние владения (заполняется при загрузке сохранения)")]
     public List<HeroOwnershipData> ownership = new List<HeroOwnershipData>();
 
+    // Индекс = (int)Rarity. Гем опыта героя ИМЕННО этого цвета — выдаётся вместо гема вознесения,
+    // когда дубликат выпадает на герое, уже стоящем на максимуме вознесения своей редкости.
+    [Header("Гемы опыта героя по редкости — награда за дубликат на максимуме вознесения")]
+    public ItemData[] rarityExperienceGems;
+
     [Header("Выбранный отряд")]
     public List<HeroData> squad = new List<HeroData>();
     public const int BaseSquadSize = 4;
@@ -89,23 +94,83 @@ public class HeroCollectionManager : MonoBehaviour
         SaveOwnership();
     }
 
+    // Вызывается SummonService, когда призыв выпал на УЖЕ разблокированного героя (дубликат).
+    // Даёт "гем" вознесения этому герою — либо, если герой уже на максимуме вознесения своей редкости
+    // (гему больше некуда деваться), выдаёт N гемов опыта героя того же цвета редкости (см. rarityExperienceGems).
+    public void HandleDuplicatePull(HeroData hero)
+    {
+        if (hero == null) return;
+
+        var data = ownership.FirstOrDefault(o => o.heroId == hero.heroId);
+        if (data == null) return;
+
+        int maxAscension = HeroAscensionUtility.GetMaxAscension(hero.rarity);
+        if (data.ascensionLevel >= maxAscension)
+        {
+            ItemData gem = GetRarityExperienceGem(hero.rarity);
+            int count = HeroAscensionUtility.GetOverflowGemCount(hero.rarity);
+            if (gem != null)
+                ItemCollectionManager.Instance?.AddItemCopy(gem, count);
+        }
+        else
+        {
+            data.ascensionGems++;
+        }
+
+        SaveOwnership();
+    }
+
+    private ItemData GetRarityExperienceGem(Rarity rarity)
+    {
+        int index = (int)rarity;
+        return rarityExperienceGems != null && index >= 0 && index < rarityExperienceGems.Length
+            ? rarityExperienceGems[index] : null;
+    }
+
+    // Тратит гемы этого героя, чтобы поднять ступень вознесения на 1 (и вместе с ней — потолок уровня).
+    // Возвращает false, если герой уже на максимуме вознесения своей редкости, либо не хватает гемов.
+    public bool AscendHero(string heroId)
+    {
+        var hero = allHeroes.FirstOrDefault(h => h.heroId == heroId);
+        var data = ownership.FirstOrDefault(o => o.heroId == heroId);
+        if (hero == null || data == null) return false;
+
+        int maxAscension = HeroAscensionUtility.GetMaxAscension(hero.rarity);
+        if (data.ascensionLevel >= maxAscension) return false;
+        if (data.ascensionGems < HeroAscensionUtility.GemsPerAscension) return false;
+
+        data.ascensionGems -= HeroAscensionUtility.GemsPerAscension;
+        data.ascensionLevel++;
+
+        SaveOwnership();
+        return true;
+    }
+
     // Сколько опыта нужно набрать герою на указанном уровне, чтобы подняться на следующий
     public int ExperienceToNextLevel(int level) => level * 100;
 
-    // Добавляет герою опыт (например, от расходного предмета) и поднимает уровень, пока опыта хватает.
-    // Возвращает true, если герой найден и опыт применён.
+    // Добавляет герою опыт (например, от расходного предмета) и поднимает уровень, пока опыта хватает —
+    // но не выше потолка текущей ступени вознесения (см. HeroAscensionUtility.GetLevelCap).
+    // Возвращает true, если герой найден и опыт применён (даже если он уже упёрся в потолок).
     public bool GrantExperience(string heroId, int amount)
     {
+        var hero = allHeroes.FirstOrDefault(h => h.heroId == heroId);
         var data = ownership.FirstOrDefault(o => o.heroId == heroId);
-        if (data == null || amount <= 0) return false;
+        if (hero == null || data == null || amount <= 0) return false;
+
+        int levelCap = HeroAscensionUtility.GetLevelCap(hero.rarity, data.ascensionLevel);
+        if (data.level >= levelCap) return false; // уже на потолке — опыт девать некуда, пока не вознесётся дальше
 
         data.experience += amount;
 
-        while (data.experience >= ExperienceToNextLevel(data.level))
+        while (data.level < levelCap && data.experience >= ExperienceToNextLevel(data.level))
         {
             data.experience -= ExperienceToNextLevel(data.level);
             data.level++;
         }
+
+        if (data.level >= levelCap)
+            data.experience = 0; // упёрлись в потолок — остаток сгорает, а не копится "про запас"
 
         SaveOwnership();
         return true;
@@ -233,7 +298,8 @@ public class HeroCollectionManager : MonoBehaviour
             .Where(e => !string.IsNullOrEmpty(e.itemInstanceId))
             .Select(e => $"{(int)e.slotType},{e.itemInstanceId}"));
 
-        return $"{data.heroId}:{(data.isUnlocked ? 1 : 0)}:{data.level}:{data.experience}:{data.activeSkillIndex}:{data.passiveSkillIndex}:{equipped}";
+        return $"{data.heroId}:{(data.isUnlocked ? 1 : 0)}:{data.level}:{data.experience}:{data.activeSkillIndex}:{data.passiveSkillIndex}:{equipped}" +
+               $":{data.ascensionGems}:{data.ascensionLevel}";
     }
 
     private void LoadOwnership()
@@ -255,7 +321,10 @@ public class HeroCollectionManager : MonoBehaviour
                 level = int.Parse(parts[2]),
                 experience = int.Parse(parts[3]),
                 activeSkillIndex = int.Parse(parts[4]),
-                passiveSkillIndex = int.Parse(parts[5])
+                passiveSkillIndex = int.Parse(parts[5]),
+                // Добавлено позже вознесения ради — старые сохранения (7 частей, без этих двух) просто получат 0/0
+                ascensionGems = parts.Length > 7 ? int.Parse(parts[7]) : 0,
+                ascensionLevel = parts.Length > 8 ? int.Parse(parts[8]) : 0
             };
 
             string equippedBlock = parts[6];

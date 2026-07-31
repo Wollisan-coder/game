@@ -424,5 +424,5 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ItemSlotUI
   iconImage: {fileID: 3532575658954786515}
-  emptySlotSprite: {fileID: 0}
+  emptySlotSprite: {fileID: 21300000, guid: 231c3885e6d8ac04abb8d5716fc39ece, type: 3}
   slotButton: {fileID: 8489558002729024277}

@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 // Общая логика цвета редкости — используется и предметами, и героями
 public static class RarityUtility
@@ -14,5 +15,16 @@ public static class RarityUtility
             case Rarity.Orange: return new Color(1f, 0.55f, 0.1f);
             default: return Color.white;
         }
+    }
+
+    // Общая подстановка спрайта рамки редкости — используется в карточке коллекции, инвентаре героя и слоте отряда.
+    // Если спрайта под эту редкость нет в наборе (например, слот White не заполнен) — рамка просто скрывается.
+    public static void ApplyFrame(Image frameImage, RarityFrameSet frameSet, Rarity rarity)
+    {
+        if (frameImage == null) return;
+
+        Sprite sprite = frameSet != null ? frameSet.GetFrame(rarity) : null;
+        frameImage.sprite = sprite;
+        frameImage.enabled = sprite != null;
     }
 }

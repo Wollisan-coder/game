@@ -18,6 +18,12 @@ public class AccountManager : MonoBehaviour
 
     public int MaxEnergy => baseMaxEnergy + (level - 1);
 
+    // "Fast Start" дневная награда (ОП) — Day N считается от календарной даты ПЕРВОГО входа (не стрик,
+    // не сбрасывается за пропуск дня): Day 1=400, Day 2=350, Day 3=300, Day 4=250, Day 5+=200 (см. match3-economy.md)
+    private System.DateTime firstLoginDate;
+    private System.DateTime? lastDailyClaimDate;
+    private const string DateFormat = "yyyyMMdd";
+
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -93,12 +99,51 @@ public class AccountManager : MonoBehaviour
         return Mathf.CeilToInt((float)(minutesRemaining * 60));
     }
 
+    // Day N (1-based) считается от календарной даты первого входа — не сбрасывается, если игрок пропустил день
+    public int GetDailyRewardDay()
+    {
+        int days = (System.DateTime.UtcNow.Date - firstLoginDate).Days + 1;
+        return Mathf.Max(1, days);
+    }
+
+    public int GetDailyRewardAmount()
+    {
+        switch (GetDailyRewardDay())
+        {
+            case 1: return 400;
+            case 2: return 350;
+            case 3: return 300;
+            case 4: return 250;
+            default: return 200;
+        }
+    }
+
+    public bool HasClaimedDailyRewardToday() =>
+        lastDailyClaimDate.HasValue && lastDailyClaimDate.Value == System.DateTime.UtcNow.Date;
+
+    // Выдаёт ОП по текущей дневной ставке. Возвращает выданное количество, либо 0, если сегодня уже забирали.
+    public int ClaimDailyReward()
+    {
+        if (HasClaimedDailyRewardToday()) return 0;
+
+        int amount = GetDailyRewardAmount();
+        PlayerCurrencies.Instance?.Add(CurrencyType.ProgressPoints, amount);
+
+        lastDailyClaimDate = System.DateTime.UtcNow.Date;
+        Save();
+
+        return amount;
+    }
+
     private void Save()
     {
         PlayerPrefs.SetInt("account_level", level);
         PlayerPrefs.SetInt("account_experience", experience);
         PlayerPrefs.SetInt("account_current_energy", currentEnergy);
         PlayerPrefs.SetString("account_last_energy_regen_ticks", lastEnergyRegenTicks.ToString());
+        PlayerPrefs.SetString("account_first_login_date", firstLoginDate.ToString(DateFormat));
+        if (lastDailyClaimDate.HasValue)
+            PlayerPrefs.SetString("account_last_daily_claim_date", lastDailyClaimDate.Value.ToString(DateFormat));
         PlayerPrefs.Save();
     }
 
@@ -115,5 +160,21 @@ public class AccountManager : MonoBehaviour
         currentEnergy = PlayerPrefs.HasKey("account_current_energy")
             ? PlayerPrefs.GetInt("account_current_energy", MaxEnergy)
             : MaxEnergy;
+
+        string savedFirstLogin = PlayerPrefs.GetString("account_first_login_date", "");
+        if (string.IsNullOrEmpty(savedFirstLogin) ||
+            !System.DateTime.TryParseExact(savedFirstLogin, DateFormat, null, System.Globalization.DateTimeStyles.None, out firstLoginDate))
+        {
+            // Самый первый запуск — фиксируем сегодняшнюю дату как Day 1 и сразу сохраняем, чтобы не сбилась
+            firstLoginDate = System.DateTime.UtcNow.Date;
+            PlayerPrefs.SetString("account_first_login_date", firstLoginDate.ToString(DateFormat));
+            PlayerPrefs.Save();
+        }
+
+        string savedLastClaim = PlayerPrefs.GetString("account_last_daily_claim_date", "");
+        lastDailyClaimDate = !string.IsNullOrEmpty(savedLastClaim) &&
+            System.DateTime.TryParseExact(savedLastClaim, DateFormat, null, System.Globalization.DateTimeStyles.None, out var parsedClaim)
+            ? parsedClaim
+            : (System.DateTime?)null;
     }
 }

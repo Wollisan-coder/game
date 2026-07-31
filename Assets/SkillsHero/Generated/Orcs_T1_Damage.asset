@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Orcs_T1_Damage
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
   skillName: Axe Strike
-  description: 'Orcs, tier 1: Damage'
+  description: A spell-charged cleaving strike with a sword against a single target.
   costType: 0
   cost: 15
   effectType: 0

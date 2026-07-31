@@ -13,9 +13,10 @@ MonoBehaviour:
   m_Name: Orcs_T2_MultiHit
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
   skillName: Blood Fury
-  description: 'Orcs, tier 2: MultiHit'
+  description: "A rage-fueled ability that trades safety for raw power \u2014 the
+    hero deals bonus damage, but takes increased damage in return while it's active."
   costType: 0
-  cost: 40
+  cost: 15
   effectType: 14
   effectValue: 8
   rowStart: 0

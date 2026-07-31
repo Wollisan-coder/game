@@ -19,8 +19,9 @@ public class HeroData : ScriptableObject
     public Color themeColor = Color.white;
     public ResourceType resourceType;
 
+    // White исключён из выдачи (Алтарь/Кузня больше не спавнят её) — новые ассеты по умолчанию создаются с Green
     [Header("Редкость (влияет на шанс выпадения в Алтаре)")]
-    public Rarity rarity = Rarity.White;
+    public Rarity rarity = Rarity.Green;
 
     [Header("Опис")]
     [TextArea(3, 6)] public string description;

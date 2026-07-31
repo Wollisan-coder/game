@@ -150,25 +150,20 @@ public class BattleManager : MonoBehaviour
             var heroState = new HeroRuntimeState(hero, level);
 
             // Бонусы от экипированных предметов (не меняют сам ассет HeroData, только эту копию на бой)
-            if (ownership != null && ItemCollectionManager.Instance != null)
+            var bonuses = HeroStatUtility.CalculateEquipmentBonuses(ownership);
+            heroState.maxHealth += bonuses.health;
+            heroState.currentHealth += bonuses.health;
+            heroState.maxResource += bonuses.mana;
+            heroState.damageMultiplier += bonuses.damageMultiplier;
+            heroState.armor += bonuses.armor;
+
+            // Пассивный навык "стоит" маны — выбранная пассивка навсегда съедает часть максимума маны героя в этом бою
+            if (ownership != null && ownership.passiveSkillIndex >= 0 && hero.skills != null
+                && ownership.passiveSkillIndex < hero.skills.Length)
             {
-                foreach (var equipped in ownership.equippedItems)
-                {
-                    var equippedStack = ItemCollectionManager.Instance.GetStackByInstanceId(equipped.itemInstanceId);
-                    if (equippedStack == null) continue;
-
-                    var equippedItem = ItemCollectionManager.Instance.GetItemById(equippedStack.itemId);
-                    if (equippedItem == null) continue;
-
-                    float levelMultiplier = ItemCollectionManager.Instance.GetLevelMultiplierForLevel(equippedStack.level);
-                    int bonusHealth = Mathf.RoundToInt(equippedItem.bonusHealth * levelMultiplier);
-                    int bonusMana = Mathf.RoundToInt(equippedItem.bonusMana * levelMultiplier);
-
-                    heroState.maxHealth += bonusHealth;
-                    heroState.currentHealth += bonusHealth;
-                    heroState.maxResource += bonusMana;
-                    heroState.damageMultiplier += equippedItem.bonusDamageMultiplier * levelMultiplier;
-                }
+                var passiveSkill = hero.skills[ownership.passiveSkillIndex];
+                if (passiveSkill != null)
+                    heroState.maxResource = Mathf.Max(1, heroState.maxResource - passiveSkill.cost);
             }
 
             activeHeroes.Add(heroState);
@@ -540,7 +535,11 @@ public class BattleManager : MonoBehaviour
 
         int absorbed = Mathf.Min(playerShield, rawDamage);
         playerShield -= absorbed;
-        int applied = rawDamage - absorbed;
+        int afterShield = rawDamage - absorbed;
+
+        // Броня (целиком от бижутерии) снижает урон плоским значением после щита — минимум 1,
+        // если урон вообще прошёл щит, чтобы броня смягчала, но не давала полную неуязвимость
+        int applied = afterShield > 0 ? Mathf.Max(1, afterShield - hero.armor) : 0;
         hero.TakeDamage(applied);
 
         if (applied > 0)
@@ -621,6 +620,18 @@ public class BattleManager : MonoBehaviour
                 ItemCollectionManager.Instance?.AddItemCopy(entry.item, entry.count);
                 rewardLines.Add($"{entry.item.itemName} x{entry.count}");
             }
+        }
+
+        // ОП начисляется только за ПЕРВОЕ прохождение ноды ("1 story level = 30 ОП") — проверяем ДО того,
+        // как CompleteCurrentNode() пометит её пройденной, иначе фарм уже открытых уровней давал бы ОП бесконечно.
+        int progressPoints = loot != null ? loot.progressPoints : 0;
+        bool alreadyCompleted = WorldMapManager.Instance != null
+            && WorldMapManager.Instance.completedNodeIds.Contains(WorldMapManager.Instance.currentNodeId);
+
+        if (progressPoints > 0 && !alreadyCompleted)
+        {
+            PlayerCurrencies.Instance?.Add(CurrencyType.ProgressPoints, progressPoints);
+            rewardLines.Add($"Progress Points +{progressPoints}");
         }
 
         WorldMapManager.Instance?.CompleteCurrentNode();

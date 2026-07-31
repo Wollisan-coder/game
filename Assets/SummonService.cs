@@ -46,7 +46,13 @@ public class SummonService : MonoBehaviour
 
         if (result?.hero == null) return null;
 
-        HeroCollectionManager.Instance.UnlockHero(result.hero);
+        // Если герой уже разблокирован — это дубликат: конвертируется в гем вознесения (или в универсальную
+        // награду, если герой уже на максимуме вознесения), а не пропадает молча/повторно "разблокирует" уже открытое.
+        if (HeroCollectionManager.Instance.IsUnlocked(result.hero))
+            HeroCollectionManager.Instance.HandleDuplicatePull(result.hero);
+        else
+            HeroCollectionManager.Instance.UnlockHero(result.hero);
+
         return result.hero;
     }
 

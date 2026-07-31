@@ -22,6 +22,9 @@ public class LootReward
     public int accountExperience = 20;
     public int heroExperience = 20; // каждому герою, участвовавшему в этом бою
 
+    [Header("Прогресс-валюта (ОП) — только за ПЕРВОЕ прохождение этой ноды карты")]
+    public int progressPoints = 30; // "1 story level = 30 ОП" из match3-economy.md
+
     [Header("Ресурсы")]
     public CurrencyLootEntry[] currency;
 

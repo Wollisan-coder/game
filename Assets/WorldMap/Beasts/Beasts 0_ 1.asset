@@ -10,15 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e8ab815f5e4b8574ebc2827fcfeb1365, type: 3}
-  m_Name: Beasts
+  m_Name: Beasts 0_ 1
   m_EditorClassIdentifier: Assembly-CSharp::MapNodeData
-  nodeId: Beasts
+  nodeId: Beasts 0_ 1
   nodeName: 
   description: 
   icon: {fileID: 0}
-  enemy: {fileID: 0}
+  enemy: {fileID: 11400000, guid: dfaf46410b795d24aa056444e4f0e0b1, type: 2}
   requiredNodes:
-  - {fileID: 11400000, guid: 1e32cd37bfd28d04c8e6d6abb7a97814, type: 2}
-  - {fileID: 11400000, guid: d174627ffaf8a254b9677ee9ea6854be, type: 2}
-  - {fileID: 11400000, guid: b8be97447676d754ead35fe356cf9070, type: 2}
-  - {fileID: 11400000, guid: d7f414b95bb85d44dafb5a71b212f623, type: 2}
+  - {fileID: 11400000, guid: a8b16d891a385fd48a44c561acc4a125, type: 2}
+  isFarmNode: 0
