@@ -78,6 +78,20 @@ public class SummonService : MonoBehaviour
         return result.item;
     }
 
+    // Бесплатный ролл из пула БЕЗ трат валюты и БЕЗ пити — для гарантированной награды фарм-данжей
+    // (см. MapNodeData.farmLootPool), не для покупки в Кузне/Алтаре. Пул сам гарантирует нужную редкость
+    // (например PurpleFarmPool содержит только фиолетовые предметы) — рандом только по тому, какой именно.
+    public ItemData RollFreeItem(ItemSummonPoolData pool)
+    {
+        if (pool == null || ItemCollectionManager.Instance == null) return null;
+
+        ItemSummonEntry result = pool.RollWeighted(false, Random01);
+        if (result?.item == null) return null;
+
+        ItemCollectionManager.Instance.AddItemCopy(result.item);
+        return result.item;
+    }
+
     // Многократный призыв героев (например, x10). Останавливается раньше, если не хватает валюты —
     // возвращает столько результатов, сколько удалось фактически оплатить.
     public List<HeroData> PullHeroMultiple(HeroSummonPoolData pool, bool usePremium, int count)

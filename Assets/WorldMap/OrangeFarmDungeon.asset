@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e8ab815f5e4b8574ebc2827fcfeb1365, type: 3}
-  m_Name: MapNodeData
+  m_Name: OrangeFarmDungeon
   m_EditorClassIdentifier: Assembly-CSharp::MapNodeData
-  nodeId: PurpleFarmDungeon
-  nodeName: Ashen Vault
-  description: Repeatable dungeon — guaranteed Purple-rarity gear drop. Medium-tier
+  nodeId: OrangeFarmDungeon
+  nodeName: Golden Reliquary
+  description: Repeatable dungeon — guaranteed Orange-rarity gear drop. High-tier
     gate (territory/nodeIndex below only drive EnemyStatCurve difficulty). PLACEMENT
     — MapNodeUI for this node belongs directly on WorldMapPanel (continent map),
-    as a sibling of the city gate nodes — NOT nested inside CityMap_Demons.
+    as a sibling of the city gate nodes — NOT nested inside CityMap_Angels.
   icon: {fileID: 0}
   enemy: {fileID: 11400000, guid: 90519132a94154e40b6f49f1432eb941, type: 2}
-  territory: 4
-  nodeIndex: 13
+  territory: 6
+  nodeIndex: 18
   requiredNodes: []
   isFarmNode: 1
-  farmLootPool: {fileID: 11400000, guid: efaae40071e1480ab76d22cda63ef346, type: 2}
+  farmLootPool: {fileID: 11400000, guid: b2a339a9e1384f8fab122510082f6495, type: 2}

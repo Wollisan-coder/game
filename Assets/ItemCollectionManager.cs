@@ -136,11 +136,21 @@ public class ItemCollectionManager : MonoBehaviour
     // Сколько опыта нужно набрать на указанном уровне, чтобы подняться на следующий
     public int ExperienceToNextLevel(int level) => level * 50;
 
-    // Множитель бонусов предмета от указанного уровня (+10% за каждый уровень сверх 1-го)
-    public float GetLevelMultiplierForLevel(int level)
+    // Суммарный опыт, вложенный в предмет, чтобы он достиг указанного уровня (с нуля) — сумма
+    // ExperienceToNextLevel(1..level-1). Используется в "мердже" редкости, см. CalculateSacrificeGain.
+    private int CumulativeExperience(int level) => 25 * level * Mathf.Max(0, level - 1);
+
+    // Сколько опыта цель получит от ОДНОЙ единицы донора — общий расчёт для SacrificeItem (реальное
+    // применение) и ItemSacrificeUI (превью до подтверждения), чтобы они не могли разойтись в цифрах.
+    // Мердж редкости (донор НИЖЕ целевой редкости): цель забирает ВЕСЬ опыт, вложенный в донора
+    // (накопленный + несожжённый остаток), не плоскую ставку sacrificeExperience — см. project_campaign_difficulty_curve.
+    public int CalculateSacrificeGain(ItemData fuelData, int fuelLevel, int fuelExperience, ItemData targetData)
     {
-        if (level <= 0) level = 1;
-        return 1f + 0.1f * (level - 1);
+        if (fuelData == null || targetData == null) return 0;
+
+        return fuelData.rarity < targetData.rarity
+            ? CumulativeExperience(fuelLevel) + fuelExperience
+            : fuelData.sacrificeExperience * fuelLevel;
     }
 
     // Жертвуем ОДНУ копию из стека fuelInstanceId, чтобы поднять уровень стека targetInstanceId.
@@ -170,7 +180,10 @@ public class ItemCollectionManager : MonoBehaviour
         int maxLevel = targetData.GetMaxLevel();
         if (targetStack.level >= maxLevel) return false;
 
-        int gainedExperience = fuelData.sacrificeExperience * fuelStack.level;
+        // Раз кап уровня теперь один и тот же для всех редкостей (EquipmentStatCurve.MaxLevel), мердж
+        // (см. CalculateSacrificeGain) переносит цель ровно на тот же уровень, что был у донора —
+        // без пересчёта диапазонов, которых больше нет.
+        int gainedExperience = CalculateSacrificeGain(fuelData, fuelStack.level, fuelStack.experience, targetData);
 
         fuelStack.quantity--;
         if (fuelStack.quantity <= 0)

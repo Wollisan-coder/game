@@ -154,14 +154,19 @@ public class BattleManager : MonoBehaviour
             if (hero == null) continue;
 
             int level = 1;
+            int ascensionLevel = 0;
             HeroOwnershipData ownership = null;
             if (HeroCollectionManager.Instance != null)
             {
                 ownership = HeroCollectionManager.Instance.ownership.Find(o => o.heroId == hero.heroId);
-                if (ownership != null) level = ownership.level;
+                if (ownership != null)
+                {
+                    level = ownership.level;
+                    ascensionLevel = ownership.ascensionLevel;
+                }
             }
 
-            var heroState = new HeroRuntimeState(hero, level);
+            var heroState = new HeroRuntimeState(hero, level, ascensionLevel);
 
             // Бонусы от экипированных предметов (не меняют сам ассет HeroData, только эту копию на бой)
             var bonuses = HeroStatUtility.CalculateEquipmentBonuses(ownership);
@@ -627,9 +632,30 @@ public class BattleManager : MonoBehaviour
             foreach (var entry in loot.currency)
             {
                 if (entry.amount <= 0) continue;
+                // Wood/Stone перекрываются EnemyStatCurve ниже, когда есть node-контекст — тот же принцип,
+                // что и для heroXp/статов врага. Остальные типы валюты (например Shards) идут как заавторено.
+                if (rewardNode != null && (entry.type == CurrencyType.Wood || entry.type == CurrencyType.Stone))
+                    continue;
                 PlayerCurrencies.Instance?.Add(entry.type, entry.amount);
                 rewardLines.Add($"{entry.type} +{entry.amount}");
             }
+        }
+
+        if (rewardNode != null)
+        {
+            var (wood, stone) = EnemyStatCurve.GetCurrency(rewardNode.territory, rewardNode.nodeIndex);
+            PlayerCurrencies.Instance?.Add(CurrencyType.Wood, wood);
+            PlayerCurrencies.Instance?.Add(CurrencyType.Stone, stone);
+            rewardLines.Add($"Wood +{wood}");
+            rewardLines.Add($"Stone +{stone}");
+        }
+
+        // Гарантированный дроп фарм-данжа (Purple/Orange farm pool) — поверх обычного лута, не вместо него.
+        if (rewardNode != null && rewardNode.isFarmNode && rewardNode.farmLootPool != null)
+        {
+            var farmItem = SummonService.Instance?.RollFreeItem(rewardNode.farmLootPool);
+            if (farmItem != null)
+                rewardLines.Add($"{farmItem.itemName} +1");
         }
 
         if (loot != null && loot.items != null)

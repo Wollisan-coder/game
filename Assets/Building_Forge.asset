@@ -17,9 +17,13 @@ MonoBehaviour:
   buildingType: 3
   icon: {fileID: 21300000, guid: 82d1a5a9851327545a0b133f78c304bd, type: 3}
   description: Spend Summon Shards (or Premium Gems) to craft a random piece of equipment.
+  unlockType: 1
   requiredAccountLevel: 5
+  requiredTerritory: 1
   buildCostWood: 400
   buildCostStone: 400
+  upgradeCostWood: 200
+  upgradeCostStone: 200
   producedCurrency: 0
   baseProductionPerHour: 0
   baseStorageCap: 0

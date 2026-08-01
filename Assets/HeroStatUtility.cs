@@ -29,9 +29,14 @@ public static class HeroStatUtility
     // уровень героя доходит до 160 (Orange + полное вознесение), это дало бы абсурдный множитель.
     public static float GetHeroLevelMultiplier(int level) => 1f + 0.01f * Mathf.Max(0, level - 1);
 
-    public static HeroBaseStats CalculateBaseStats(HeroData hero, int level)
+    // Вознесение даёт заметнее уровня (редкий ресурс — дубли с гачи, не капающий фарм) — +5%/ступень.
+    // Purple макс 2 ступени (+10% на пике), Orange макс 3 (+15%). Начисляется НА КАЖДОЙ ступени, не только
+    // на финальной — см. project_hero_ascension_system.
+    public static float GetAscensionMultiplier(int ascensionLevel) => 1f + 0.05f * Mathf.Max(0, ascensionLevel);
+
+    public static HeroBaseStats CalculateBaseStats(HeroData hero, int level, int ascensionLevel = 0)
     {
-        float mult = GetHeroLevelMultiplier(level);
+        float mult = GetHeroLevelMultiplier(level) * GetAscensionMultiplier(ascensionLevel);
         return new HeroBaseStats
         {
             health = Mathf.RoundToInt(hero.maxHealth * mult),
@@ -54,12 +59,23 @@ public static class HeroStatUtility
             var item = ItemCollectionManager.Instance.GetItemById(stack.itemId);
             if (item == null) continue;
 
-            float levelMultiplier = ItemCollectionManager.Instance.GetLevelMultiplierForLevel(stack.level);
-
-            bonuses.health += Mathf.RoundToInt(item.bonusHealth * levelMultiplier);
-            bonuses.mana += Mathf.RoundToInt(item.bonusMana * levelMultiplier);
-            bonuses.damageMultiplier += item.bonusDamageMultiplier * levelMultiplier;
-            bonuses.armor += Mathf.RoundToInt(item.bonusArmor * levelMultiplier);
+            // Один слот = один стат (см. EquipmentStatCurve) — значение целиком считается из
+            // (тип слота, редкость, уровень стека), больше не читается с полей ItemData.bonus*.
+            switch (item.slotType)
+            {
+                case EquipmentSlotType.Armor:
+                    bonuses.health += Mathf.RoundToInt(EquipmentStatCurve.GetValue(item.slotType, item.rarity, stack.level));
+                    break;
+                case EquipmentSlotType.Trinket:
+                    bonuses.mana += Mathf.RoundToInt(EquipmentStatCurve.GetValue(item.slotType, item.rarity, stack.level));
+                    break;
+                case EquipmentSlotType.Weapon:
+                    bonuses.damageMultiplier += EquipmentStatCurve.GetValue(item.slotType, item.rarity, stack.level);
+                    break;
+                case EquipmentSlotType.Accessory:
+                    bonuses.armor += Mathf.RoundToInt(EquipmentStatCurve.GetValue(item.slotType, item.rarity, stack.level));
+                    break;
+            }
         }
 
         return bonuses;
@@ -72,7 +88,7 @@ public static class HeroStatUtility
     {
         if (hero == null) return 0;
 
-        var baseStats = CalculateBaseStats(hero, ownership?.level ?? 1);
+        var baseStats = CalculateBaseStats(hero, ownership?.level ?? 1, ownership?.ascensionLevel ?? 0);
         var bonuses = CalculateEquipmentBonuses(ownership);
 
         int health = baseStats.health + bonuses.health;

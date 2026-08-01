@@ -53,4 +53,26 @@ public static class HeroAscensionUtility
     {
         return rarity == Rarity.Orange ? 2 : 1;
     }
+
+    // Достигнута ли ПОСЛЕДНЯЯ ступень вознесения (не путать с "вознесение доступно вообще" — Green/Blue
+    // всегда вернут false, у них GetMaxAscension=0). Используется для финальных наград — см.
+    // project_hero_ascension_system: смена портрета (все редкости с вознесением) + апгрейд пассивки (только Orange).
+    public static bool IsMaxAscension(Rarity rarity, int ascensionLevel)
+    {
+        int max = GetMaxAscension(rarity);
+        return max > 0 && ascensionLevel >= max;
+    }
+
+    // Портрет для отображения — ascendedPortrait, если герой на полном вознесении И такой арт назначен,
+    // иначе обычный portrait. Общий метод, чтобы карточка коллекции/инвентарь/слот отряда не могли разойтись.
+    public static Sprite GetDisplayPortrait(HeroData hero, HeroOwnershipData ownership)
+    {
+        if (hero == null) return null;
+
+        bool maxed = ownership != null && IsMaxAscension(hero.rarity, ownership.ascensionLevel);
+        if (maxed && hero.ascendedPortrait != null)
+            return hero.ascendedPortrait;
+
+        return hero.portrait;
+    }
 }

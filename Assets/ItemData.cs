@@ -33,11 +33,9 @@ public class ItemData : ScriptableObject
     public Rarity rarity = Rarity.Green;
     public int sacrificeExperience = 10; // опыт, который предмет даёт другому предмету при пожертвовании (масштабируется уровнем предмета-донора)
 
-    [Header("Бонусы характеристик при экипировке (category == Equipment)")]
-    public int bonusHealth;
-    public int bonusMana;
-    public float bonusDamageMultiplier;
-    public int bonusArmor; // защита — по конвенции даётся бижутерией (Accessory), но суммируется с любого слота
+    // Бонус характеристик экипировки (category == Equipment) больше НЕ авторится здесь — полностью
+    // считается из (slotType, rarity, уровень стека) через EquipmentStatCurve.GetValue. Один слот = один
+    // стат: Weapon->Damage, Armor->HP, Accessory->Defense/броня, Trinket->Mana.
 
     [Header("Опыт для героя (category == HeroExperience)")]
     public int heroExperienceValue = 0; // сколько опыта герой получает при использовании этого предмета
@@ -50,17 +48,7 @@ public class ItemData : ScriptableObject
 
     public Color GetRarityColor() => RarityUtility.GetColor(rarity);
 
-    // Максимальный уровень предмета зависит от его редкости
-    public int GetMaxLevel()
-    {
-        switch (rarity)
-        {
-            case Rarity.White: return 20;
-            case Rarity.Green: return 40;
-            case Rarity.Blue: return 60;
-            case Rarity.Purple: return 80;
-            case Rarity.Orange: return 100;
-            default: return 20;
-        }
-    }
+    // Единый кап уровня для всех редкостей (см. EquipmentStatCurve) — редкость задаёт стартовое/финишное
+    // ЗНАЧЕНИЕ бонуса, не диапазон уровней.
+    public int GetMaxLevel() => EquipmentStatCurve.MaxLevel;
 }

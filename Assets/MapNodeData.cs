@@ -28,6 +28,12 @@ public class MapNodeData : ScriptableObject
     [Header("Фарм-нода (повторяемая — открыта после территории, не разовый story-уровень)")]
     public bool isFarmNode;
 
+    // Только для isFarmNode: гарантированный ролл из этого пула при победе (бесплатно, без валюты —
+    // см. SummonService.RollFreeItem/BattleManager.EndBattleVictory), ПОВЕРХ обычного EnemyData.loot.
+    // Например PurpleFarmPool/OrangeFarmPool — то, ради чего фарм-данж вообще существует.
+    [Header("Пул гарантированного дропа фарм-ноды (только isFarmNode)")]
+    public ItemSummonPoolData farmLootPool;
+
     private void OnValidate()
     {
         if (string.IsNullOrEmpty(nodeId))

@@ -136,7 +136,7 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     {
         if (currentHero == null) return;
 
-        if (portraitImage != null) portraitImage.sprite = currentHero.portrait;
+        if (portraitImage != null) portraitImage.sprite = HeroAscensionUtility.GetDisplayPortrait(currentHero, currentOwnership);
         if (heroNameText != null) heroNameText.text = currentHero.heroName;
         if (healthText != null) healthText.text = $"HP: {currentHero.maxHealth}";
         if (descriptionText != null) descriptionText.text = currentHero.description;
@@ -394,7 +394,9 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     {
         if (statsText == null || currentHero == null) return;
 
-        var baseStats = HeroStatUtility.CalculateBaseStats(currentHero, currentOwnership != null ? currentOwnership.level : 1);
+        var baseStats = HeroStatUtility.CalculateBaseStats(currentHero,
+            currentOwnership != null ? currentOwnership.level : 1,
+            currentOwnership != null ? currentOwnership.ascensionLevel : 0);
         var bonuses = HeroStatUtility.CalculateEquipmentBonuses(currentOwnership);
 
         int totalHealth = baseStats.health + bonuses.health;
@@ -414,7 +416,8 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     {
         if (currentHero == null) return 0;
         int level = currentOwnership != null ? currentOwnership.level : 1;
-        return HeroStatUtility.CalculateBaseStats(currentHero, level).mana
+        int ascensionLevel = currentOwnership != null ? currentOwnership.ascensionLevel : 0;
+        return HeroStatUtility.CalculateBaseStats(currentHero, level, ascensionLevel).mana
             + HeroStatUtility.CalculateEquipmentBonuses(currentOwnership).mana;
     }
 

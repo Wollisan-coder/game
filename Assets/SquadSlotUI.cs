@@ -31,7 +31,10 @@ public class SquadSlotUI : MonoBehaviour
         parentUI = squadUI;
 
         portrait.gameObject.SetActive(true);
-        portrait.sprite = data.portrait;
+        var ownership = HeroCollectionManager.Instance != null
+            ? HeroCollectionManager.Instance.ownership.Find(o => o.heroId == data.heroId)
+            : null;
+        portrait.sprite = HeroAscensionUtility.GetDisplayPortrait(data, ownership);
         emptyPlaceholder.SetActive(false);
 
         removeButton.gameObject.SetActive(true);

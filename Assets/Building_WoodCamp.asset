@@ -20,6 +20,8 @@ MonoBehaviour:
   requiredAccountLevel: 1
   buildCostWood: 0
   buildCostStone: 0
+  upgradeCostWood: 20
+  upgradeCostStone: 10
   producedCurrency: 0
   baseProductionPerHour: 10
   baseStorageCap: 200

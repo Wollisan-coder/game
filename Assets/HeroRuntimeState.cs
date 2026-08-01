@@ -25,14 +25,14 @@ public class HeroRuntimeState
     public int stunnedTurnsRemaining;      // герой полностью "пропускает" ходы — его цвет не даёт урон/ману (StunRandomHero)
     public int skillBlockedTurnsRemaining; // герой не может использовать скилл, но матчи всё ещё работают (BlockHeroSkill)
 
-    public HeroRuntimeState(HeroData heroData, int heroLevel = 1)
+    public HeroRuntimeState(HeroData heroData, int heroLevel = 1, int ascensionLevel = 0)
     {
         data = heroData;
         currentResource = 0;
 
         level = heroLevel;
 
-        var baseStats = HeroStatUtility.CalculateBaseStats(heroData, heroLevel);
+        var baseStats = HeroStatUtility.CalculateBaseStats(heroData, heroLevel, ascensionLevel);
         maxHealth = baseStats.health;
         currentHealth = maxHealth;
         maxResource = baseStats.mana;

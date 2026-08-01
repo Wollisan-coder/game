@@ -22,7 +22,8 @@ public class HeroCollectionCardUI : MonoBehaviour
         collectionManager = manager;
         inventoryUI = inventory;
 
-        if (portrait != null) portrait.sprite = data.portrait;
+        var ownership = manager.ownership.Find(o => o.heroId == data.heroId);
+        if (portrait != null) portrait.sprite = HeroAscensionUtility.GetDisplayPortrait(data, ownership);
 
         bool unlocked = manager.IsUnlocked(data);
         if (lockOverlay != null) lockOverlay.gameObject.SetActive(!unlocked);

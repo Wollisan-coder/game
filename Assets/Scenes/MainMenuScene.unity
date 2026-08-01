@@ -8845,6 +8845,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 3f6763c1ef86d4346bd9f805d1cd7ec7, type: 2}
   - {fileID: 11400000, guid: 379e126d59452fd4698f532db8d9131f, type: 2}
   - {fileID: 11400000, guid: 785ccce7fb5e3b945b61b050c93732af, type: 2}
+  - {fileID: 11400000, guid: 43a01ee890b657b40a4ee1fb317d08e3, type: 2}
+  - {fileID: 11400000, guid: da4384c4067d4a49946a40c0abb6fcf1, type: 2}
   startingNode: {fileID: 11400000, guid: 1e32cd37bfd28d04c8e6d6abb7a97814, type: 2}
   completedNodeIds: []
   currentNodeId: 
@@ -23728,7 +23730,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1107506560
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -39194,7 +39196,7 @@ Transform:
   m_GameObject: {fileID: 1715569806}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -440.8, y: -435.2, z: 0}
+  m_LocalPosition: {x: -451, y: -447, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:

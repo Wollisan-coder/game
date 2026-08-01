@@ -17,9 +17,13 @@ MonoBehaviour:
   buildingType: 4
   icon: {fileID: 21300000, guid: 09ef1ed828311a441bcc4f1e6bec1e68, type: 3}
   description: Spend Summon Shards (or Premium Gems) to summon a random new hero.
+  unlockType: 2
   requiredAccountLevel: 7
+  requiredTerritory: 0
   buildCostWood: 500
   buildCostStone: 500
+  upgradeCostWood: 250
+  upgradeCostStone: 250
   producedCurrency: 0
   baseProductionPerHour: 0
   baseStorageCap: 0

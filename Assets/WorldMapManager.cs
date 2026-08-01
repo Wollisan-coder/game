@@ -52,6 +52,23 @@ public class WorldMapManager : MonoBehaviour
         return node.requiredNodes.All(IsCompleted);
     }
 
+    // Территория "открыта" — доступна её первая нода (nodeIndex 1). Используется гейтингом зданий
+    // (BuildingUnlockType.TerritoryOpened), см. project_campaign_difficulty_curve. Фильтр по enemy!=null
+    // отсекает ноды-врата городов (MapNodeUI с cityMapPanel вместо боя) — у них enemy не назначен, но
+    // им ничего не мешает по ошибке получить тот же territory+nodeIndex=1, что и настоящей первой боевой ноде.
+    public bool IsTerritoryOpened(Race territory)
+    {
+        var firstNode = allNodes?.FirstOrDefault(n => n != null && n.enemy != null && n.territory == territory && n.nodeIndex == 1);
+        return firstNode != null && IsUnlocked(firstNode);
+    }
+
+    // Территория "пройдена" — её босс (nodeIndex 18) пройден.
+    public bool IsTerritoryCompleted(Race territory)
+    {
+        var bossNode = allNodes?.FirstOrDefault(n => n != null && n.enemy != null && n.territory == territory && n.nodeIndex == 18);
+        return bossNode != null && IsCompleted(bossNode);
+    }
+
     // Вызывать по клику на ноду перед переходом в боевую сцену — выбирает врага ноды и запоминает саму ноду
     public bool SelectNode(MapNodeData node)
     {

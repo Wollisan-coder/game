@@ -87,7 +87,7 @@ public static class EnemyStatCurve
         (Stats reg, Stats boss) = territory switch
         {
             Race.Elves => (T1Reg, T1Boss),
-            Race.Dwarves => (T2Reg, T2Boss),
+            Race.Fairy => (T2Reg, T2Boss),
             Race.Orcs => (T3Reg, T3Boss),
             Race.Beastfolk => (T4Reg, T4Boss),
             Race.Dragonkin => (DragonReg, DragonBoss),
@@ -117,5 +117,17 @@ public static class EnemyStatCurve
     {
         var stats = GetStats(territory, nodeIndex);
         return stats.maxHP / (float)T1Reg.maxHP;
+    }
+
+    // Базовый Wood/Stone за T1-ноду 1 (см. project_campaign_difficulty_curve) — растёт тем же множителем,
+    // что и всё остальное. Шарды сюда намеренно НЕ входят — только с Shard Mine, чтобы Forge/Altar
+    // оставались завязаны на здание, а не фармились с обычных боёв.
+    private const int BaseWood = 15;
+    private const int BaseStone = 10;
+
+    public static (int wood, int stone) GetCurrency(Race territory, int nodeIndex)
+    {
+        float ratio = GetLootValueMultiplier(territory, nodeIndex);
+        return (Mathf.RoundToInt(BaseWood * ratio), Mathf.RoundToInt(BaseStone * ratio));
     }
 }

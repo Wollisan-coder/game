@@ -35,7 +35,17 @@ public class BuildingManager : MonoBehaviour
 
     public bool IsUnlocked(BuildingData building)
     {
-        return building != null && (AccountManager.Instance == null || AccountManager.Instance.level >= building.requiredAccountLevel);
+        if (building == null) return false;
+
+        switch (building.unlockType)
+        {
+            case BuildingUnlockType.TerritoryOpened:
+                return WorldMapManager.Instance != null && WorldMapManager.Instance.IsTerritoryOpened(building.requiredTerritory);
+            case BuildingUnlockType.TerritoryCompleted:
+                return WorldMapManager.Instance != null && WorldMapManager.Instance.IsTerritoryCompleted(building.requiredTerritory);
+            default:
+                return AccountManager.Instance == null || AccountManager.Instance.level >= building.requiredAccountLevel;
+        }
     }
 
     // Первое возведение здания — списывает ресурсы на постройку

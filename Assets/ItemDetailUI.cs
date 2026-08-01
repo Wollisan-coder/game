@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
@@ -80,13 +79,28 @@ public class ItemDetailUI : MonoBehaviour
             }
             else
             {
-                // Показываем только те характеристики, которые предмет реально повышает (не 0)
-                var lines = new List<string>();
-                if (item.bonusHealth != 0) lines.Add($"HP: +{item.bonusHealth}");
-                if (item.bonusMana != 0) lines.Add($"Mana: +{item.bonusMana}");
-                if (item.bonusDamageMultiplier != 0) lines.Add($"Damage: +{item.bonusDamageMultiplier:0.##}");
+                // Один слот = один стат (EquipmentStatCurve) — получен: точное значение на текущем
+                // уровне стека; не получен (каталог/превью): диапазон мин-редкость -> кап-редкость.
+                string statLabel = item.slotType switch
+                {
+                    EquipmentSlotType.Armor => "HP",
+                    EquipmentSlotType.Trinket => "Mana",
+                    EquipmentSlotType.Weapon => "Damage",
+                    EquipmentSlotType.Accessory => "Armor",
+                    _ => "",
+                };
 
-                statsText.text = string.Join("\n", lines);
+                if (owned)
+                {
+                    float value = EquipmentStatCurve.GetValue(item.slotType, item.rarity, ownership.level);
+                    statsText.text = $"{statLabel}: +{value:0.##} (Lvl {ownership.level})";
+                }
+                else
+                {
+                    float minValue = EquipmentStatCurve.GetValue(item.slotType, item.rarity, 1);
+                    float maxValue = EquipmentStatCurve.GetValue(item.slotType, item.rarity, item.GetMaxLevel());
+                    statsText.text = $"{statLabel}: +{minValue:0.##} → +{maxValue:0.##}";
+                }
             }
         }
 

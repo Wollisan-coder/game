@@ -13,14 +13,23 @@ public class BuildingData : ScriptableObject
     [TextArea(2, 4)] public string description;
 
     [Header("Разблокировка")]
-    public int requiredAccountLevel = 1;
+    public BuildingUnlockType unlockType = BuildingUnlockType.AccountLevel;
+    public int requiredAccountLevel = 1; // используется, только если unlockType == AccountLevel
+    public Race requiredTerritory;        // используется, только если unlockType == TerritoryOpened/TerritoryCompleted
 
     [Header("Максимальный уровень здания (апгрейд прекращается)")]
     public int maxLevel = 100;
 
-    [Header("Постройка (первое возведение)")]
+    [Header("Постройка (первое возведение — может легитимно быть 0, стартовые здания бесплатны)")]
     public int buildCostWood = 0;
     public int buildCostStone = 0;
+
+    // ОТДЕЛЬНЫЕ от buildCost* — раньше GetUpgradeCost умножал buildCostWood/Stone на level^1.5, и апгрейд
+    // Wood Camp/Stone Quarry (у обоих buildCost=0, они бесплатны в постройке) выходил бесплатным НАВСЕГДА.
+    // upgradeCost* никогда не должен быть 0, даже если постройка бесплатна.
+    [Header("Апгрейд (база — умножается на targetLevel^1.5)")]
+    public int upgradeCostWood = 50;
+    public int upgradeCostStone = 30;
 
     [Header("Производство (только для *Production)")]
     public CurrencyType producedCurrency = CurrencyType.Wood;
@@ -56,8 +65,8 @@ public class BuildingData : ScriptableObject
     // Стоимость апгрейда до указанного целевого уровня
     public (int wood, int stone) GetUpgradeCost(int targetLevel)
     {
-        int wood = Mathf.RoundToInt(buildCostWood * Mathf.Pow(targetLevel, 1.5f));
-        int stone = Mathf.RoundToInt(buildCostStone * Mathf.Pow(targetLevel, 1.5f));
+        int wood = Mathf.RoundToInt(upgradeCostWood * Mathf.Pow(targetLevel, 1.5f));
+        int stone = Mathf.RoundToInt(upgradeCostStone * Mathf.Pow(targetLevel, 1.5f));
         return (wood, stone);
     }
 

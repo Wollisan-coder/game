@@ -22,6 +22,8 @@ MonoBehaviour:
   maxLevel: 4
   buildCostWood: 150
   buildCostStone: 100
+  upgradeCostWood: 75
+  upgradeCostStone: 50
   producedCurrency: 0
   baseProductionPerHour: 0
   baseStorageCap: 0

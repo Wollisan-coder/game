@@ -21,8 +21,10 @@ MonoBehaviour:
   requiredAccountLevel: 3
   buildCostWood: 200
   buildCostStone: 150
+  upgradeCostWood: 100
+  upgradeCostStone: 80
   producedCurrency: 2
-  baseProductionPerHour: 2
+  baseProductionPerHour: 4
   baseStorageCap: 50
   heroSummonPool: {fileID: 0}
   itemSummonPool: {fileID: 0}

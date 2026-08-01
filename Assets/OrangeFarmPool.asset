@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a127a80be758ea4ca5f64128272726a, type: 3}
+  m_Name: OrangeFarmPool
+  m_EditorClassIdentifier: Assembly-CSharp::ItemSummonPoolData
+  poolId: OrangeFarmPool
+  entries:
+  - item: {fileID: 11400000, guid: 30fe5343ec9a3b5daeded4edbe134d24, type: 2}
+    weightViaShards: 1
+    weightViaPremium: 1
+  - item: {fileID: 11400000, guid: 44d40cce766364424347fedd3cf83b2a, type: 2}
+    weightViaShards: 1
+    weightViaPremium: 1
+  - item: {fileID: 11400000, guid: 975ebf24f3ba611b6fde37d1ba133a9e, type: 2}
+    weightViaShards: 1
+    weightViaPremium: 1
+  - item: {fileID: 11400000, guid: 1503887e32cd09e6ff60b0ff3de99f39, type: 2}
+    weightViaShards: 1
+    weightViaPremium: 1
+  - item: {fileID: 11400000, guid: b3a199a870caa1fea3084ed69938f141, type: 2}
+    weightViaShards: 1
+    weightViaPremium: 1
+  - item: {fileID: 11400000, guid: fa0f577c35f61f1023674eff615c591d, type: 2}
+    weightViaShards: 1
+    weightViaPremium: 1
+  - item: {fileID: 11400000, guid: ec9ccf9462d11c9b11e975efacb8f2b8, type: 2}
+    weightViaShards: 1
+    weightViaPremium: 1
+  shardCost: 0
+  premiumCost: 0
+  hasPity: 0
+  pityThreshold: 0
+  pityGuaranteedRarity: 0

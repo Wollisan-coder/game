@@ -331,7 +331,13 @@ public class CastleUI : MonoBehaviour
 
         if (!unlocked)
         {
-            statusText.text = $"Locked\nRequires account level {building.requiredAccountLevel}";
+            string requirement = building.unlockType switch
+            {
+                BuildingUnlockType.TerritoryOpened => $"Requires {building.requiredTerritory} territory opened",
+                BuildingUnlockType.TerritoryCompleted => $"Requires {building.requiredTerritory} territory cleared",
+                _ => $"Requires account level {building.requiredAccountLevel}",
+            };
+            statusText.text = $"Locked\n{requirement}";
             cardBg.color = new Color(0, 0, 0, 0.25f);
             icon.color = new Color(1, 1, 1, 0.35f);
             return;

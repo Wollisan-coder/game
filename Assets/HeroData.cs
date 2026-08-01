@@ -20,6 +20,18 @@ public class HeroData : ScriptableObject
     public Color themeColor = Color.white;
     public ResourceType resourceType;
 
+    // Награда за ПОЛНОЕ вознесение (см. HeroAscensionUtility.IsMaxAscension) — не для Green/Blue, у них
+    // вознесения нет вообще. Пусто (null) = нет особого арта, показывать обычный portrait как раньше.
+    [Header("Арт полного вознесения (опционально — см. project_hero_ascension_system)")]
+    public Sprite ascendedPortrait;
+
+    // Апгрейд пассивки на полном вознесении — ТОЛЬКО для Orange (см. HeroAscensionUtility). ПОКА НЕ
+    // ПРИМЕНЯЕТСЯ В БОЮ: пассивки сейчас вообще не исполняют effectType, только резервируют ману
+    // (см. BattleManager.Awake) — это отдельный, более ранний пробел, не специфичный для вознесения.
+    // Поле-заготовка под контент, ждёт, когда пассивки в принципе начнут применять эффект.
+    [Header("Апгрейд пассивки на полном вознесении (только Orange — см. комментарий, пока не работает в бою)")]
+    public SkillData ascendedPassiveSkill;
+
     [Header("Раса (для фильтра в коллекции — см. HeroCollectionUI)")]
     public Race race;
 

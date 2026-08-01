@@ -29,6 +29,7 @@ public class ItemSacrificeUI : MonoBehaviour
     private TMP_Text closeButtonText;
 
     private string targetInstanceId;
+    private ItemData targetItemData; // нужен для CalculateSacrificeGain (мердж редкости зависит от rarity цели)
     private System.Action onApplied;
     private int baseLevel;
     private int baseExperience;
@@ -62,6 +63,7 @@ public class ItemSacrificeUI : MonoBehaviour
         }
 
         targetInstanceId = targetId;
+        targetItemData = targetData;
         this.onApplied = onApplied;
         baseLevel = targetStack.level;
         baseExperience = targetStack.experience;
@@ -341,7 +343,7 @@ public class ItemSacrificeUI : MonoBehaviour
     {
         if (!donorLabels.TryGetValue(donorId, out var label)) return;
 
-        int xp = donorData.sacrificeExperience * donorOwnership.level;
+        int xp = itemCollectionManager.CalculateSacrificeGain(donorData, donorOwnership.level, donorOwnership.experience, targetItemData);
         int selected = selectedDonorCounts.TryGetValue(donorId, out int c) ? c : 0;
         string selectedLine = selected > 0 ? $"\nSelected: {selected}/{donorOwnership.quantity}" : "";
 
@@ -357,7 +359,7 @@ public class ItemSacrificeUI : MonoBehaviour
             var ownership = itemCollectionManager.GetStackByInstanceId(kvp.Key);
             var data = ownership != null ? itemCollectionManager.GetItemById(ownership.itemId) : null;
             if (data != null && ownership != null)
-                sum += data.sacrificeExperience * ownership.level * kvp.Value;
+                sum += itemCollectionManager.CalculateSacrificeGain(data, ownership.level, ownership.experience, targetItemData) * kvp.Value;
         }
         return sum;
     }
