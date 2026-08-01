@@ -20,6 +20,7 @@ public class CastleUI : MonoBehaviour
     private TMP_Text dailyRewardButtonText;
 
     private CastleSummonUI summonUI;
+    private ProgressExchangeUI exchangeUI;
 
     public void Open(MainMenuUI mainMenu)
     {
@@ -97,6 +98,9 @@ public class CastleUI : MonoBehaviour
         CreateNavButton(panelRect, "Inventory", new Vector2(-110, 50), () => { owner?.ShowItemCollection(); });
         CreateNavButton(panelRect, "Collection", new Vector2(110, 50), () => { owner?.ShowCollection(); });
         CreateDailyRewardButton(panelRect, new Vector2(330, 50));
+        // Second row above the first — keeps the already-working bottom row untouched instead of
+        // squeezing a 5th button into it.
+        CreateNavButton(panelRect, "Exchange", new Vector2(0, 160), () => { exchangeUI?.Open(canvasRoot, Refresh); });
 
         // --- Сетка зданий ---
         var scrollObj = new GameObject("Scroll View", typeof(RectTransform));
@@ -104,7 +108,7 @@ public class CastleUI : MonoBehaviour
         scrollRect.SetParent(panelRect, false);
         scrollRect.anchorMin = Vector2.zero;
         scrollRect.anchorMax = Vector2.one;
-        scrollRect.offsetMin = new Vector2(16, 160);
+        scrollRect.offsetMin = new Vector2(16, 220);
         scrollRect.offsetMax = new Vector2(-16, -80);
 
         var scroll = scrollObj.AddComponent<ScrollRect>();
@@ -143,6 +147,7 @@ public class CastleUI : MonoBehaviour
         buildingGrid = contentRect;
 
         summonUI = gameObject.AddComponent<CastleSummonUI>();
+        exchangeUI = gameObject.AddComponent<ProgressExchangeUI>();
 
         panelRoot.SetActive(false);
     }
@@ -202,7 +207,7 @@ public class CastleUI : MonoBehaviour
         textRect.offsetMax = Vector2.zero;
         dailyRewardButtonText = textObj.AddComponent<TextMeshProUGUI>();
         dailyRewardButtonText.alignment = TextAlignmentOptions.Center;
-        dailyRewardButtonText.fontSize = 16;
+        dailyRewardButtonText.fontSize = 24;
         dailyRewardButtonText.color = Color.black;
     }
 

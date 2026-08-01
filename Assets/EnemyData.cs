@@ -8,9 +8,16 @@ public class EnemyData : ScriptableObject
 
     [Header("Основные параметры (всё в одном блоке)")]
     public string enemyName;
+
+    [Tooltip("ФОЛБЭК, не реальные боевые статы! Если эту EnemyData запускает нода карты мира с заданными " +
+        "territory+nodeIndex (MapNodeData), BattleManager перезапишет это значение цифрой из EnemyStatCurve " +
+        "для той территории/ноды — то, что здесь написано, используется только для debug-боёв без ноды " +
+        "(случайный пул possibleEnemies и т.п.).")]
     public int maxHP = 80;
     public int maxMana = 50;            // про запас — если скиллы врага станут платными
+    [Tooltip("ФОЛБЭК — см. подсказку у Max HP, тот же принцип (перезаписывается EnemyStatCurve, если есть нода).")]
     public int minAttack = 5;
+    [Tooltip("ФОЛБЭК — см. подсказку у Max HP, тот же принцип (перезаписывается EnemyStatCurve, если есть нода).")]
     public int maxAttack = 12;
     public float damageMultiplier = 1f; // личный множитель урона этого врага
     public int price = 100;             // цена/сложность за разблокировку

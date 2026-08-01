@@ -23,5 +23,6 @@ MonoBehaviour:
   portrait: {fileID: 21300000, guid: 61349f0fbd7524d46b7adabef82ca216, type: 3}
   themeColor: {r: 0.18195976, g: 0.22785592, b: 0.8207547, a: 1}
   resourceType: 1
+  race: 3
   rarity: 4
   description: 

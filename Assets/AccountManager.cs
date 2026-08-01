@@ -9,7 +9,13 @@ public class AccountManager : MonoBehaviour
     public int experience = 0;
 
     [Header("Энергия")]
-    public int baseMaxEnergy = 10;   // максимум на 1-м уровне аккаунта, +1 за каждый следующий уровень
+    // Пересчитано с учётом рефилла энергии на левел-ап (см. GrantExperience): за 18 уровней Эльфов
+    // игрок получает 18*20=360 аккаунт-опыта (LootReward.accountExperience по умолчанию), это пересекает
+    // порог lvl1->2 (200 опыта, см. ExperienceToNextLevel) на ~10-й победе — и энергия в этот момент
+    // полностью восстанавливается до нового (уже +1) максимума. Значит нужно продержаться только ДО
+    // этого рефилла: 10 боёв впритык + ~5 про запас на поражения/ретраи = 15. Оставшиеся ~8 уровней
+    // территории после рефилла покрываются с большим запасом.
+    public int baseMaxEnergy = 15;   // максимум на 1-м уровне аккаунта, +1 за каждый следующий уровень
     public int currentEnergy;
 
     private const float EnergyRegenIntervalMinutes = 5f; // 1 энергия за 5 реальных минут
@@ -43,12 +49,18 @@ public class AccountManager : MonoBehaviour
         if (amount <= 0) return;
 
         experience += amount;
+        int levelBefore = level;
 
         while (experience >= ExperienceToNextLevel(level))
         {
             experience -= ExperienceToNextLevel(level);
             level++;
         }
+
+        // Левел-ап аккаунта полностью восстанавливает энергию (до НОВОГО, уже увеличенного MaxEnergy) —
+        // это часть бюджета энергии на прохождение территории за одну сессию, см. AccountManager.baseMaxEnergy.
+        if (level > levelBefore)
+            currentEnergy = MaxEnergy;
 
         Save();
     }

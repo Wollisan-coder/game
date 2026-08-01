@@ -11,6 +11,7 @@ public class HeroData : ScriptableObject
     public int maxHealth = 100;         // индивидуальное здоровье героя (HeroRuntimeState.currentHealth)
     public int maxResource = 50;        // максимальна манна
     public float damageMultiplier = 1f; // особистий множник урону цього героя
+    public int armor = 5;               // базовая броня героя САМОГО ПО СЕБЕ (без экипировки) — см. HeroStatUtility
     public int weight = 1;              // вес карточки — сумма весов героев в отряде ограничена HeroCollectionManager.MaxSquadWeight
     public SkillData[] skills;          // количество умений = длина массива, отдельное поле не нужно
 
@@ -18,6 +19,9 @@ public class HeroData : ScriptableObject
     public Sprite portrait;
     public Color themeColor = Color.white;
     public ResourceType resourceType;
+
+    [Header("Раса (для фильтра в коллекции — см. HeroCollectionUI)")]
+    public Race race;
 
     // White исключён из выдачи (Алтарь/Кузня больше не спавнят её) — новые ассеты по умолчанию создаются с Green
     [Header("Редкость (влияет на шанс выпадения в Алтаре)")]

@@ -17,5 +17,8 @@ MonoBehaviour:
   description: 
   icon: {fileID: 0}
   enemy: {fileID: 11400000, guid: 44f586928af305f4bb36b1f2f488cb07, type: 2}
+  territory: 0
+  nodeIndex: 18
   requiredNodes:
   - {fileID: 11400000, guid: 098d85519698fcd44a40cd9b690012ca, type: 2}
+  isFarmNode: 0

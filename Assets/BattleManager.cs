@@ -128,6 +128,20 @@ public class BattleManager : MonoBehaviour
             enemyMinAttack = currentEnemy.minAttack;
             enemyMaxAttack = currentEnemy.maxAttack;
         }
+
+        // Нода на карте перекрывает числа из EnemyData процедурной кривой (EnemyStatCurve) — EnemyData
+        // остаётся архетипом (портрет/скиллы/лут), а HP/атака считаются из (территория, номер ноды).
+        // Не трогает FarmNode/повторные бои без node-контекста и debug-тесты без WorldMapManager — тогда
+        // просто остаются сырые значения EnemyData/инспектора, как раньше.
+        var node = WorldMapManager.Instance != null ? WorldMapManager.Instance.currentNode : null;
+        if (node != null)
+        {
+            var curveStats = EnemyStatCurve.GetStats(node.territory, node.nodeIndex);
+            enemyMaxHP = curveStats.maxHP;
+            enemyMinAttack = curveStats.minAttack;
+            enemyMaxAttack = curveStats.maxAttack;
+        }
+
         enemyHP = enemyMaxHP;
 
         // Берём только реально выбранных героев (без пустых слотов null)
@@ -586,8 +600,14 @@ public class BattleManager : MonoBehaviour
         battleEnded = true;
 
         LootReward loot = currentEnemy != null ? currentEnemy.loot : null;
-        int accountXp = loot != null ? loot.accountExperience : accountExperienceReward;
+        int accountXp = loot != null ? loot.accountExperience : accountExperienceReward; // ОСТАЁТСЯ плоским — см. "Вариант C"
         int heroXp = loot != null ? loot.heroExperience : 0;
+
+        // heroExperience растёт по той же кривой, что и HP врага (EnemyStatCurve), когда есть node-контекст —
+        // перекрывает статичное значение из LootReward, как и статы врага выше в Awake().
+        var rewardNode = WorldMapManager.Instance != null ? WorldMapManager.Instance.currentNode : null;
+        if (rewardNode != null)
+            heroXp = EnemyStatCurve.GetHeroExperience(rewardNode.territory, rewardNode.nodeIndex);
 
         var rewardLines = new List<string>();
 

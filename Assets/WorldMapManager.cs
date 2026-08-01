@@ -20,6 +20,10 @@ public class WorldMapManager : MonoBehaviour
     // ID ноды, с которой запущен текущий бой — выставляется в SelectNode() перед переходом на боевую сцену
     public string currentNodeId;
 
+    // Сама нода (не только id) — MapNodeData это ассет, а не объект сцены, так что ссылку хранить безопасно
+    // (в отличие от lastActiveMapPanelName ниже). Нужна BattleManager'у для EnemyStatCurve.GetStats(territory, nodeIndex).
+    public MapNodeData currentNode;
+
     // Имя UI-панели (WorldMapPanel или конкретная CityMap_...), в которой лежала нода запущенного боя —
     // выставляется в MapNodeUI.OnClicked() перед переходом на боевую сцену. GameObject-ссылку хранить нельзя
     // (старая сцена уничтожается при перезагрузке), поэтому храним просто имя и ищем панель по нему заново.
@@ -56,6 +60,7 @@ public class WorldMapManager : MonoBehaviour
             return false;
 
         currentNodeId = node.nodeId;
+        currentNode = node;
         return true;
     }
 

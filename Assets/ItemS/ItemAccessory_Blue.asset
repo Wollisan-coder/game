@@ -20,7 +20,8 @@ MonoBehaviour:
   description: 
   rarity: 2
   sacrificeExperience: 10
-  bonusHealth: 40
+  bonusHealth: 0
   bonusMana: 0
   bonusDamageMultiplier: 0
+  bonusArmor: 15
   heroExperienceValue: 0

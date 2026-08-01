@@ -14,6 +14,10 @@ public class MapNodeData : ScriptableObject
     [Header("Бой, который открывает эта нода")]
     public EnemyData enemy;
 
+    [Header("Позиция в кривой сложности (см. EnemyStatCurve) — territory+nodeIndex перекрывают HP/атаку/опыт из enemy выше")]
+    public Race territory;
+    [Range(1, 18)] public int nodeIndex = 1;
+
     [Header("Ноды, которые нужно пройти, чтобы эта разблокировалась (пусто = открыта с начала)")]
     public MapNodeData[] requiredNodes;
 

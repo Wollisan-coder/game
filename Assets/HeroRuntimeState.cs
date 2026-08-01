@@ -9,9 +9,9 @@ public class HeroRuntimeState
     public int level;
     public int maxHealth;
     public int currentHealth;
-    public int maxResource;         // копия heroData.maxResource + бонусы от экипировки
-    public float damageMultiplier;  // копия heroData.damageMultiplier + бонусы от экипировки
-    public int armor;               // целиком от экипировки (бижутерии) — у героя самого по себе брони нет
+    public int maxResource;         // heroData.maxResource * бонус от уровня + бонусы от экипировки
+    public float damageMultiplier;  // heroData.damageMultiplier * бонус от уровня + бонусы от экипировки
+    public int armor;               // heroData.armor * бонус от уровня + бонусы от экипировки
 
     public bool blockManaGainThisTurn; // true после использования навыка — пропускает следующее начисление маны
 
@@ -31,10 +31,13 @@ public class HeroRuntimeState
         currentResource = 0;
 
         level = heroLevel;
-        maxHealth = heroData.maxHealth;
+
+        var baseStats = HeroStatUtility.CalculateBaseStats(heroData, heroLevel);
+        maxHealth = baseStats.health;
         currentHealth = maxHealth;
-        maxResource = heroData.maxResource;
-        damageMultiplier = heroData.damageMultiplier;
+        maxResource = baseStats.mana;
+        damageMultiplier = baseStats.damageMultiplier;
+        armor = baseStats.armor;
     }
 
     public void TakeDamage(int amount)

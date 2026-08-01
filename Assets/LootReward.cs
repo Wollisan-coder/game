@@ -19,7 +19,10 @@ public class ItemLootEntry
 public class LootReward
 {
     [Header("Опыт")]
-    public int accountExperience = 20;
+    public int accountExperience = 20; // остаётся плоским всегда — НЕ перезаписывается кривой (см. подсказку у heroExperience)
+    [Tooltip("ФОЛБЭК, не реальная награда! Если бой запущен с ноды карты мира (territory+nodeIndex заданы " +
+        "на MapNodeData), BattleManager перезапишет это значение через EnemyStatCurve.GetHeroExperience для " +
+        "той территории/ноды. accountExperience выше кривой не подчиняется и остаётся как есть всегда.")]
     public int heroExperience = 20; // каждому герою, участвовавшему в этом бою
 
     [Header("Прогресс-валюта (ОП) — только за ПЕРВОЕ прохождение этой ноды карты")]

@@ -24,4 +24,4 @@ MonoBehaviour:
   bonusHealth: 0
   bonusMana: 0
   bonusDamageMultiplier: 0
-  heroExperienceValue: 100
+  heroExperienceValue: 200

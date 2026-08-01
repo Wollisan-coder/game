@@ -1,0 +1,240 @@
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
+
+// Runtime-built window that lets the player spend ОП (Progress Points) on hero-experience items
+// (the same HeroExpGem* items HeroCollectionManager already hands out as duplicate-overflow reward —
+// see project_hero_ascension_system memory). Opened from a "Exchange" nav button in CastleUI.
+public class ProgressExchangeUI : MonoBehaviour
+{
+    // itemId (from ItemCollectionManager.allItems) -> cost in ОП. Flat 2 exp-per-1-ОП ratio against
+    // each HeroExpGem*'s heroExperienceValue (200/600/1600/4000, doubled 2026-08-01 as part of the
+    // campaign difficulty curve pass — see project_campaign_difficulty_curve memory) — costs doubled
+    // alongside to keep the same 2:1 ratio, not to silently make ОП twice as strong a lever.
+    private static readonly (string itemId, int cost)[] Offers =
+    {
+        ("HeroExpGemGreen", 100),
+        ("HeroExpGemBlue", 300),
+        ("HeroExpGemPurple", 800),
+        ("HeroExpGemOrange", 2000),
+    };
+
+    private Transform canvasRoot;
+    private System.Action onClosed;
+
+    private GameObject overlayRoot;
+    private TMP_Text balanceText;
+    private readonly List<TMP_Text> rowLabels = new List<TMP_Text>();
+
+    public void Open(Transform canvasRoot, System.Action onClosed)
+    {
+        this.canvasRoot = canvasRoot;
+        this.onClosed = onClosed;
+
+        EnsureOverlay();
+        overlayRoot.transform.SetAsLastSibling();
+        overlayRoot.SetActive(true);
+        Refresh();
+    }
+
+    public void Close()
+    {
+        if (overlayRoot != null) overlayRoot.SetActive(false);
+        onClosed?.Invoke();
+    }
+
+    private void EnsureOverlay()
+    {
+        if (overlayRoot != null) return;
+
+        overlayRoot = new GameObject("ProgressExchangeOverlay", typeof(RectTransform));
+        var overlayRect = (RectTransform)overlayRoot.transform;
+        overlayRect.SetParent(canvasRoot, false);
+        overlayRect.anchorMin = Vector2.zero;
+        overlayRect.anchorMax = Vector2.one;
+        overlayRect.offsetMin = Vector2.zero;
+        overlayRect.offsetMax = Vector2.zero;
+
+        var dim = overlayRoot.AddComponent<Image>();
+        dim.color = new Color(0f, 0f, 0f, 0.75f);
+
+        var closeAreaObj = new GameObject("CloseArea", typeof(RectTransform));
+        var closeAreaRect = (RectTransform)closeAreaObj.transform;
+        closeAreaRect.SetParent(overlayRect, false);
+        closeAreaRect.anchorMin = Vector2.zero;
+        closeAreaRect.anchorMax = Vector2.one;
+        closeAreaRect.offsetMin = Vector2.zero;
+        closeAreaRect.offsetMax = Vector2.zero;
+        var closeAreaImg = closeAreaObj.AddComponent<Image>();
+        closeAreaImg.color = new Color(0, 0, 0, 0);
+        var closeAreaBtn = closeAreaObj.AddComponent<Button>();
+        closeAreaBtn.transition = Selectable.Transition.None;
+        closeAreaBtn.onClick.AddListener(Close);
+
+        var windowObj = new GameObject("Window", typeof(RectTransform));
+        var windowRect = (RectTransform)windowObj.transform;
+        windowRect.SetParent(overlayRect, false);
+        windowRect.anchorMin = new Vector2(0.5f, 0.5f);
+        windowRect.anchorMax = new Vector2(0.5f, 0.5f);
+        windowRect.pivot = new Vector2(0.5f, 0.5f);
+        windowRect.sizeDelta = new Vector2(480, 520);
+        var windowBg = windowObj.AddComponent<Image>();
+        windowBg.color = new Color(0.12f, 0.12f, 0.12f, 0.98f);
+
+        var titleObj = new GameObject("Title", typeof(RectTransform));
+        var titleRect = (RectTransform)titleObj.transform;
+        titleRect.SetParent(windowRect, false);
+        titleRect.anchorMin = new Vector2(0, 1);
+        titleRect.anchorMax = new Vector2(1, 1);
+        titleRect.pivot = new Vector2(0.5f, 1);
+        titleRect.sizeDelta = new Vector2(0, 44);
+        titleRect.anchoredPosition = new Vector2(0, -12);
+        var titleText = titleObj.AddComponent<TextMeshProUGUI>();
+        titleText.text = "Exchange Progress Points";
+        titleText.fontSize = 30;
+        titleText.alignment = TextAlignmentOptions.Center;
+        titleText.color = Color.white;
+
+        var balanceObj = new GameObject("Balance", typeof(RectTransform));
+        var balanceRect = (RectTransform)balanceObj.transform;
+        balanceRect.SetParent(windowRect, false);
+        balanceRect.anchorMin = new Vector2(0, 1);
+        balanceRect.anchorMax = new Vector2(1, 1);
+        balanceRect.pivot = new Vector2(0.5f, 1);
+        balanceRect.sizeDelta = new Vector2(0, 30);
+        balanceRect.anchoredPosition = new Vector2(0, -56);
+        balanceText = balanceObj.AddComponent<TextMeshProUGUI>();
+        balanceText.fontSize = 24;
+        balanceText.alignment = TextAlignmentOptions.Center;
+        balanceText.color = new Color(1, 1, 1, 0.85f);
+
+        // Four stacked rows, one per HeroExpGem rarity — top row highest y, going down
+        float rowY = -104f;
+        for (int i = 0; i < Offers.Length; i++)
+        {
+            int offerIndex = i; // capture for lambda
+            CreateRow(windowRect, rowY, () => Buy(offerIndex));
+            rowY -= 96f;
+        }
+
+        var closeBtnObj = new GameObject("CloseButton", typeof(RectTransform));
+        var closeBtnRect = (RectTransform)closeBtnObj.transform;
+        closeBtnRect.SetParent(windowRect, false);
+        closeBtnRect.anchorMin = new Vector2(0.5f, 0);
+        closeBtnRect.anchorMax = new Vector2(0.5f, 0);
+        closeBtnRect.pivot = new Vector2(0.5f, 0);
+        closeBtnRect.sizeDelta = new Vector2(160, 34);
+        closeBtnRect.anchoredPosition = new Vector2(0, 12);
+        var closeBtnImg = closeBtnObj.AddComponent<Image>();
+        closeBtnImg.color = ConfirmationDialog.ButtonColor;
+        var closeBtn = closeBtnObj.AddComponent<Button>();
+        closeBtn.onClick.AddListener(Close);
+
+        var closeTextObj = new GameObject("Text", typeof(RectTransform));
+        var closeTextRect = (RectTransform)closeTextObj.transform;
+        closeTextRect.SetParent(closeBtnRect, false);
+        closeTextRect.anchorMin = Vector2.zero;
+        closeTextRect.anchorMax = Vector2.one;
+        closeTextRect.offsetMin = Vector2.zero;
+        closeTextRect.offsetMax = Vector2.zero;
+        var closeText = closeTextObj.AddComponent<TextMeshProUGUI>();
+        closeText.text = "Close";
+        closeText.alignment = TextAlignmentOptions.Center;
+        closeText.color = Color.black;
+
+        overlayRoot.SetActive(false);
+    }
+
+    // One row = label (name + cost, left-aligned) + a "Buy" button (right side)
+    private void CreateRow(RectTransform parent, float anchoredY, UnityEngine.Events.UnityAction onClick)
+    {
+        var rowObj = new GameObject("Row", typeof(RectTransform));
+        var rowRect = (RectTransform)rowObj.transform;
+        rowRect.SetParent(parent, false);
+        rowRect.anchorMin = new Vector2(0, 1);
+        rowRect.anchorMax = new Vector2(1, 1);
+        rowRect.pivot = new Vector2(0.5f, 1);
+        rowRect.sizeDelta = new Vector2(-32, 80);
+        rowRect.anchoredPosition = new Vector2(0, anchoredY);
+
+        var rowBg = rowObj.AddComponent<Image>();
+        rowBg.color = new Color(1, 1, 1, 0.05f);
+
+        var labelObj = new GameObject("Label", typeof(RectTransform));
+        var labelRect = (RectTransform)labelObj.transform;
+        labelRect.SetParent(rowRect, false);
+        labelRect.anchorMin = new Vector2(0, 0);
+        labelRect.anchorMax = new Vector2(0.62f, 1);
+        labelRect.offsetMin = new Vector2(16, 0);
+        labelRect.offsetMax = new Vector2(0, 0);
+        var label = labelObj.AddComponent<TextMeshProUGUI>();
+        label.fontSize = 22;
+        label.alignment = TextAlignmentOptions.MidlineLeft;
+        label.color = Color.white;
+        rowLabels.Add(label);
+
+        var btnObj = new GameObject("BuyButton", typeof(RectTransform));
+        var btnRect = (RectTransform)btnObj.transform;
+        btnRect.SetParent(rowRect, false);
+        btnRect.anchorMin = new Vector2(0.66f, 0.5f);
+        btnRect.anchorMax = new Vector2(0.66f, 0.5f);
+        btnRect.pivot = new Vector2(0.5f, 0.5f);
+        btnRect.sizeDelta = new Vector2(130, 50);
+        btnRect.anchoredPosition = new Vector2(65, 0);
+
+        var btnImg = btnObj.AddComponent<Image>();
+        btnImg.color = ConfirmationDialog.ButtonColor;
+        var btn = btnObj.AddComponent<Button>();
+        btn.onClick.AddListener(onClick);
+
+        var btnTextObj = new GameObject("Text", typeof(RectTransform));
+        var btnTextRect = (RectTransform)btnTextObj.transform;
+        btnTextRect.SetParent(btnRect, false);
+        btnTextRect.anchorMin = Vector2.zero;
+        btnTextRect.anchorMax = Vector2.one;
+        btnTextRect.offsetMin = Vector2.zero;
+        btnTextRect.offsetMax = Vector2.zero;
+        var btnText = btnTextObj.AddComponent<TextMeshProUGUI>();
+        btnText.text = "Buy";
+        btnText.fontSize = 22;
+        btnText.alignment = TextAlignmentOptions.Center;
+        btnText.color = Color.black;
+    }
+
+    private void Refresh()
+    {
+        int balance = PlayerCurrencies.Instance != null ? PlayerCurrencies.Instance.GetBalance(CurrencyType.ProgressPoints) : 0;
+        if (balanceText != null)
+            balanceText.text = $"Your balance: {balance} PP";
+
+        for (int i = 0; i < Offers.Length && i < rowLabels.Count; i++)
+        {
+            var item = ItemCollectionManager.Instance != null ? ItemCollectionManager.Instance.GetItemById(Offers[i].itemId) : null;
+            string name = item != null ? item.itemName : Offers[i].itemId;
+            string expLine = item != null ? $" (+{item.heroExperienceValue} hero exp)" : "";
+            rowLabels[i].text = $"{name}{expLine}\nCost: {Offers[i].cost} PP";
+        }
+    }
+
+    private void Buy(int offerIndex)
+    {
+        if (offerIndex < 0 || offerIndex >= Offers.Length) return;
+        if (PlayerCurrencies.Instance == null || ItemCollectionManager.Instance == null) return;
+
+        var (itemId, cost) = Offers[offerIndex];
+        var item = ItemCollectionManager.Instance.GetItemById(itemId);
+        if (item == null) return;
+
+        if (!PlayerCurrencies.Instance.Spend(CurrencyType.ProgressPoints, cost))
+        {
+            ConfirmationDialog.ShowInfo(canvasRoot, $"Not enough Progress Points (needs {cost}).");
+            return;
+        }
+
+        ItemCollectionManager.Instance.AddItemCopy(item, 1);
+        ConfirmationDialog.ShowInfo(canvasRoot, $"Bought {item.itemName}!");
+
+        Refresh();
+    }
+}
