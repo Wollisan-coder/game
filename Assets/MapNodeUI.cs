@@ -58,6 +58,30 @@ public class MapNodeUI : MonoBehaviour
             return;
         }
 
+        if (!WorldMapManager.Instance.IsUnlocked(node)) return;
+
+        var canvas = GetComponentInParent<Canvas>();
+        var mainMenuUI = FindAnyObjectByType<MainMenuUI>();
+        int energyCost = mainMenuUI != null ? mainMenuUI.battleEnergyCost : 1;
+
+        BattlePrepPopup.Show(canvas != null ? canvas.transform : transform, node, energyCost, LaunchBattle);
+    }
+
+    // Вызывается из BattlePrepPopup по кнопке "В бой" — тратит энергию (тот же гейт, что раньше жил
+    // только в неподключённом MainMenuUI.StartBattle()) и только при успехе запускает бой.
+    private void LaunchBattle()
+    {
+        var mainMenuUI = FindAnyObjectByType<MainMenuUI>();
+        int energyCost = mainMenuUI != null ? mainMenuUI.battleEnergyCost : 1;
+
+        if (AccountManager.Instance != null && !AccountManager.Instance.SpendEnergy(energyCost))
+        {
+            var canvas = GetComponentInParent<Canvas>();
+            if (canvas != null)
+                ConfirmationDialog.ShowInfo(canvas.transform, "Not enough energy to start a battle.");
+            return;
+        }
+
         if (!WorldMapManager.Instance.SelectNode(node)) return;
 
         // Запоминаем имя своей панели (WorldMapPanel либо конкретный CityMap_...), чтобы после боя

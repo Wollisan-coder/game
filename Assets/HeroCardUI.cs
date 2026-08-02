@@ -42,6 +42,7 @@ public class HeroCardUI : MonoBehaviour
         ApplyHeroData();
 
         battleManager.OnStateChanged += RefreshCard;
+        battleManager.OnHeroDamaged += HandleHeroDamaged;
 
         if (activateButton != null)
         {
@@ -55,7 +56,16 @@ public class HeroCardUI : MonoBehaviour
     private void OnDestroy()
     {
         if (battleManager != null)
+        {
             battleManager.OnStateChanged -= RefreshCard;
+            battleManager.OnHeroDamaged -= HandleHeroDamaged;
+        }
+    }
+
+    private void HandleHeroDamaged(HeroRuntimeState damagedHero, int amount)
+    {
+        if (damagedHero == heroState)
+            FloatingDamageText.Spawn((RectTransform)transform, amount, FloatingDamageText.HeroDamageColor);
     }
 
     private void Update()

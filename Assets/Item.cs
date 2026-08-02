@@ -11,6 +11,41 @@ public class Item : MonoBehaviour
     [Header("Состояние фишки (для скиллов рас)")]
     public bool isJoker;   // джокер (ConvertCellToJoker) — матчится с фишкой любого цвета
 
+    // Создаются матчем 4+/5+ в ряд — см. GridManager.ProcessMatches/FindStraightRuns.
+    // Row/Column — какую линию сетки фишка сносит при активации (не направление матча, которым её создали).
+    public enum SpecialType { None, LineClearRow, LineClearColumn, ColorBomb }
+
+    [Header("Спец-фишки (созданы матчем 4/5 в ряд)")]
+    public SpecialType specialType = SpecialType.None;
+
+    // Не перекрашивает фишку целиком (в отличие от MarkAsJoker) — цвет должен остаться читаемым,
+    // чтобы игрок понимал, каким обычным матчем её можно активировать. Вместо этого — форма (растянута
+    // вдоль линии, которую снесёт) + лёгкое осветление тона.
+    public void MarkAsSpecial(SpecialType type)
+    {
+        specialType = type;
+
+        switch (type)
+        {
+            case SpecialType.LineClearRow:
+                transform.localScale = new Vector3(baseScale.x * 1.6f, baseScale.y, baseScale.z * 0.6f);
+                break;
+            case SpecialType.LineClearColumn:
+                transform.localScale = new Vector3(baseScale.x * 0.6f, baseScale.y, baseScale.z * 1.6f);
+                break;
+            case SpecialType.ColorBomb:
+                transform.localScale = baseScale * 1.3f;
+                break;
+        }
+
+        var rend = GetComponentInChildren<Renderer>();
+        if (rend == null) return;
+
+        rend.material = new Material(rend.material);
+        Color blended = Color.Lerp(GetTintColor(rend.material), Color.white, 0.35f);
+        SetTintColor(rend.material, blended);
+    }
+
     [Header("Вредные фишки поля (per-enemy дебаффы, см. HarmfulTileSpawnRule)")]
     public HarmfulTileType harmfulType = HarmfulTileType.None;
     public int harmfulValue;      // Spike/Trap: урон герою; Anchor: сколько матчей по соседству нужно, чтобы снять
@@ -158,6 +193,14 @@ public class Item : MonoBehaviour
 
         if (trapIndicator != null)
             trapIndicator.SetActive(false);
+    }
+
+    // Медленное вращение — единственный визуальный маркер ColorBomb, который не конфликтует
+    // с pulse-анимациями (SetSelected/SetHighlighted перезаписывают localScale, но не rotation).
+    private void Update()
+    {
+        if (specialType == SpecialType.ColorBomb)
+            transform.Rotate(Vector3.up, 90f * Time.deltaTime);
     }
 
     [Header("Свайп")]

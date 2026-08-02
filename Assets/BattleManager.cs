@@ -57,6 +57,8 @@ public class BattleManager : MonoBehaviour
 
     public System.Action OnStateChanged;
     public System.Action<string> OnBattleLog; // вызов с текстом строки при каждом нанесённом/полученном уроне
+    public System.Action<int> OnEnemyDamaged; // фактически применённый урон (после щита/множителей) — для всплывающих цифр
+    public System.Action<HeroRuntimeState, int> OnHeroDamaged; // конкретный герой + фактически применённый урон
 
     private HeroRuntimeState lastAttackedHero;
     private int consecutiveHitsOnLastHero;
@@ -189,7 +191,9 @@ public class BattleManager : MonoBehaviour
         }
     }
 
-        public void DealDamageToEnemy(int amount)
+    // raiseEvent=false — для вызовов, которые сами суммируют несколько попаданий за один ход
+    // (см. ResolvePlayerTurn) и поднимают OnEnemyDamaged один раз с итоговой суммой, а не по кускам.
+    public int DealDamageToEnemy(int amount, bool raiseEvent = true)
     {
         float multiplier = enemyIncomingDamageMultiplier * nextHitDamageMultiplier;
         int scaledAmount = Mathf.RoundToInt(amount * multiplier);
@@ -201,7 +205,13 @@ public class BattleManager : MonoBehaviour
         enemyHP = Mathf.Max(0, enemyHP - applied);
 
         if (applied > 0)
+        {
             OnBattleLog?.Invoke($"Enemy took {applied} damage");
+            if (raiseEvent)
+                OnEnemyDamaged?.Invoke(applied);
+        }
+
+        return applied;
     }
 
     // Базовый урон, если живого героя этого цвета нет; повышенный — если есть
@@ -215,6 +225,7 @@ public class BattleManager : MonoBehaviour
     public void ResolvePlayerTurn(Dictionary<int, int> matchedTypeCounts)
     {
         lastTurnMatchCount = matchedTypeCounts.Values.Sum();
+        int totalEnemyDamageThisTurn = 0;
 
         foreach (var pair in matchedTypeCounts)
         {
@@ -235,7 +246,7 @@ public class BattleManager : MonoBehaviour
             {
                 int baseDamage = count * GetDamagePerGem(type);
                 int finalDamage = Mathf.RoundToInt(baseDamage * damageMultiplier * heroDamageMultiplier);
-                DealDamageToEnemy(finalDamage);
+                totalEnemyDamageThisTurn += DealDamageToEnemy(finalDamage, raiseEvent: false);
 
                 // Каждый живой активный герой этого цвета получает полную порцию ресурса
                 // (кроме тех, кто только что использовал навык в этот ход — им мана не начисляется)
@@ -246,6 +257,9 @@ public class BattleManager : MonoBehaviour
                 }
             }
         }
+
+        if (totalEnemyDamageThisTurn > 0)
+            OnEnemyDamaged?.Invoke(totalEnemyDamageThisTurn);
 
         // Блокировка маны действовала ровно один ход — снимаем её для следующего
         foreach (var hero in activeHeroes)
@@ -564,6 +578,7 @@ public class BattleManager : MonoBehaviour
         if (applied > 0)
         {
             OnBattleLog?.Invoke($"{hero.data.heroName} took {applied} damage");
+            OnHeroDamaged?.Invoke(hero, applied);
 
             if (damageReflectTurnsRemaining > 0 && damageReflectPercent > 0f)
             {

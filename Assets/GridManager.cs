@@ -448,10 +448,37 @@ public IEnumerator PlayDestroyAnimation()
 {
     List<Coroutine> animations = new List<Coroutine>();
 
-    ThawAdjacentIce(matches);       // сосед матчится рядом со льдом — лёд тает досрочно, сам не уничтожаясь
-    TickAnchorsAdjacentToMatches(matches); // якорь не входит в матч сам, но считает матчи по соседству
+    // --- Спец-фишки (4/5 в ряд) ---
+    // Раны 4+ по прямой линии внутри matches: центральная фишка ранга выживает и становится спец-фишкой
+    // (не уничтожается в этом проходе), остальные из этого рана уничтожаются как обычно.
+    List<MatchRun> runs = FindStraightRuns(matches);
+    HashSet<Item> survivors = new HashSet<Item>();
+    foreach (var run in runs)
+    {
+        Item survivor = run.items[run.items.Count / 2];
+        if (survivors.Contains(survivor)) continue; // гориз- и верт-ран пересеклись в одной клетке — не переразмечаем дважды
 
-    foreach (var item in matches)
+        survivors.Add(survivor);
+        Item.SpecialType newType = run.items.Count >= 5
+            ? Item.SpecialType.ColorBomb
+            : (run.isHorizontal ? Item.SpecialType.LineClearRow : Item.SpecialType.LineClearColumn);
+
+        survivor.MarkAsSpecial(newType);
+    }
+
+    // Уже существующие спец-фишки, попавшие в этот же матч, — раскрываем в цепочку целей их эффекта
+    // (может зацепить ещё одну спец-фишку — цепная реакция обрабатывается тут же, за один проход).
+    HashSet<Item> toDestroySet = ExpandSpecialEffects(matches);
+    toDestroySet.ExceptWith(survivors); // новые спец-фишки этого хода не должны уничтожаться сами собой
+
+    // List, не HashSet — TickAnchorsAdjacentToMatches ДОБАВЛЯЕТ в переданный список снятые якоря (see ниже),
+    // и этот же список дальше используется для цикла уничтожения.
+    List<Item> toDestroy = new List<Item>(toDestroySet);
+
+    ThawAdjacentIce(toDestroy);       // сосед матчится рядом со льдом — лёд тает досрочно, сам не уничтожаясь
+    TickAnchorsAdjacentToMatches(toDestroy); // якорь не входит в матч сам, но считает матчи по соседству
+
+    foreach (var item in toDestroy)
     {
         if (item.harmfulType == HarmfulTileType.Trap && !isSkillDestroy)
         {
@@ -471,11 +498,130 @@ public IEnumerator PlayDestroyAnimation()
     foreach (var anim in animations)
         yield return anim;
 
-    foreach (var item in matches)
+    foreach (var item in toDestroy)
         Destroy(item.gameObject);
 
     yield return StartCoroutine(CollapseGrid());
 }
+
+    private struct MatchRun
+    {
+        public List<Item> items;
+        public bool isHorizontal; // true = вдоль ряда (общий Y, разный X) — снесёт ROW; false — снесёт COLUMN
+    }
+
+    // Находит внутри matches максимальные прямые последовательности (4+) по текущему состоянию grid[,] —
+    // вызывать ДО того, как matches начнут обнуляться в grid (см. начало ProcessMatches).
+    private List<MatchRun> FindStraightRuns(List<Item> matches)
+    {
+        var matchedSet = new HashSet<Item>(matches);
+        var runs = new List<MatchRun>();
+
+        for (int y = 0; y < height; y++)
+        {
+            int x = 0;
+            while (x < width)
+            {
+                Item start = grid[x, y];
+                if (start == null || !matchedSet.Contains(start)) { x++; continue; }
+
+                var run = new List<Item> { start };
+                int nx = x + 1;
+                while (nx < width && grid[nx, y] != null && matchedSet.Contains(grid[nx, y]) && TypesMatch(grid[nx - 1, y], grid[nx, y]))
+                {
+                    run.Add(grid[nx, y]);
+                    nx++;
+                }
+
+                if (run.Count >= 4)
+                    runs.Add(new MatchRun { items = run, isHorizontal = true });
+
+                x = nx;
+            }
+        }
+
+        for (int x = 0; x < width; x++)
+        {
+            int y = 0;
+            while (y < height)
+            {
+                Item start = grid[x, y];
+                if (start == null || !matchedSet.Contains(start)) { y++; continue; }
+
+                var run = new List<Item> { start };
+                int ny = y + 1;
+                while (ny < height && grid[x, ny] != null && matchedSet.Contains(grid[x, ny]) && TypesMatch(grid[x, ny - 1], grid[x, ny]))
+                {
+                    run.Add(grid[x, ny]);
+                    ny++;
+                }
+
+                if (run.Count >= 4)
+                    runs.Add(new MatchRun { items = run, isHorizontal = false });
+
+                y = ny;
+            }
+        }
+
+        return runs;
+    }
+
+    // Раскрывает набор фишек в реальный список на уничтожение: любая спец-фишка внутри matches добавляет
+    // всю свою линию/цвет в очередь, и если туда попадает ещё одна спец-фишка — цепная реакция продолжается.
+    private HashSet<Item> ExpandSpecialEffects(List<Item> matches)
+    {
+        var toDestroy = new HashSet<Item>(matches);
+        var queue = new Queue<Item>(matches);
+
+        while (queue.Count > 0)
+        {
+            Item item = queue.Dequeue();
+            if (item.specialType == Item.SpecialType.None) continue;
+
+            foreach (var extra in GetSpecialEffectTargets(item))
+            {
+                if (extra != null && toDestroy.Add(extra))
+                    queue.Enqueue(extra);
+            }
+        }
+
+        return toDestroy;
+    }
+
+    private List<Item> GetSpecialEffectTargets(Item special)
+    {
+        var result = new List<Item>();
+
+        switch (special.specialType)
+        {
+            case Item.SpecialType.LineClearRow:
+                for (int gx = 0; gx < width; gx++)
+                {
+                    Item it = grid[gx, special.y];
+                    if (it != null && it != special) result.Add(it);
+                }
+                break;
+
+            case Item.SpecialType.LineClearColumn:
+                for (int gy = 0; gy < height; gy++)
+                {
+                    Item it = grid[special.x, gy];
+                    if (it != null && it != special) result.Add(it);
+                }
+                break;
+
+            case Item.SpecialType.ColorBomb:
+                for (int gx = 0; gx < width; gx++)
+                    for (int gy = 0; gy < height; gy++)
+                    {
+                        Item it = grid[gx, gy];
+                        if (it != null && it != special && it.type == special.type) result.Add(it);
+                    }
+                break;
+        }
+
+        return result;
+    }
 
     // Лёд, оказавшийся рядом с местом матча (но не входивший в него сам), тает раньше срока
     private void ThawAdjacentIce(List<Item> matches)

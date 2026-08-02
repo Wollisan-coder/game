@@ -38,6 +38,7 @@ public class BattleUI : MonoBehaviour
 
         battleManager.OnStateChanged += RefreshUI;
         battleManager.OnBattleLog += AppendLog;
+        battleManager.OnEnemyDamaged += HandleEnemyDamaged;
 if (enemyPortrait != null && battleManager.currentEnemy != null && battleManager.currentEnemy.portrait != null)
     enemyPortrait.sprite = battleManager.currentEnemy.portrait;
         RefreshUI();
@@ -49,7 +50,14 @@ if (enemyPortrait != null && battleManager.currentEnemy != null && battleManager
         {
             battleManager.OnStateChanged -= RefreshUI;
             battleManager.OnBattleLog -= AppendLog;
+            battleManager.OnEnemyDamaged -= HandleEnemyDamaged;
         }
+    }
+
+    private void HandleEnemyDamaged(int amount)
+    {
+        if (enemyPortrait != null)
+            FloatingDamageText.Spawn((RectTransform)enemyPortrait.transform, amount, FloatingDamageText.EnemyDamageColor);
     }
 
     // Новая строка добавляется сверху, старые за пределами лимита отбрасываются снизу
