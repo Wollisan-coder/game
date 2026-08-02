@@ -20,15 +20,11 @@ public class BattleUI : MonoBehaviour
     public Slider enemyHPSlider;
     public TMP_Text enemyHPText;
 
-    [System.Serializable]
-    public class HeroResourceUIEntry
-    {
-        public HeroData heroData;   // какой герой соответствует этому UI-элементу
-        public TMP_Text amountText; // текст з поточним значенням ресурсу
-    }
-
+    // Слоты вместо жёсткой привязки HeroData->текст: отряд собирается игроком из
+    // произвольных героев, поэтому слот просто занимает i-й герой из activeHeroes,
+    // а лишние слоты (отряд меньше, чем слотов) скрываются, как и в HeroInventoryUI.PopulateSkillSelectors.
     [Header("Ресурсы героев")]
-    public HeroResourceUIEntry[] heroResourceEntries;
+    public TMP_Text[] heroResourceSlots;
 
     [Header("Лог бою (нанесений/отриманий урон)")]
     public TMP_Text battleLogText; // назначить в Inspector — отдельный текстовый блок где-то на экране боя
@@ -78,13 +74,17 @@ if (enemyPortrait != null && battleManager.currentEnemy != null && battleManager
         enemyHPSlider.value = battleManager.enemyHP;
         enemyHPText.text = $"{battleManager.enemyHP} / {battleManager.enemyMaxHP}";
 
-        foreach (var entry in heroResourceEntries)
+        for (int i = 0; i < heroResourceSlots.Length; i++)
         {
-            if (entry.amountText == null || entry.heroData == null) continue;
+            if (heroResourceSlots[i] == null) continue;
 
-            HeroRuntimeState state = battleManager.GetHeroState(entry.heroData);
-            if (state != null)
-                entry.amountText.text = $"{state.currentResource} / {state.maxResource}";
+            bool hasHero = i < battleManager.activeHeroes.Count;
+            heroResourceSlots[i].gameObject.SetActive(hasHero);
+            if (hasHero)
+            {
+                HeroRuntimeState state = battleManager.activeHeroes[i];
+                heroResourceSlots[i].text = $"{state.currentResource} / {state.maxResource}";
+            }
         }
     }
 }

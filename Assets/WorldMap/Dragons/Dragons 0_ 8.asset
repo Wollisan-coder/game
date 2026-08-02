@@ -10,16 +10,16 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e8ab815f5e4b8574ebc2827fcfeb1365, type: 3}
-  m_Name: Demons
+  m_Name: Dragons 0_ 8
   m_EditorClassIdentifier: Assembly-CSharp::MapNodeData
-  nodeId: Demons
+  nodeId: Dragons 0_ 8
   nodeName: 
   description: 
   icon: {fileID: 0}
-  enemy: {fileID: 0}
+  enemy: {fileID: 11400000, guid: 8930752c45129a645a198e989dd62dc8, type: 2}
+  territory: 5
+  nodeIndex: 9
   requiredNodes:
-  - {fileID: 11400000, guid: 1e32cd37bfd28d04c8e6d6abb7a97814, type: 2}
-  - {fileID: 11400000, guid: d174627ffaf8a254b9677ee9ea6854be, type: 2}
-  - {fileID: 11400000, guid: b8be97447676d754ead35fe356cf9070, type: 2}
-  - {fileID: 11400000, guid: d7f414b95bb85d44dafb5a71b212f623, type: 2}
-  - {fileID: 11400000, guid: 3f6763c1ef86d4346bd9f805d1cd7ec7, type: 2}
+  - {fileID: 11400000, guid: 4386610813f56054f90bf9be25d0bbbc, type: 2}
+  isFarmNode: 0
+  farmLootPool: {fileID: 0}

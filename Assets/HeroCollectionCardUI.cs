@@ -11,6 +11,10 @@ public class HeroCollectionCardUI : MonoBehaviour
     public Image rarityFrame;
     public RarityFrameSet rarityFrameSet;
 
+    [Header("Эмблема расы — общий ассет RaceEmblemSet на всю игру")]
+    public Image raceEmblem;
+    public RaceEmblemSet raceEmblemSet;
+
     private HeroInventoryUI inventoryUI; // общий на всю сцену, передаётся из HeroCollectionUI при спавне
 
     private HeroData heroData;
@@ -36,6 +40,13 @@ public class HeroCollectionCardUI : MonoBehaviour
         }
 
         RarityUtility.ApplyFrame(rarityFrame, rarityFrameSet, data.rarity);
+
+        if (raceEmblem != null)
+        {
+            Sprite emblem = raceEmblemSet != null ? raceEmblemSet.GetEmblem(data.race) : null;
+            raceEmblem.sprite = emblem;
+            raceEmblem.enabled = emblem != null;
+        }
     }
 
     private void OnSelected()

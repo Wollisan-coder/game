@@ -13,15 +13,11 @@ MonoBehaviour:
   m_Name: ItemAccessory_Purple
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   itemId: ItemAccessory_Purple
-  itemName: "\u0410\u043A\u0441\u0435\u0441\u0441\u0443\u0430\u0440"
+  itemName: Accessory
   category: 0
   slotType: 2
   icon: {fileID: 21300000, guid: caa7ff5109772c74bbd632b19f496db3, type: 3}
   description: 
   rarity: 3
   sacrificeExperience: 10
-  bonusHealth: 0
-  bonusMana: 0
-  bonusDamageMultiplier: 0
-  bonusArmor: 20
   heroExperienceValue: 0

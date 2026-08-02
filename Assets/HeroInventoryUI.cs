@@ -17,6 +17,10 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     public Image rarityFrame;
     public RarityFrameSet rarityFrameSet;
 
+    [Header("Эмблема расы — общий ассет RaceEmblemSet на всю игру")]
+    public Image raceEmblem;
+    public RaceEmblemSet raceEmblemSet;
+
     [Header("Статы (база героя + бонусы от текущей экипировки) — справа под слотами предметов")]
     public TMP_Text statsText;
 
@@ -142,6 +146,13 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         if (descriptionText != null) descriptionText.text = currentHero.description;
 
         RarityUtility.ApplyFrame(rarityFrame, rarityFrameSet, currentHero.rarity);
+
+        if (raceEmblem != null)
+        {
+            Sprite emblem = raceEmblemSet != null ? raceEmblemSet.GetEmblem(currentHero.race) : null;
+            raceEmblem.sprite = emblem;
+            raceEmblem.enabled = emblem != null;
+        }
 
         if (levelText != null)
         {

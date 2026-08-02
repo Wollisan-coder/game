@@ -126,7 +126,7 @@ public class ItemSacrificeUI : MonoBehaviour
         windowRect.anchorMin = new Vector2(0.5f, 0.5f);
         windowRect.anchorMax = new Vector2(0.5f, 0.5f);
         windowRect.pivot = new Vector2(0.5f, 0.5f);
-        windowRect.sizeDelta = new Vector2(760, 1000);
+        windowRect.sizeDelta = new Vector2(1000, 1650);
         var windowBg = windowObj.AddComponent<Image>();
         windowBg.color = new Color(0.12f, 0.12f, 0.12f, 0.98f);
 
@@ -136,11 +136,11 @@ public class ItemSacrificeUI : MonoBehaviour
         titleRect.anchorMin = new Vector2(0, 1);
         titleRect.anchorMax = new Vector2(1, 1);
         titleRect.pivot = new Vector2(0.5f, 1);
-        titleRect.sizeDelta = new Vector2(0, 40);
-        titleRect.anchoredPosition = new Vector2(0, -8);
+        titleRect.sizeDelta = new Vector2(0, 50);
+        titleRect.anchoredPosition = new Vector2(0, -10);
         var title = titleObj.AddComponent<TextMeshProUGUI>();
         title.text = "Sacrifice items for experience";
-        title.fontSize = 28;
+        title.fontSize = 34;
         title.alignment = TextAlignmentOptions.Center;
         title.color = Color.white;
 
@@ -149,8 +149,8 @@ public class ItemSacrificeUI : MonoBehaviour
         scrollRect.SetParent(windowRect, false);
         scrollRect.anchorMin = new Vector2(0, 0);
         scrollRect.anchorMax = new Vector2(1, 1);
-        scrollRect.offsetMin = new Vector2(16, 112);
-        scrollRect.offsetMax = new Vector2(-16, -56);
+        scrollRect.offsetMin = new Vector2(20, 170);
+        scrollRect.offsetMax = new Vector2(-20, -66);
 
         var scroll = scrollObj.AddComponent<ScrollRect>();
         var scrollImage = scrollObj.AddComponent<Image>();
@@ -168,8 +168,8 @@ public class ItemSacrificeUI : MonoBehaviour
         contentRect.sizeDelta = new Vector2(0, 0);
 
         var grid = contentObj.AddComponent<GridLayoutGroup>();
-        grid.cellSize = new Vector2(150, 150);
-        grid.spacing = new Vector2(10, 10);
+        grid.cellSize = new Vector2(210, 230);
+        grid.spacing = new Vector2(14, 14);
         grid.padding = new RectOffset(6, 6, 6, 6);
 
         var fitter = contentObj.AddComponent<ContentSizeFitter>();
@@ -203,10 +203,10 @@ public class ItemSacrificeUI : MonoBehaviour
         summaryRect.anchorMin = new Vector2(0, 0);
         summaryRect.anchorMax = new Vector2(1, 0);
         summaryRect.pivot = new Vector2(0.5f, 0);
-        summaryRect.sizeDelta = new Vector2(-32, 56);
-        summaryRect.anchoredPosition = new Vector2(0, 52);
+        summaryRect.sizeDelta = new Vector2(-40, 80);
+        summaryRect.anchoredPosition = new Vector2(0, 90);
         summaryText = summaryObj.AddComponent<TextMeshProUGUI>();
-        summaryText.fontSize = 16;
+        summaryText.fontSize = 24;
         summaryText.alignment = TextAlignmentOptions.Center;
         summaryText.color = Color.white;
 
@@ -216,7 +216,7 @@ public class ItemSacrificeUI : MonoBehaviour
         confirmRect.anchorMin = new Vector2(0.3f, 0);
         confirmRect.anchorMax = new Vector2(0.3f, 0);
         confirmRect.pivot = new Vector2(0.5f, 0);
-        confirmRect.sizeDelta = new Vector2(180, 38);
+        confirmRect.sizeDelta = new Vector2(220, 64);
         confirmRect.anchoredPosition = new Vector2(0, 10);
         confirmBg = confirmObj.AddComponent<Image>();
         confirmBg.color = ConfirmationDialog.ButtonColor;
@@ -241,7 +241,7 @@ public class ItemSacrificeUI : MonoBehaviour
         closeBtnRect.anchorMin = new Vector2(0.7f, 0);
         closeBtnRect.anchorMax = new Vector2(0.7f, 0);
         closeBtnRect.pivot = new Vector2(0.5f, 0);
-        closeBtnRect.sizeDelta = new Vector2(180, 38);
+        closeBtnRect.sizeDelta = new Vector2(220, 64);
         closeBtnRect.anchoredPosition = new Vector2(0, 10);
         closeBg = closeBtnObj.AddComponent<Image>();
         closeBg.color = ConfirmationDialog.ButtonColor;
@@ -321,7 +321,9 @@ public class ItemSacrificeUI : MonoBehaviour
         labelRect.offsetMin = new Vector2(4, 2);
         labelRect.offsetMax = new Vector2(-4, 0);
         var label = labelObj.AddComponent<TextMeshProUGUI>();
-        label.fontSize = 12;
+        label.enableAutoSizing = true; // строка = имя+уровень+опыт, а при выборе ещё и "Selected: X/Y" — длина плавает
+        label.fontSizeMin = 14;
+        label.fontSizeMax = 22;
         label.alignment = TextAlignmentOptions.Center;
         label.color = donorData.GetRarityColor();
 

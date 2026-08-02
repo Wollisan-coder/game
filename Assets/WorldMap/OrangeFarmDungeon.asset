@@ -22,6 +22,7 @@ MonoBehaviour:
   enemy: {fileID: 11400000, guid: 90519132a94154e40b6f49f1432eb941, type: 2}
   territory: 6
   nodeIndex: 18
-  requiredNodes: []
+  requiredNodes:
+  - {fileID: 11400000, guid: 74367b84b1d8fe344b747384a41534bd, type: 2}
   isFarmNode: 1
   farmLootPool: {fileID: 11400000, guid: b2a339a9e1384f8fab122510082f6495, type: 2}

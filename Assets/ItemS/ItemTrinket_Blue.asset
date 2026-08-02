@@ -13,14 +13,11 @@ MonoBehaviour:
   m_Name: ItemTrinket_Blue
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   itemId: ItemTrinket_Blue
-  itemName: "\u0422\u0430\u043B\u0438\u0441\u043C\u0430\u043D"
+  itemName: Trinket
   category: 0
   slotType: 3
   icon: {fileID: 21300000, guid: 34f756edb814da845bdba61c73916d86, type: 3}
   description: 
   rarity: 2
   sacrificeExperience: 10
-  bonusHealth: 0
-  bonusMana: 30
-  bonusDamageMultiplier: 0
   heroExperienceValue: 0

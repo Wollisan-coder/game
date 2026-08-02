@@ -4,10 +4,18 @@ using UnityEngine;
 // Заменяет авторство 108 отдельных EnemyData/override-полей одной формулой: EnemyData остаётся архетипом
 // (портрет/скиллы/лут-правила), а числа HP/атаки/наградного опыта здесь считаются на лету.
 //
-// Тир-якоря (конец полосы) — рядовые растут ×1.20 территория-к-территории, босс = рядовые той же
-// территории ×1.40. Демоны разбиты на 3 полосы внутри себя: лёгкая(1-9, ×1.25 от рядовых Зверолюдов) →
-// средняя(10-17, ×1.50 от лёгкой) → босс(18, ×1.15 от средней). Драконоиды растут от Демонов-СРЕДНИХ
-// (не от босса — намеренная передышка после стены), не Демонов.
+// Базовый якорь (T1Reg.maxHP) пересчитан 2026-08-02 с 80 до 360 — старое значение калибровалось без
+// сверки с реальным уроном по геммам (BattleManager.aliveDamagePerGem=8/матч), из-за чего живой плейтест
+// (2 героя без уровня/шмота) убивал босса орков за 8 ходов при 90%+ HP отряда. Новый якорь считается от
+// целевой длины рядового боя (10-15 ходов, взято 12) и оценки урона/ход подходящего этапу отряда (~30,
+// экстраполяция от замера ~20/ход на голом 2-героическом отряде — см. project_campaign_difficulty_curve).
+//
+// Тир-якоря (конец полосы) — рядовые растут ×1.20 территория-к-территории (форма не менялась, только
+// стартовое значение). Босс = рядовые той же территории × множитель длины боссфайта, подтверждённый
+// пользователем 2026-08-02: Elves/Fairy ×2, Orcs/Beastfolk ×3, Demons/Dragonkin ×5. Демоны разбиты на 3
+// полосы внутри себя: лёгкая(1-9, ×1.25 от рядовых Зверолюдов) → средняя(10-17, ×1.50 от лёгкой) →
+// босс(18, ×5 от средней, было ×1.15). Драконоиды растут от Демонов-СРЕДНИХ (не от босса — намеренная
+// передышка после стены), не Демонов.
 public static class EnemyStatCurve
 {
     public struct Stats
@@ -17,32 +25,33 @@ public static class EnemyStatCurve
         public int maxAttack;
     }
 
-    private static readonly Stats T1Reg = new Stats { maxHP = 80, minAttack = 5, maxAttack = 12 };
-    private static readonly Stats T1Boss = Scale(T1Reg, 1.40f);
+    private static readonly Stats T1Reg = new Stats { maxHP = 360, minAttack = 5, maxAttack = 12 };
+    private static readonly Stats T1Boss = Scale(T1Reg, 2f);
 
     private static readonly Stats T2Reg = Scale(T1Reg, 1.20f);
-    private static readonly Stats T2Boss = Scale(T2Reg, 1.40f);
+    private static readonly Stats T2Boss = Scale(T2Reg, 2f);
 
     private static readonly Stats T3Reg = Scale(T2Reg, 1.20f);
-    private static readonly Stats T3Boss = Scale(T3Reg, 1.40f);
+    private static readonly Stats T3Boss = Scale(T3Reg, 3f);
 
     private static readonly Stats T4Reg = Scale(T3Reg, 1.20f);
-    private static readonly Stats T4Boss = Scale(T4Reg, 1.40f);
+    private static readonly Stats T4Boss = Scale(T4Reg, 3f);
 
     private static readonly Stats DemonsLight = Scale(T4Reg, 1.25f);
     private static readonly Stats DemonsMedium = Scale(DemonsLight, 1.50f);
-    private static readonly Stats DemonsBoss = Scale(DemonsMedium, 1.15f);
+    private static readonly Stats DemonsBoss = Scale(DemonsMedium, 5f);
 
     private static readonly Stats DragonReg = Scale(DemonsMedium, 1.20f);
-    private static readonly Stats DragonBoss = Scale(DragonReg, 1.40f);
+    private static readonly Stats DragonBoss = Scale(DragonReg, 5f);
 
     // Ангелы/Люди (7-8): контент ещё не спроектирован (см. project_campaign_difficulty_curve — открытый
-    // вопрос), это НЕ подтверждённые цифры — просто продолжение того же +20%/+40% паттерна, чтобы кривая
-    // хотя бы не проваливалась вниз, если кто-то по ошибке создаст ноду с territory=Angels/Humans раньше времени.
+    // вопрос), это НЕ подтверждённые цифры — просто продолжение того же +20% паттерна (и того же ×5
+    // босса, для единообразия с Demons/Dragonkin), чтобы кривая хотя бы не проваливалась вниз, если
+    // кто-то по ошибке создаст ноду с territory=Angels/Humans раньше времени.
     private static readonly Stats AngelsReg = Scale(DragonReg, 1.20f);
-    private static readonly Stats AngelsBoss = Scale(AngelsReg, 1.40f);
+    private static readonly Stats AngelsBoss = Scale(AngelsReg, 5f);
     private static readonly Stats HumansReg = Scale(AngelsReg, 1.20f);
-    private static readonly Stats HumansBoss = Scale(HumansReg, 1.40f);
+    private static readonly Stats HumansBoss = Scale(HumansReg, 5f);
 
     private const float RampStart = 0.85f; // нода 1 полосы = 85% от значения на конце полосы
 

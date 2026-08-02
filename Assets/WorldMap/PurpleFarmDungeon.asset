@@ -10,18 +10,20 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e8ab815f5e4b8574ebc2827fcfeb1365, type: 3}
-  m_Name: MapNodeData
+  m_Name: PurpleFarmDungeon
   m_EditorClassIdentifier: Assembly-CSharp::MapNodeData
   nodeId: PurpleFarmDungeon
-  nodeName: Ashen Vault
-  description: Repeatable dungeon — guaranteed Purple-rarity gear drop. Medium-tier
-    gate (territory/nodeIndex below only drive EnemyStatCurve difficulty). PLACEMENT
-    — MapNodeUI for this node belongs directly on WorldMapPanel (continent map),
-    as a sibling of the city gate nodes — NOT nested inside CityMap_Demons.
-  icon: {fileID: 0}
+  nodeName: Amethyst Vault
+  description: "Repeatable dungeon \u2014 guaranteed Purple-rarity gear drop. Unlocks
+    after clearing Beastfolk, pays off at Demons-territory entry (territory/nodeIndex
+    below only drive EnemyStatCurve difficulty). PLACEMENT \u2014 MapNodeUI for this
+    node belongs directly on WorldMapPanel (continent map), as a sibling of the city
+    gate nodes \u2014 NOT nested inside CityMap_Demons."
+  icon: {fileID: 21300000, guid: e7acf6cf295b7fb4690d377e41ff2cc0, type: 3}
   enemy: {fileID: 11400000, guid: 90519132a94154e40b6f49f1432eb941, type: 2}
   territory: 4
   nodeIndex: 13
-  requiredNodes: []
+  requiredNodes:
+  - {fileID: 11400000, guid: 2482a1d5ae2251945a096b4634920ce4, type: 2}
   isFarmNode: 1
   farmLootPool: {fileID: 11400000, guid: efaae40071e1480ab76d22cda63ef346, type: 2}

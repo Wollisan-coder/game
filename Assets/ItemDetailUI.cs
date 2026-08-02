@@ -115,26 +115,7 @@ public class ItemDetailUI : MonoBehaviour
         if (infoText != null)
         {
             infoText.color = item.GetRarityColor();
-
-            if (isHeroXpItem)
-            {
-                int qty = ownership != null ? ownership.quantity : 0;
-                infoText.text = owned ? $"Owned: x{qty}" : "";
-            }
-            else if (ownership == null)
-            {
-                infoText.text = "";
-            }
-            else
-            {
-                string expLine = ownership.level >= maxLevel
-                    ? "MAX"
-                    : $"{ownership.experience}/{manager.ExperienceToNextLevel(ownership.level)} Exp";
-
-                infoText.text =
-                    $"Lvl {ownership.level}/{maxLevel}\n" +
-                    expLine;
-            }
+            infoText.text = $"{item.itemName}\n{slotTypeText?.text}\n{statsText?.text}";
         }
 
         if (actionButton != null)
@@ -176,20 +157,22 @@ public class ItemDetailUI : MonoBehaviour
         infoRect.anchorMax = new Vector2(1, 1);
         infoRect.pivot = new Vector2(1, 1);
         infoRect.sizeDelta = new Vector2(360, 120);
-        infoRect.anchoredPosition = new Vector2(-622, -284);
+        infoRect.anchoredPosition = new Vector2(-248, -682);
 
         infoText = infoObj.AddComponent<TextMeshProUGUI>();
-        infoText.fontSize = 36;
+        infoText.enableAutoSizing = true; // имя+тип+стата разной длины — фиксированный размер либо мелкий, либо не влезает в рамку
+        infoText.fontSizeMin = 14;
+        infoText.fontSizeMax = 36;
         infoText.alignment = TextAlignmentOptions.TopRight;
 
         var actionObj = new GameObject("ActionButton", typeof(RectTransform));
         var actionRect = (RectTransform)actionObj.transform;
         actionRect.SetParent(panelRect, false);
-        actionRect.anchorMin = new Vector2(0, 0);
-        actionRect.anchorMax = new Vector2(0, 0);
-        actionRect.pivot = new Vector2(0, 0);
-        actionRect.sizeDelta = new Vector2(240, 80);
-        actionRect.anchoredPosition = new Vector2(-745, -382);
+        actionRect.anchorMin = new Vector2(0.5f, 0.5f);
+        actionRect.anchorMax = new Vector2(0.5f, 0.5f);
+        actionRect.pivot = new Vector2(0.5f, 0.5f);
+        actionRect.sizeDelta = new Vector2(300, 90);
+        actionRect.anchoredPosition = new Vector2(0, -300);
 
         actionBg = actionObj.AddComponent<Image>();
         actionBg.color = ConfirmationDialog.ButtonColor;

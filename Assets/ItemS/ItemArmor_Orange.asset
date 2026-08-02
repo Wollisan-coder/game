@@ -13,14 +13,11 @@ MonoBehaviour:
   m_Name: ItemArmor_Orange
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   itemId: ItemArmor_Orange
-  itemName: "\u0411\u0440\u043E\u043D\u044F"
+  itemName: Chestplate
   category: 0
   slotType: 1
   icon: {fileID: 21300000, guid: 05c0a048df2dc9f499f0688306b4c75a, type: 3}
   description: 
   rarity: 4
   sacrificeExperience: 10
-  bonusHealth: 80
-  bonusMana: 0
-  bonusDamageMultiplier: 0
   heroExperienceValue: 0

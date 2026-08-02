@@ -93,9 +93,20 @@ public class WorldMapManager : MonoBehaviour
         OnProgressChanged?.Invoke();
     }
 
-    // Где сейчас "находится" игрок на карте — последняя пройденная нода, либо стартовая, если ещё ничего не пройдено
+    // Где сейчас "находится" игрок на карте — маркер стоит на СЛЕДУЮЩЕЙ доступной ноде (открыта, но ещё
+    // не пройдена), а не на последней пройденной: игрок отправляется ТУДА, а не остаётся на месте, где уже был.
+    // Фарм-ноды и ноды-врата городов (enemy == null) намеренно исключены — маркер держится основного пути.
+    // Если всё открытое уже пройдено (или нод вообще нет) — откатываемся к последней пройденной, либо на старт.
     public string GetCurrentPlayerNodeId()
     {
+        var nextNode = allNodes?
+            .Where(n => n != null && n.enemy != null && !n.isFarmNode && IsUnlocked(n) && !IsCompleted(n))
+            .OrderBy(n => (int)n.territory)
+            .ThenBy(n => n.nodeIndex)
+            .FirstOrDefault();
+
+        if (nextNode != null) return nextNode.nodeId;
+
         if (completedNodeIds.Count > 0)
             return completedNodeIds[completedNodeIds.Count - 1];
 

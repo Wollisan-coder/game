@@ -21,10 +21,14 @@ MonoBehaviour:
   damageMultiplier: 1
   price: 100
   skills: []
-  harmfulTileSpawns: []
+  harmfulTileSpawns:
+  - type: 4
+    count: 2
+    value: 5
   loot:
     accountExperience: 20
     heroExperience: 20
+    progressPoints: 30
     currency:
     - type: 0
       amount: 100

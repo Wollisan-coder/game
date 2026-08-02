@@ -13,14 +13,11 @@ MonoBehaviour:
   m_Name: ItemBow_Blue
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   itemId: ItemBow_Blue
-  itemName: "\u041B\u0443\u043A"
+  itemName: Bow
   category: 0
   slotType: 0
   icon: {fileID: 21300000, guid: 61630a335de780d42b6168566c0161a5, type: 3}
   description: 
   rarity: 2
   sacrificeExperience: 10
-  bonusHealth: 0
-  bonusMana: 0
-  bonusDamageMultiplier: 2.4
   heroExperienceValue: 0

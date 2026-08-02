@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e8ab815f5e4b8574ebc2827fcfeb1365, type: 3}
+  m_Name: Demons 0_ 13
+  m_EditorClassIdentifier: Assembly-CSharp::MapNodeData
+  nodeId: Demons 0_ 13
+  nodeName: 
+  description: 
+  icon: {fileID: 0}
+  enemy: {fileID: 11400000, guid: 591b720a03c4df94098fd4d772ec0f99, type: 2}
+  territory: 4
+  nodeIndex: 14
+  requiredNodes:
+  - {fileID: 11400000, guid: 2d127fffd73de2b49807ee50031adc45, type: 2}
+  isFarmNode: 0
+  farmLootPool: {fileID: 0}

@@ -13,14 +13,11 @@ MonoBehaviour:
   m_Name: ItemStaff_Green
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   itemId: ItemStaff_Green
-  itemName: "\u041F\u043E\u0441\u043E\u0445"
+  itemName: Staff
   category: 0
   slotType: 0
   icon: {fileID: 21300000, guid: 18a5db08da7a764449339b5088bddca0, type: 3}
   description: 
   rarity: 1
   sacrificeExperience: 10
-  bonusHealth: 0
-  bonusMana: 0
-  bonusDamageMultiplier: 1.8
   heroExperienceValue: 0
