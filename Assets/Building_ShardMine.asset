@@ -18,7 +18,10 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 4009a1757313c1d488f191d5de2b15a2, type: 3}
   description: "Produces Summon Shards over time \u2014 the main currency for the
     Altar and the Forge."
+  unlockType: 0
   requiredAccountLevel: 3
+  requiredTerritory: 0
+  maxLevel: 100
   buildCostWood: 200
   buildCostStone: 150
   upgradeCostWood: 100
@@ -28,3 +31,9 @@ MonoBehaviour:
   baseStorageCap: 50
   heroSummonPool: {fileID: 0}
   itemSummonPool: {fileID: 0}
+  baseSquadWeightBonus: 1
+  mapSprite: {fileID: 21300000, guid: 8dfb517785f4d02428b264e7c8ca04d5, type: 3}
+  mapSpriteNotBuilt: {fileID: 0}
+  mapSpriteSize: {x: 210, y: 200}
+  mapPosition: {x: 5, y: -89}
+  builtIntoBackground: 0

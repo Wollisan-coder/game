@@ -25,6 +25,9 @@ public class HeroOwnershipData
     public int activeSkillIndex = 0;   // навык, используемый кнопкой в бою
     public int passiveSkillIndex = -1; // -1 = не выбран
 
+    [Header("Пассивка расы (см. RacePassiveUtility/BattleManager) — вкл/выкл за фиксированную ману")]
+    public bool racePassiveEnabled;
+
     [Header("Экипированные предметы (по одному на тип слота)")]
     public List<EquippedItem> equippedItems = new List<EquippedItem>();
 

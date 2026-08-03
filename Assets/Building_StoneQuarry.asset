@@ -17,7 +17,10 @@ MonoBehaviour:
   buildingType: 1
   icon: {fileID: 21300000, guid: 3191480f46e1b0a4bbf536679612c752, type: 3}
   description: Produces Stone over time. Collect it to spend on building upgrades.
+  unlockType: 0
   requiredAccountLevel: 1
+  requiredTerritory: 0
+  maxLevel: 100
   buildCostWood: 0
   buildCostStone: 0
   upgradeCostWood: 15
@@ -27,3 +30,9 @@ MonoBehaviour:
   baseStorageCap: 200
   heroSummonPool: {fileID: 0}
   itemSummonPool: {fileID: 0}
+  baseSquadWeightBonus: 1
+  mapSprite: {fileID: 21300000, guid: 2ea7e2685f36c9b4ab34ebf39148f8a9, type: 3}
+  mapSpriteNotBuilt: {fileID: 0}
+  mapSpriteSize: {x: 260, y: 170}
+  mapPosition: {x: -300, y: 14}
+  builtIntoBackground: 0

@@ -18,7 +18,9 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 9c3effb4c2eb934449266aa98a3dd9e9, type: 3}
   description: Increases squad weight capacity, letting you field heavier heroes
     without adding slots.
+  unlockType: 0
   requiredAccountLevel: 2
+  requiredTerritory: 0
   maxLevel: 4
   buildCostWood: 150
   buildCostStone: 100
@@ -30,3 +32,8 @@ MonoBehaviour:
   heroSummonPool: {fileID: 0}
   itemSummonPool: {fileID: 0}
   baseSquadWeightBonus: 1
+  mapSprite: {fileID: 21300000, guid: 203f24e9d8325c0468e20ad2e0d748ed, type: 3}
+  mapSpriteNotBuilt: {fileID: 0}
+  mapSpriteSize: {x: 220, y: 175}
+  mapPosition: {x: 296, y: 386}
+  builtIntoBackground: 0

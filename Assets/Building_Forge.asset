@@ -20,6 +20,7 @@ MonoBehaviour:
   unlockType: 1
   requiredAccountLevel: 5
   requiredTerritory: 1
+  maxLevel: 100
   buildCostWood: 400
   buildCostStone: 400
   upgradeCostWood: 200
@@ -29,3 +30,9 @@ MonoBehaviour:
   baseStorageCap: 0
   heroSummonPool: {fileID: 0}
   itemSummonPool: {fileID: 11400000, guid: f9e8d7c6b5a493827160504132211003, type: 2}
+  baseSquadWeightBonus: 1
+  mapSprite: {fileID: 21300000, guid: 88a6a7baeeb985d45b23dd4af826b966, type: 3}
+  mapSpriteNotBuilt: {fileID: 0}
+  mapSpriteSize: {x: 190, y: 190}
+  mapPosition: {x: -306, y: 401}
+  builtIntoBackground: 0

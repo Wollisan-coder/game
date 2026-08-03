@@ -303,7 +303,7 @@ public class HeroCollectionManager : MonoBehaviour
             .Select(e => $"{(int)e.slotType},{e.itemInstanceId}"));
 
         return $"{data.heroId}:{(data.isUnlocked ? 1 : 0)}:{data.level}:{data.experience}:{data.activeSkillIndex}:{data.passiveSkillIndex}:{equipped}" +
-               $":{data.ascensionGems}:{data.ascensionLevel}";
+               $":{data.ascensionGems}:{data.ascensionLevel}:{(data.racePassiveEnabled ? 1 : 0)}";
     }
 
     private void LoadOwnership()
@@ -328,7 +328,9 @@ public class HeroCollectionManager : MonoBehaviour
                 passiveSkillIndex = int.Parse(parts[5]),
                 // Добавлено позже вознесения ради — старые сохранения (7 частей, без этих двух) просто получат 0/0
                 ascensionGems = parts.Length > 7 ? int.Parse(parts[7]) : 0,
-                ascensionLevel = parts.Length > 8 ? int.Parse(parts[8]) : 0
+                ascensionLevel = parts.Length > 8 ? int.Parse(parts[8]) : 0,
+                // Ещё позже добавлена пассивка расы — старые сохранения (9 частей, без неё) получат выключенную по умолчанию
+                racePassiveEnabled = parts.Length > 9 && parts[9] == "1"
             };
 
             string equippedBlock = parts[6];

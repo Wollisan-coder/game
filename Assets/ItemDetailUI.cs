@@ -13,6 +13,9 @@ public class ItemDetailUI : MonoBehaviour
     public TMP_Text statsText;
     public TMP_Text ownedStatusText;
 
+    [Header("Фон под описание — панель под текст, см. ConfirmationDialog.StyleAsDescriptionPanel")]
+    public Image descriptionBg;
+
     public Button closeButton;
 
     private ItemData currentItem;
@@ -35,6 +38,9 @@ public class ItemDetailUI : MonoBehaviour
     {
         if (closeButton != null)
             closeButton.onClick.AddListener(Close);
+
+        if (descriptionBg != null)
+            ConfirmationDialog.StyleAsDescriptionPanel(descriptionBg);
 
         EnsureExtraUI();
 

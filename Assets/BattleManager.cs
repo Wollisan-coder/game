@@ -220,6 +220,13 @@ public class BattleManager : MonoBehaviour
                     heroState.maxResource = Mathf.Max(1, heroState.maxResource - passiveSkill.cost);
             }
 
+            // Пассивка расы — фиксированная стоимость маны, независимо от старого механизма выше
+            if (ownership != null && ownership.racePassiveEnabled)
+            {
+                heroState.racePassiveEnabled = true;
+                heroState.maxResource = Mathf.Max(1, heroState.maxResource - RacePassiveUtility.ManaCost);
+            }
+
             activeHeroes.Add(heroState);
         }
     }
@@ -277,6 +284,12 @@ public class BattleManager : MonoBehaviour
             heroState.maxResource += bonuses.mana;
             heroState.damageMultiplier += bonuses.damageMultiplier;
             heroState.armor += bonuses.armor;
+
+            if (ownership != null && ownership.racePassiveEnabled)
+            {
+                heroState.racePassiveEnabled = true;
+                heroState.maxResource = Mathf.Max(1, heroState.maxResource - RacePassiveUtility.ManaCost);
+            }
 
             activeHeroes.Add(heroState);
         }
@@ -345,7 +358,10 @@ public class BattleManager : MonoBehaviour
 
                 // Орки — пассивка: 10% шанс утроить урон этого попадания ("3х удар"), любой цвет.
                 if (HasLivingHeroOfRace(Race.Orcs) && Random.value < 0.10f)
+                {
                     finalDamage *= 3;
+                    Debug.Log($"[RacePassive] {GetLivingHeroOfRace(Race.Orcs)?.data.heroName} (Orcs): triple damage proc -> {finalDamage} dmg");
+                }
 
                 totalEnemyDamageThisTurn += DealDamageToEnemy(finalDamage, raiseEvent: false);
 
@@ -363,7 +379,10 @@ public class BattleManager : MonoBehaviour
         // bool, не счётчик, поэтому одной попытки за ход достаточно (несколько цветов в одном ходу не дают
         // накопления оглушения).
         if (matchedTypeCounts.Count > 0 && HasLivingHeroOfRace(Race.Elves) && Random.value < 0.10f)
+        {
             enemyStunnedNextTurn = true;
+            Debug.Log($"[RacePassive] {GetLivingHeroOfRace(Race.Elves)?.data.heroName} (Elves): stun proc");
+        }
 
         if (totalEnemyDamageThisTurn > 0)
             OnEnemyDamaged?.Invoke(totalEnemyDamageThisTurn);
@@ -855,12 +874,13 @@ public class BattleManager : MonoBehaviour
         return candidates[Random.Range(0, candidates.Count)];
     }
 
-    // Жив, не оглушён (та же логика, что и в GetDamagePerGem — оглушённый герой считается недоступным)
+    // Жив, не оглушён (та же логика, что и в GetDamagePerGem — оглушённый герой считается недоступным) И
+    // пассивка расы включена игроком (HeroInventoryUI, стоит RacePassiveUtility.ManaCost маны — см. Awake/InitializeBossTraining).
     private bool HasLivingHeroOfRace(Race race) =>
-        activeHeroes.Any(h => h.currentHealth > 0 && h.stunnedTurnsRemaining <= 0 && h.data.race == race);
+        activeHeroes.Any(h => h.currentHealth > 0 && h.stunnedTurnsRemaining <= 0 && h.racePassiveEnabled && h.data.race == race);
 
     private HeroRuntimeState GetLivingHeroOfRace(Race race, HeroRuntimeState exclude = null) =>
-        activeHeroes.FirstOrDefault(h => h.currentHealth > 0 && h.stunnedTurnsRemaining <= 0 && h.data.race == race && h != exclude);
+        activeHeroes.FirstOrDefault(h => h.currentHealth > 0 && h.stunnedTurnsRemaining <= 0 && h.racePassiveEnabled && h.data.race == race && h != exclude);
 
     // Пассивки рас — по одной на расу, включаются, пока в отряде жив (не оглушён) хотя бы один герой этой
     // расы. Проки Эльфов/Орков (завязаны на конкретное попадание) — прямо в цикле ResolvePlayerTurn, здесь —
@@ -873,24 +893,42 @@ public class BattleManager : MonoBehaviour
         {
             var randomHero = GetRandomAliveHero();
             if (randomHero != null)
-                AddShield(Mathf.RoundToInt(randomHero.maxHealth * 0.15f));
+            {
+                int shieldAmount = Mathf.RoundToInt(randomHero.maxHealth * 0.15f);
+                AddShield(shieldAmount);
+                Debug.Log($"[RacePassive] {GetLivingHeroOfRace(Race.Fairy)?.data.heroName} (Fairy): shield tick +{shieldAmount} (based on {randomHero.data.heroName})");
+            }
         }
 
         // Драконы (Dragonkin) — периодический урон врагу, 1% от его максимального HP, каждый ход.
         if (HasLivingHeroOfRace(Race.Dragonkin))
-            DealDamageToEnemy(Mathf.RoundToInt(enemyMaxHP * 0.01f));
+        {
+            int dragonDamage = Mathf.RoundToInt(enemyMaxHP * 0.01f);
+            DealDamageToEnemy(dragonDamage);
+            Debug.Log($"[RacePassive] {GetLivingHeroOfRace(Race.Dragonkin)?.data.heroName} (Dragonkin): damage tick -{dragonDamage}");
+        }
 
         // Демоны — сопротивление врага снижается на 2% каждый ход, накопительно (см. demonsResistanceShredBonus).
         if (HasLivingHeroOfRace(Race.Demons))
+        {
             demonsResistanceShredBonus += 0.02f;
+            Debug.Log($"[RacePassive] {GetLivingHeroOfRace(Race.Demons)?.data.heroName} (Demons): resistance shred tick, total bonus now {demonsResistanceShredBonus:P0}");
+        }
 
         // Ангелы — лечение всей команде, 5% от playerMaxHP каждый ход.
         if (HasLivingHeroOfRace(Race.Angels))
-            Heal(Mathf.RoundToInt(playerMaxHP * 0.05f));
+        {
+            int healAmount = Mathf.RoundToInt(playerMaxHP * 0.05f);
+            Heal(healAmount);
+            Debug.Log($"[RacePassive] {GetLivingHeroOfRace(Race.Angels)?.data.heroName} (Angels): heal tick +{healAmount}");
+        }
 
         // Зверолюди (Beastfolk) — 10% шанс не потратить ход на этом матче (лишний бесплатный ход).
         if (HasLivingHeroOfRace(Race.Beastfolk) && Random.value < 0.10f)
+        {
             freeExtraTurnsRemaining++;
+            Debug.Log($"[RacePassive] {GetLivingHeroOfRace(Race.Beastfolk)?.data.heroName} (Beastfolk): free turn proc");
+        }
     }
 
     // Обычная атака врага не может попасть в одного героя 3 раза подряд
@@ -1104,7 +1142,11 @@ public class BattleManager : MonoBehaviour
         // кастующему — если кастующий и есть тот единственный Человек, возвращать некому).
         var humanAlly = GetLivingHeroOfRace(Race.Humans, exclude: hero);
         if (humanAlly != null)
-            humanAlly.currentResource = Mathf.Min(humanAlly.maxResource, humanAlly.currentResource + Mathf.RoundToInt(actualCost * 0.15f));
+        {
+            int manaRefund = Mathf.RoundToInt(actualCost * 0.15f);
+            humanAlly.currentResource = Mathf.Min(humanAlly.maxResource, humanAlly.currentResource + manaRefund);
+            Debug.Log($"[RacePassive] {humanAlly.data.heroName} (Humans): mana refund +{manaRefund} (from {hero.data.heroName}'s skill)");
+        }
 
         OnStateChanged?.Invoke();
 

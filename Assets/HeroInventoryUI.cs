@@ -21,6 +21,11 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     public Image raceEmblem;
     public RaceEmblemSet raceEmblemSet;
 
+    [Header("Пассивка расы — вкл/выкл за RacePassiveUtility.ManaCost маны, см. BattleManager")]
+    public TMP_Text racePassiveInfoText;
+    public Button racePassiveToggleButton;
+    public Image racePassiveToggleHighlight; // необязательно — подсветка "включено", как у passiveSkillHighlights
+
     [Header("Статы (база героя + бонусы от текущей экипировки) — справа под слотами предметов")]
     public TMP_Text statsText;
 
@@ -35,6 +40,11 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     [Header("Инфо — оба видны одновременно, каждый под свой текущий выбор (не только по клику)")]
     public TMP_Text activeSkillInfoText;  // мана + описание текущего активного навыка
     public TMP_Text passiveSkillInfoText; // мана + описание текущего пассивного навыка (пусто, если не выбран)
+
+    [Header("Фон под инфо-блоки — панель под текст описания, см. ConfirmationDialog.StyleAsDescriptionPanel")]
+    public Image activeSkillInfoBg;
+    public Image passiveSkillInfoBg;
+    public Image racePassiveInfoBg;
 
     [Header("Скролл описаний (необязательно) — сбрасывается наверх при смене навыка")]
     public ScrollRect activeSkillInfoScroll;
@@ -79,6 +89,13 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     {
         if (closeButton != null)
             closeButton.onClick.AddListener(Close);
+
+        if (racePassiveToggleButton != null)
+            racePassiveToggleButton.onClick.AddListener(OnRacePassiveToggleClicked);
+
+        if (activeSkillInfoBg != null) ConfirmationDialog.StyleAsDescriptionPanel(activeSkillInfoBg);
+        if (passiveSkillInfoBg != null) ConfirmationDialog.StyleAsDescriptionPanel(passiveSkillInfoBg);
+        if (racePassiveInfoBg != null) ConfirmationDialog.StyleAsDescriptionPanel(racePassiveInfoBg);
 
         CacheSkillButtonBaseWidths();
         CreateUpgradeButtonIfNeeded();
@@ -153,6 +170,8 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
             raceEmblem.sprite = emblem;
             raceEmblem.enabled = emblem != null;
         }
+
+        RefreshRacePassiveUI();
 
         if (levelText != null)
         {
@@ -374,6 +393,66 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         PopulateSkillSelectors();
     }
 
+    private void OnRacePassiveToggleClicked()
+    {
+        if (currentHero == null || currentOwnership == null) return;
+
+        // Выключение — мана освобождается сразу, проверка нехватки не нужна (симметрично OnPassiveSkillButtonClicked).
+        if (currentOwnership.racePassiveEnabled)
+        {
+            currentOwnership.racePassiveEnabled = false;
+            HeroCollectionManager.Instance?.SaveOwnership();
+            RefreshRacePassiveUI();
+            RefreshStats();
+            return;
+        }
+
+        int activeIndex = currentOwnership.activeSkillIndex;
+        SkillData activeSkill = currentHero.skills != null && activeIndex >= 0 && activeIndex < currentHero.skills.Length
+            ? currentHero.skills[activeIndex] : null;
+        int requiredForActive = activeSkill != null ? activeSkill.cost : 0;
+
+        // Пассивка расы тоже "съедает" часть maxResource в бою (см. BattleManager) — та же защита, что и
+        // у старого passiveSkillIndex: не дать включить, если после этого не хватит маны на активный скилл.
+        int remainingMana = GetTotalMaxMana() - RacePassiveUtility.ManaCost;
+        if (remainingMana < requiredForActive)
+        {
+            var canvas = FindAnyObjectByType<Canvas>();
+            if (canvas != null)
+                ConfirmationDialog.ShowInfo(canvas.transform,
+                    $"Not enough mana — the race passive costs {RacePassiveUtility.ManaCost}, leaving only {remainingMana}, " +
+                    $"but the active skill needs {requiredForActive}.");
+            return;
+        }
+
+        currentOwnership.racePassiveEnabled = true;
+        HeroCollectionManager.Instance?.SaveOwnership();
+        RefreshRacePassiveUI();
+        RefreshStats();
+    }
+
+    // Текст описания + пометка вкл/выкл с ценой, плюс подсветка кнопки (если назначена).
+    private void RefreshRacePassiveUI()
+    {
+        if (currentHero == null) return;
+
+        bool enabled = currentOwnership != null && currentOwnership.racePassiveEnabled;
+
+        if (racePassiveInfoText != null)
+        {
+            string state = enabled ? "ON" : "OFF";
+            racePassiveInfoText.text = $"{RacePassiveUtility.GetDescription(currentHero.race)}\n" +
+                $"[{state}] costs {RacePassiveUtility.ManaCost} mana";
+        }
+
+        if (racePassiveToggleHighlight != null)
+        {
+            Color c = racePassiveToggleHighlight.color;
+            c.a = enabled ? 0.6f : 0.05f;
+            racePassiveToggleHighlight.color = c;
+        }
+    }
+
     private void PopulateItems()
     {
         if (itemsContainer == null || itemSlotPrefab == null) return;
@@ -428,8 +507,15 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         if (currentHero == null) return 0;
         int level = currentOwnership != null ? currentOwnership.level : 1;
         int ascensionLevel = currentOwnership != null ? currentOwnership.ascensionLevel : 0;
-        return HeroStatUtility.CalculateBaseStats(currentHero, level, ascensionLevel).mana
+        int total = HeroStatUtility.CalculateBaseStats(currentHero, level, ascensionLevel).mana
             + HeroStatUtility.CalculateEquipmentBonuses(currentOwnership).mana;
+
+        // Пассивка расы, если включена, съедает фиксированную ману — та же цифра, что BattleManager
+        // вычитает при старте боя (Awake/InitializeBossTraining), чтобы панель статов не расходилась с боем.
+        if (currentOwnership != null && currentOwnership.racePassiveEnabled)
+            total = Mathf.Max(1, total - RacePassiveUtility.ManaCost);
+
+        return total;
     }
 
     public void OpenItemPicker(EquipmentSlotType slotType)
@@ -553,7 +639,9 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         heroAscendText = textObj.AddComponent<TextMeshProUGUI>();
         heroAscendText.alignment = TextAlignmentOptions.Center;
         heroAscendText.color = ConfirmationDialog.ButtonTextColor;
-        heroAscendText.fontSize = 22;
+        heroAscendText.enableAutoSizing = true; // "Ascend\nX/Y gems (Z/W)" — длина плавает от чисел
+        heroAscendText.fontSizeMin = 14;
+        heroAscendText.fontSizeMax = 22;
 
         heroAscendButton.gameObject.SetActive(false);
     }

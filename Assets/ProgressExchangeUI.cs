@@ -78,7 +78,7 @@ public class ProgressExchangeUI : MonoBehaviour
         windowRect.anchorMin = new Vector2(0.5f, 0.5f);
         windowRect.anchorMax = new Vector2(0.5f, 0.5f);
         windowRect.pivot = new Vector2(0.5f, 0.5f);
-        windowRect.sizeDelta = new Vector2(480, 520);
+        windowRect.sizeDelta = new Vector2(520, 600);
         var windowBg = windowObj.AddComponent<Image>();
         ConfirmationDialog.StyleAsPanel(windowBg);
 
@@ -88,8 +88,8 @@ public class ProgressExchangeUI : MonoBehaviour
         titleRect.anchorMin = new Vector2(0, 1);
         titleRect.anchorMax = new Vector2(1, 1);
         titleRect.pivot = new Vector2(0.5f, 1);
-        titleRect.sizeDelta = new Vector2(0, 44);
-        titleRect.anchoredPosition = new Vector2(0, -12);
+        titleRect.sizeDelta = new Vector2(0, 45);
+        titleRect.anchoredPosition = new Vector2(0, -30);
         var titleText = titleObj.AddComponent<TextMeshProUGUI>();
         titleText.text = "Exchange Progress Points";
         titleText.fontSize = 30;
@@ -103,7 +103,7 @@ public class ProgressExchangeUI : MonoBehaviour
         balanceRect.anchorMax = new Vector2(1, 1);
         balanceRect.pivot = new Vector2(0.5f, 1);
         balanceRect.sizeDelta = new Vector2(0, 30);
-        balanceRect.anchoredPosition = new Vector2(0, -56);
+        balanceRect.anchoredPosition = new Vector2(0, -70);
         balanceText = balanceObj.AddComponent<TextMeshProUGUI>();
         balanceText.fontSize = 24;
         balanceText.alignment = TextAlignmentOptions.Center;
@@ -124,8 +124,8 @@ public class ProgressExchangeUI : MonoBehaviour
         closeBtnRect.anchorMin = new Vector2(0.5f, 0);
         closeBtnRect.anchorMax = new Vector2(0.5f, 0);
         closeBtnRect.pivot = new Vector2(0.5f, 0);
-        closeBtnRect.sizeDelta = new Vector2(160, 34);
-        closeBtnRect.anchoredPosition = new Vector2(0, 12);
+        closeBtnRect.sizeDelta = new Vector2(250, 45);
+        closeBtnRect.anchoredPosition = new Vector2(0, 50);
         var closeBtnImg = closeBtnObj.AddComponent<Image>();
         ConfirmationDialog.StyleAsButton(closeBtnImg);
         var closeBtn = closeBtnObj.AddComponent<Button>();
@@ -155,8 +155,12 @@ public class ProgressExchangeUI : MonoBehaviour
         rowRect.anchorMin = new Vector2(0, 1);
         rowRect.anchorMax = new Vector2(1, 1);
         rowRect.pivot = new Vector2(0.5f, 1);
-        rowRect.sizeDelta = new Vector2(-32, 80);
+        rowRect.sizeDelta = new Vector2(0, 80);
         rowRect.anchoredPosition = new Vector2(0, anchoredY);
+        rowRect.offsetMin = new Vector2(30, rowRect.offsetMin.y);  // отступ слева, 16px
+        rowRect.offsetMax = new Vector2(-25, rowRect.offsetMax.y); // отступ справа, 16px (обрати 
+        
+       
 
         var rowBg = rowObj.AddComponent<Image>();
         rowBg.color = new Color(1, 1, 1, 0.05f);
@@ -169,9 +173,11 @@ public class ProgressExchangeUI : MonoBehaviour
         labelRect.offsetMin = new Vector2(16, 0);
         labelRect.offsetMax = new Vector2(0, 0);
         var label = labelObj.AddComponent<TextMeshProUGUI>();
-        label.fontSize = 22;
         label.alignment = TextAlignmentOptions.MidlineLeft;
         label.color = Color.white;
+        label.enableAutoSizing = true; // 3 строки (имя/эффект/цена) в фиксированной высоте строки — на 22pt впритык налезали на строку ниже
+        label.fontSizeMin = 12;
+        label.fontSizeMax = 20;
         rowLabels.Add(label);
 
         var btnObj = new GameObject("BuyButton", typeof(RectTransform));
@@ -180,8 +186,8 @@ public class ProgressExchangeUI : MonoBehaviour
         btnRect.anchorMin = new Vector2(0.66f, 0.5f);
         btnRect.anchorMax = new Vector2(0.66f, 0.5f);
         btnRect.pivot = new Vector2(0.5f, 0.5f);
-        btnRect.sizeDelta = new Vector2(130, 50);
-        btnRect.anchoredPosition = new Vector2(65, 0);
+        btnRect.sizeDelta = new Vector2(150, 50);
+        btnRect.anchoredPosition = new Vector2(60, 0);
 
         var btnImg = btnObj.AddComponent<Image>();
         ConfirmationDialog.StyleAsButton(btnImg);

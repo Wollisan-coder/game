@@ -17,7 +17,10 @@ MonoBehaviour:
   buildingType: 0
   icon: {fileID: 21300000, guid: 6e8e94417df199a4ba76669bd4721ff3, type: 3}
   description: Produces Wood over time. Collect it to spend on building upgrades.
+  unlockType: 0
   requiredAccountLevel: 1
+  requiredTerritory: 0
+  maxLevel: 100
   buildCostWood: 0
   buildCostStone: 0
   upgradeCostWood: 20
@@ -27,3 +30,9 @@ MonoBehaviour:
   baseStorageCap: 200
   heroSummonPool: {fileID: 0}
   itemSummonPool: {fileID: 0}
+  baseSquadWeightBonus: 1
+  mapSprite: {fileID: 21300000, guid: cd68e3036685e1f49a654b3be7332d9e, type: 3}
+  mapSpriteNotBuilt: {fileID: 0}
+  mapSpriteSize: {x: 225, y: 300}
+  mapPosition: {x: 344.1, y: 14.1}
+  builtIntoBackground: 0

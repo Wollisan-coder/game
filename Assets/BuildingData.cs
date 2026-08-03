@@ -43,6 +43,23 @@ public class BuildingData : ScriptableObject
     [Header("Вместимость отряда (только для SquadCapacity)")]
     public int baseSquadWeightBonus = 1; // сколько дополнительного веса отряда даёт каждый уровень (количество слотов всегда фиксировано — 4)
 
+    [Header("2D-сцена базы (Option B) — прозрачный спрайт здания поверх пустого фона")]
+    // Пока не заведён — CastleUI.CreateBuildingHotspot рисует старый маркер-заглушку (бокс+иконка+подпись).
+    // Как только появится реальный арт — подставь сюда PNG со прозрачностью, и хотспот сам переключится
+    // на отрисовку самого здания без фоновой плашки.
+    public Sprite mapSprite;
+    // Необязательный отдельный вид "ещё не построено" (например, пустой фундамент/место под здание).
+    // Если не задан — пока здание не построено, используется тот же mapSprite (просто затемнённый).
+    public Sprite mapSpriteNotBuilt;
+    public Vector2 mapSpriteSize = new Vector2(220, 220);
+    // Позиция хотспота на фоне (anchoredPosition, канвас 1080x1920, центр экрана = (0,0)) — заменяет
+    // старый индексный CastleUI.PlaceholderHotspotPositions теперь, когда позиции подобраны под
+    // конкретный фон (Assets/Resources/UI/Castle/BaseBackground.png), а не угаданы по порядку массива.
+    public Vector2 mapPosition;
+    // Здание уже нарисовано прямо на фоне (например, Altar — кристальный алтарь в BaseBackground.png) —
+    // хотспот тогда рисуется невидимой кликабельной зоной поверх готового арта, без mapSprite/маркера.
+    public bool builtIntoBackground = false;
+
     private void OnValidate()
     {
         if (string.IsNullOrEmpty(buildingId))

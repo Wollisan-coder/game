@@ -77,7 +77,7 @@ public class CastleSummonUI : MonoBehaviour
         windowRect.anchorMin = new Vector2(0.5f, 0.5f);
         windowRect.anchorMax = new Vector2(0.5f, 0.5f);
         windowRect.pivot = new Vector2(0.5f, 0.5f);
-        windowRect.sizeDelta = new Vector2(480, 460);
+        windowRect.sizeDelta = new Vector2(960, 920);
         var windowBg = windowObj.AddComponent<Image>();
         ConfirmationDialog.StyleAsPanel(windowBg);
 
@@ -87,10 +87,10 @@ public class CastleSummonUI : MonoBehaviour
         titleRect.anchorMin = new Vector2(0, 1);
         titleRect.anchorMax = new Vector2(1, 1);
         titleRect.pivot = new Vector2(0.5f, 1);
-        titleRect.sizeDelta = new Vector2(0, 44);
-        titleRect.anchoredPosition = new Vector2(0, -12);
+        titleRect.sizeDelta = new Vector2(0, 88);
+        titleRect.anchoredPosition = new Vector2(0, -24);
         titleText = titleObj.AddComponent<TextMeshProUGUI>();
-        titleText.fontSize = 26;
+        titleText.fontSize = 52;
         titleText.alignment = TextAlignmentOptions.Center;
         titleText.color = Color.white;
 
@@ -99,10 +99,10 @@ public class CastleSummonUI : MonoBehaviour
         infoRect.SetParent(windowRect, false);
         infoRect.anchorMin = new Vector2(0, 0.62f);
         infoRect.anchorMax = new Vector2(1, 0.85f);
-        infoRect.offsetMin = new Vector2(24, 0);
-        infoRect.offsetMax = new Vector2(-24, 0);
+        infoRect.offsetMin = new Vector2(48, 0);
+        infoRect.offsetMax = new Vector2(-48, 0);
         infoText = infoObj.AddComponent<TextMeshProUGUI>();
-        infoText.fontSize = 17;
+        infoText.fontSize = 34;
         infoText.alignment = TextAlignmentOptions.Center;
         infoText.color = new Color(1, 1, 1, 0.85f);
 
@@ -118,8 +118,8 @@ public class CastleSummonUI : MonoBehaviour
         closeBtnRect.anchorMin = new Vector2(0.5f, 0);
         closeBtnRect.anchorMax = new Vector2(0.5f, 0);
         closeBtnRect.pivot = new Vector2(0.5f, 0);
-        closeBtnRect.sizeDelta = new Vector2(160, 34);
-        closeBtnRect.anchoredPosition = new Vector2(0, 12);
+        closeBtnRect.sizeDelta = new Vector2(320, 68);
+        closeBtnRect.anchoredPosition = new Vector2(0, 24);
         var closeBtnImg = closeBtnObj.AddComponent<Image>();
         ConfirmationDialog.StyleAsButton(closeBtnImg);
         var closeBtn = closeBtnObj.AddComponent<Button>();
@@ -134,6 +134,7 @@ public class CastleSummonUI : MonoBehaviour
         closeTextRect.offsetMax = Vector2.zero;
         var closeText = closeTextObj.AddComponent<TextMeshProUGUI>();
         closeText.text = "Close";
+        closeText.fontSize = 30;
         closeText.alignment = TextAlignmentOptions.Center;
         closeText.color = ConfirmationDialog.ButtonTextColor; // тёмный текст был под старую светлую заливку, на новой тёмно-синей рамке нужен светлый
 
@@ -148,7 +149,7 @@ public class CastleSummonUI : MonoBehaviour
         btnRect.anchorMin = anchorPos;
         btnRect.anchorMax = anchorPos;
         btnRect.pivot = new Vector2(0.5f, 0.5f);
-        btnRect.sizeDelta = new Vector2(170, 56);
+        btnRect.sizeDelta = new Vector2(340, 112);
 
         var img = btnObj.AddComponent<Image>();
         ConfirmationDialog.StyleAsButton(img);
@@ -163,9 +164,11 @@ public class CastleSummonUI : MonoBehaviour
         textRect.offsetMin = Vector2.zero;
         textRect.offsetMax = Vector2.zero;
         var text = textObj.AddComponent<TextMeshProUGUI>();
-        text.fontSize = 15;
         text.alignment = TextAlignmentOptions.Center;
         text.color = ConfirmationDialog.ButtonTextColor; // тёмный текст был под старую светлую заливку, на новой тёмно-синей рамке нужен светлый
+        text.enableAutoSizing = true; // подпись пула разной длины (x1/x10, разные валюты и суммы)
+        text.fontSizeMin = 18;
+        text.fontSizeMax = 30;
 
         return text;
     }

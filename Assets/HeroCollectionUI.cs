@@ -136,11 +136,11 @@ public class HeroCollectionUI : MonoBehaviour
         searchField = CreateSearchField(barRect, new Vector2(0, -8), new Vector2(-32, 40));
         searchField.onValueChanged.AddListener(_ => PopulateGrid());
 
-        rarityButtonText = CreateCycleButton(barRect, new Vector2(-243, -54), new Vector2(154, 40), OnRarityClicked);
-        raceButtonText = CreateCycleButton(barRect, new Vector2(-81, -54), new Vector2(154, 40), OpenRacePopup);
+        rarityButtonText = CreateCycleButton(barRect, new Vector2(-373, -55), new Vector2(300, 60), OnRarityClicked);
+        raceButtonText = CreateCycleButton(barRect, new Vector2(-97, -55), new Vector2(300, 60), OpenRacePopup);
         raceButtonRect = raceButtonText.transform.parent as RectTransform;
-        sortButtonText = CreateCycleButton(barRect, new Vector2(81, -54), new Vector2(154, 40), OnSortFieldClicked);
-        sortDirectionButtonText = CreateCycleButton(barRect, new Vector2(243, -54), new Vector2(154, 40), OnSortDirectionClicked);
+        sortButtonText = CreateCycleButton(barRect, new Vector2(155, -55), new Vector2(250, 60), OnSortFieldClicked);
+        sortDirectionButtonText = CreateCycleButton(barRect, new Vector2(405, -54), new Vector2(250, 60), OnSortDirectionClicked);
     }
 
     // --- Раса — не циклическая кнопка (9 вариантов кликать по одному было бы неудобно), а попап-список:
@@ -215,6 +215,19 @@ public class HeroCollectionUI : MonoBehaviour
         racePopupListRect = listRect;
         var listBg = listObj.AddComponent<Image>();
         ConfirmationDialog.StyleAsPanel(listBg);
+
+        var listLayout = listObj.AddComponent<VerticalLayoutGroup>();
+        listLayout.padding = new RectOffset(25, 25, 45, 45);
+        listLayout.spacing = 5;
+        listLayout.childAlignment = TextAnchor.UpperLeft;
+        listLayout.childControlWidth = true;
+        listLayout.childControlHeight = false;
+        listLayout.childForceExpandWidth = true;
+        listLayout.childForceExpandHeight = true;
+        
+        var listFitter = listObj.AddComponent<ContentSizeFitter>();
+        listFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        
         // Пустой Button-блокер поверх фона списка — чтобы клик по самому списку (не по варианту)
         // не проваливался на dim-кнопку позади и не закрывал попап раньше времени.
         var listBlocker = listObj.AddComponent<Button>();

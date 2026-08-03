@@ -137,7 +137,7 @@ public class ItemSacrificeUI : MonoBehaviour
         titleRect.anchorMax = new Vector2(1, 1);
         titleRect.pivot = new Vector2(0.5f, 1);
         titleRect.sizeDelta = new Vector2(0, 50);
-        titleRect.anchoredPosition = new Vector2(0, -10);
+        titleRect.anchoredPosition = new Vector2(0, -40);
         var title = titleObj.AddComponent<TextMeshProUGUI>();
         title.text = "Sacrifice items for experience";
         title.fontSize = 34;
@@ -150,7 +150,7 @@ public class ItemSacrificeUI : MonoBehaviour
         scrollRect.anchorMin = new Vector2(0, 0);
         scrollRect.anchorMax = new Vector2(1, 1);
         scrollRect.offsetMin = new Vector2(20, 170);
-        scrollRect.offsetMax = new Vector2(-20, -66);
+        scrollRect.offsetMax = new Vector2(-20, -90);
 
         var scroll = scrollObj.AddComponent<ScrollRect>();
         var scrollImage = scrollObj.AddComponent<Image>();
@@ -168,9 +168,9 @@ public class ItemSacrificeUI : MonoBehaviour
         contentRect.sizeDelta = new Vector2(0, 0);
 
         var grid = contentObj.AddComponent<GridLayoutGroup>();
-        grid.cellSize = new Vector2(210, 230);
+        grid.cellSize = new Vector2(218, 230);
         grid.spacing = new Vector2(14, 14);
-        grid.padding = new RectOffset(6, 6, 6, 6);
+        grid.padding = new RectOffset(24, 6, 6, 6);
 
         var fitter = contentObj.AddComponent<ContentSizeFitter>();
         fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
@@ -206,9 +206,11 @@ public class ItemSacrificeUI : MonoBehaviour
         summaryRect.sizeDelta = new Vector2(-40, 80);
         summaryRect.anchoredPosition = new Vector2(0, 90);
         summaryText = summaryObj.AddComponent<TextMeshProUGUI>();
-        summaryText.fontSize = 24;
         summaryText.alignment = TextAlignmentOptions.Center;
         summaryText.color = Color.white;
+        summaryText.enableAutoSizing = true; // "Selected: N" + "Current level: X/Y" — длина плавает
+        summaryText.fontSizeMin = 16;
+        summaryText.fontSizeMax = 24;
 
         var confirmObj = new GameObject("ConfirmButton", typeof(RectTransform));
         var confirmRect = (RectTransform)confirmObj.transform;
@@ -216,8 +218,8 @@ public class ItemSacrificeUI : MonoBehaviour
         confirmRect.anchorMin = new Vector2(0.3f, 0);
         confirmRect.anchorMax = new Vector2(0.3f, 0);
         confirmRect.pivot = new Vector2(0.5f, 0);
-        confirmRect.sizeDelta = new Vector2(220, 64);
-        confirmRect.anchoredPosition = new Vector2(0, 10);
+        confirmRect.sizeDelta = new Vector2(250, 65);
+        confirmRect.anchoredPosition = new Vector2(0, 40);
         confirmBg = confirmObj.AddComponent<Image>();
         ConfirmationDialog.StyleAsButton(confirmBg);
         confirmButton = confirmObj.AddComponent<Button>();
@@ -241,8 +243,8 @@ public class ItemSacrificeUI : MonoBehaviour
         closeBtnRect.anchorMin = new Vector2(0.7f, 0);
         closeBtnRect.anchorMax = new Vector2(0.7f, 0);
         closeBtnRect.pivot = new Vector2(0.5f, 0);
-        closeBtnRect.sizeDelta = new Vector2(220, 64);
-        closeBtnRect.anchoredPosition = new Vector2(0, 10);
+        closeBtnRect.sizeDelta = new Vector2(250, 65);
+        closeBtnRect.anchoredPosition = new Vector2(0, 40);
         closeBg = closeBtnObj.AddComponent<Image>();
         ConfirmationDialog.StyleAsButton(closeBg);
         var closeBtn = closeBtnObj.AddComponent<Button>();

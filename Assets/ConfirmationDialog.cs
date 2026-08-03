@@ -19,7 +19,19 @@ public static class ConfirmationDialog
     // загрузились (Resources пуст/файл удалили) — падаем обратно на плоскую заливку, а не падаем совсем.
     private static Sprite windowSprite;
     private static Sprite headerSprite;
+    private static Sprite descriptionSprite;
     private static bool spritesLoaded;
+
+    // Реальные border-значения нарезки (см. Assets/Editor/UIAssetImportSetup.cs) — кнопка/панель мельче
+    // этого физически не может нормально показать рамку (углы наложатся друг на друга и потекут/размажутся),
+    // так что ниже этого порога честнее откатиться на плоскую заливку, чем ломать вид. У кнопки порог
+    // асимметричный — измерено по альфа-каналу: орнамент по бокам (вырез угла + "жемчужина") занимает
+    // ~35px, а сверху/снизу это просто тонкая линия без выступов — там достаточно ~10px. Поэтому широкие,
+    // но невысокие кнопки (тулбар-фильтры, вкладки) теперь проходят порог, не требуя отдельного спрайта.
+    private const float MinSpriteButtonWidth = 80f;
+    private const float MinSpriteButtonHeight = 30f;
+    private const float MinSpritePanelSize = 160f;  // border окна — 70 со всех сторон (студы по всем 4 краям), порог с запасом
+    private const float MinSpriteDescriptionSize = 120f; // border панели описания — 55 со всех сторон, порог с запасом
 
     private static void EnsureSpritesLoaded()
     {
@@ -27,15 +39,19 @@ public static class ConfirmationDialog
         spritesLoaded = true;
         windowSprite = Resources.Load<Sprite>("UI/DialogWindowFrame");
         headerSprite = Resources.Load<Sprite>("UI/DialogHeaderFrame");
+        descriptionSprite = Resources.Load<Sprite>("UI/DialogDescriptionPanel");
     }
 
     // Общие хелперы для остального проекта — чтобы кнопки/панели вне ConfirmationDialog (CastleUI,
     // HeroInventoryUI, ItemDetailUI и т.д.) выглядели тем же новым стилем, а не плоской заливкой.
-    // Оба безопасно откатываются на старый плоский вид (fallbackColor), если спрайт не загрузился.
+    // Оба безопасно откатываются на старый плоский вид (fallbackColor), если спрайт не загрузился
+    // ИЛИ если сам элемент слишком мелкий для рамки (см. MinSpriteButtonSize/MinSpritePanelSize).
     public static void StyleAsButton(Image img, Color? fallbackColor = null)
     {
         EnsureSpritesLoaded();
-        if (headerSprite != null)
+        var size = img.rectTransform.rect;
+        bool bigEnough = size.width >= MinSpriteButtonWidth && size.height >= MinSpriteButtonHeight;
+        if (headerSprite != null && bigEnough)
         {
             img.sprite = headerSprite;
             img.type = Image.Type.Sliced;
@@ -43,6 +59,7 @@ public static class ConfirmationDialog
         }
         else
         {
+            img.sprite = null;
             img.color = fallbackColor ?? ButtonColor;
         }
     }
@@ -50,7 +67,9 @@ public static class ConfirmationDialog
     public static void StyleAsPanel(Image img, Color? fallbackColor = null)
     {
         EnsureSpritesLoaded();
-        if (windowSprite != null)
+        var size = img.rectTransform.rect;
+        bool bigEnough = size.width >= MinSpritePanelSize && size.height >= MinSpritePanelSize;
+        if (windowSprite != null && bigEnough)
         {
             img.sprite = windowSprite;
             img.type = Image.Type.Sliced;
@@ -58,6 +77,27 @@ public static class ConfirmationDialog
         }
         else
         {
+            img.sprite = null;
+            img.color = fallbackColor ?? new Color(0.11f, 0.11f, 0.13f, 0.97f);
+        }
+    }
+
+    // Плоская прямоугольная рамка (без вырезанных углов) — под блоки с текстом описания (скилл-инфо,
+    // описание предмета, пассивка расы и т.п.), где раньше сидела просто плоская тёмная заливка.
+    public static void StyleAsDescriptionPanel(Image img, Color? fallbackColor = null)
+    {
+        EnsureSpritesLoaded();
+        var size = img.rectTransform.rect;
+        bool bigEnough = size.width >= MinSpriteDescriptionSize && size.height >= MinSpriteDescriptionSize;
+        if (descriptionSprite != null && bigEnough)
+        {
+            img.sprite = descriptionSprite;
+            img.type = Image.Type.Sliced;
+            img.color = Color.white;
+        }
+        else
+        {
+            img.sprite = null;
             img.color = fallbackColor ?? new Color(0.11f, 0.11f, 0.13f, 0.97f);
         }
     }
@@ -222,16 +262,7 @@ public static class ConfirmationDialog
         btnRect.sizeDelta = new Vector2(280, 84);
 
         var img = btnObj.AddComponent<Image>();
-        if (headerSprite != null)
-        {
-            img.sprite = headerSprite;
-            img.type = Image.Type.Sliced;
-            img.color = Color.white;
-        }
-        else
-        {
-            img.color = color;
-        }
+        StyleAsButton(img, color);
         var btn = btnObj.AddComponent<Button>();
         btn.onClick.AddListener(() => onClick?.Invoke());
 
@@ -247,6 +278,8 @@ public static class ConfirmationDialog
         text.alignment = TextAlignmentOptions.Center;
         text.color = ButtonTextColor;
         text.fontStyle = FontStyles.Bold;
-        text.fontSize = 34;
+        text.enableAutoSizing = true;
+        text.fontSizeMin = 18;
+        text.fontSizeMax = 34;
     }
 }

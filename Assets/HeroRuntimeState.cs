@@ -15,6 +15,10 @@ public class HeroRuntimeState
 
     public bool blockManaGainThisTurn; // true после использования навыка — пропускает следующее начисление маны
 
+    // Скопировано из HeroOwnershipData.racePassiveEnabled на момент входа в бой — сама пассивка расы
+    // применяется только если это true (см. BattleManager.HasLivingHeroOfRace/GetLivingHeroOfRace).
+    public bool racePassiveEnabled;
+
     // Для скиллов расы Людей
     public SkillData lastUsedSkill;              // последний использованный скилл этого героя (для CopyAllyLastSkill)
     [Range(0f, 1f)] public float costReductionPercent; // скидка на стоимость следующего скилла (ReduceAllyNextSkillCost), тратится сразу после использования
