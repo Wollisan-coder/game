@@ -14,10 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RaceEmblemSet
   emblems:
   - {fileID: 21300000, guid: a41deb25dbdbf4d4791b2426e62636f0, type: 3}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
+  - {fileID: 21300000, guid: 57e2521793dfbe547955b609a3f0865e, type: 3}
+  - {fileID: 21300000, guid: 2fae6cd3906fc1d41a8134b2c9de77fb, type: 3}
+  - {fileID: 21300000, guid: a99ee063a4ff0d04c944d760cae2e80c, type: 3}
+  - {fileID: 21300000, guid: c3a886174d0685b439b9a7988b97b6b6, type: 3}
+  - {fileID: 21300000, guid: 5215a957a20e2bf4f9cc2068903a3898, type: 3}
+  - {fileID: 21300000, guid: a26bbdcb3ddea734d87113c372910fb6, type: 3}
+  - {fileID: 21300000, guid: 809b83de3906dca4189a141c7173af62, type: 3}

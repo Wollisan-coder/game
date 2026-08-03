@@ -28,7 +28,18 @@ public class AccountManager : MonoBehaviour
     // не сбрасывается за пропуск дня): Day 1=400, Day 2=350, Day 3=300, Day 4=250, Day 5+=200 (см. match3-economy.md)
     private System.DateTime firstLoginDate;
     private System.DateTime? lastDailyClaimDate;
+    private System.DateTime? lastBossTrainingDate;
     private const string DateFormat = "yyyyMMdd";
+
+    // Одноразовый сигнал перед загрузкой боевой сцены (BattleManager.Awake читает и сразу гасит pendingBossTraining) —
+    // не персистится, как и WorldMapManager.lastActiveMapPanelName.
+    [Header("Boss Training")]
+    public bool pendingBossTraining;
+    public string pendingBossTrainingHeroId;
+
+    // Тот же одноразовый флаг-сигнал, что и pendingBossTraining выше, но в обратную сторону — читается
+    // MainMenuUI.Start() (и сразу гасится), чтобы после тренировки открылся замок, а не Collection по умолчанию.
+    public bool returningFromBossTraining;
 
     private void Awake()
     {
@@ -147,6 +158,20 @@ public class AccountManager : MonoBehaviour
         return amount;
     }
 
+    [Header("Debug")]
+    public bool debugSkipBossTrainingCooldown; // тестовый флажок — временно снимает лимит 1/день, выключить перед релизом
+
+    // 1 раз/день, тот же принцип и тот же клиент-часовой gotcha, что и Daily Reward (см. ClaimDailyReward).
+    public bool HasDoneBossTrainingToday() =>
+        !debugSkipBossTrainingCooldown &&
+        lastBossTrainingDate.HasValue && lastBossTrainingDate.Value == System.DateTime.UtcNow.Date;
+
+    public void MarkBossTrainingDone()
+    {
+        lastBossTrainingDate = System.DateTime.UtcNow.Date;
+        Save();
+    }
+
     private void Save()
     {
         PlayerPrefs.SetInt("account_level", level);
@@ -156,6 +181,8 @@ public class AccountManager : MonoBehaviour
         PlayerPrefs.SetString("account_first_login_date", firstLoginDate.ToString(DateFormat));
         if (lastDailyClaimDate.HasValue)
             PlayerPrefs.SetString("account_last_daily_claim_date", lastDailyClaimDate.Value.ToString(DateFormat));
+        if (lastBossTrainingDate.HasValue)
+            PlayerPrefs.SetString("account_last_boss_training_date", lastBossTrainingDate.Value.ToString(DateFormat));
         PlayerPrefs.Save();
     }
 
@@ -187,6 +214,12 @@ public class AccountManager : MonoBehaviour
         lastDailyClaimDate = !string.IsNullOrEmpty(savedLastClaim) &&
             System.DateTime.TryParseExact(savedLastClaim, DateFormat, null, System.Globalization.DateTimeStyles.None, out var parsedClaim)
             ? parsedClaim
+            : (System.DateTime?)null;
+
+        string savedLastTraining = PlayerPrefs.GetString("account_last_boss_training_date", "");
+        lastBossTrainingDate = !string.IsNullOrEmpty(savedLastTraining) &&
+            System.DateTime.TryParseExact(savedLastTraining, DateFormat, null, System.Globalization.DateTimeStyles.None, out var parsedTraining)
+            ? parsedTraining
             : (System.DateTime?)null;
     }
 }

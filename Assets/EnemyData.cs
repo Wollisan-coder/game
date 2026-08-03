@@ -22,6 +22,7 @@ public class EnemyData : ScriptableObject
     public float damageMultiplier = 1f; // личный множитель урона этого врага
     public int price = 100;             // цена/сложность за разблокировку
     public EnemySkillData[] skills;     // количество умений = длина массива
+    public EnemyPassiveData[] passives; // всегда активны, без хода — см. EnemyPassiveData
 
     [Header("Вредные фишки поля (спавнятся на старте боя)")]
     public HarmfulTileSpawnRule[] harmfulTileSpawns;

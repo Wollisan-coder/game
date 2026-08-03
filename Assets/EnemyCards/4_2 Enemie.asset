@@ -10,30 +10,35 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 98b5e3f879f3ee14db0d174b4aae035d, type: 3}
-  m_Name: Enemy2
+  m_Name: 4_2 Enemie
   m_EditorClassIdentifier: Assembly-CSharp::EnemyData
-  enemyId: Enemy2
-  enemyName: Lich
-  maxHP: 1000
+  enemyId: 4_2 Enemie
+  enemyName: 
+  maxHP: 100
   maxMana: 50
-  minAttack: 10
-  maxAttack: 10
+  minAttack: 5
+  maxAttack: 12
   damageMultiplier: 1
   price: 100
   skills: []
+  passives: []
   harmfulTileSpawns:
-  - type: 4
-    count: 2
-    value: 5
+  - type: 3
+    count: 3
+    value: 10
   loot:
     accountExperience: 20
-    heroExperience: 20
+    heroExperience: 100
     progressPoints: 30
     currency:
     - type: 0
       amount: 100
-    items:
-    - item: {fileID: 11400000, guid: ad773ad50d64587ccfa3e865205bff72, type: 2}
-      count: 1
-  portrait: {fileID: 21300000, guid: c9f0e2baae86d8241a2772072d1dcdc1, type: 3}
+    - type: 1
+      amount: 100
+    - type: 2
+      amount: 100
+    - type: 4
+      amount: 100
+    items: []
+  portrait: {fileID: 21300000, guid: fbaf53c2e3e56e04c94ca079f5314091, type: 3}
   themeColor: {r: 0.0244749, g: 0.20754719, b: 0.050476167, a: 1}

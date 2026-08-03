@@ -80,7 +80,7 @@ public class ProgressExchangeUI : MonoBehaviour
         windowRect.pivot = new Vector2(0.5f, 0.5f);
         windowRect.sizeDelta = new Vector2(480, 520);
         var windowBg = windowObj.AddComponent<Image>();
-        windowBg.color = new Color(0.12f, 0.12f, 0.12f, 0.98f);
+        ConfirmationDialog.StyleAsPanel(windowBg);
 
         var titleObj = new GameObject("Title", typeof(RectTransform));
         var titleRect = (RectTransform)titleObj.transform;
@@ -127,7 +127,7 @@ public class ProgressExchangeUI : MonoBehaviour
         closeBtnRect.sizeDelta = new Vector2(160, 34);
         closeBtnRect.anchoredPosition = new Vector2(0, 12);
         var closeBtnImg = closeBtnObj.AddComponent<Image>();
-        closeBtnImg.color = ConfirmationDialog.ButtonColor;
+        ConfirmationDialog.StyleAsButton(closeBtnImg);
         var closeBtn = closeBtnObj.AddComponent<Button>();
         closeBtn.onClick.AddListener(Close);
 
@@ -141,7 +141,7 @@ public class ProgressExchangeUI : MonoBehaviour
         var closeText = closeTextObj.AddComponent<TextMeshProUGUI>();
         closeText.text = "Close";
         closeText.alignment = TextAlignmentOptions.Center;
-        closeText.color = Color.black;
+        closeText.color = ConfirmationDialog.ButtonTextColor; // тёмный текст был под старую светлую заливку, на новой тёмно-синей рамке нужен светлый
 
         overlayRoot.SetActive(false);
     }
@@ -184,7 +184,7 @@ public class ProgressExchangeUI : MonoBehaviour
         btnRect.anchoredPosition = new Vector2(65, 0);
 
         var btnImg = btnObj.AddComponent<Image>();
-        btnImg.color = ConfirmationDialog.ButtonColor;
+        ConfirmationDialog.StyleAsButton(btnImg);
         var btn = btnObj.AddComponent<Button>();
         btn.onClick.AddListener(onClick);
 
@@ -199,7 +199,7 @@ public class ProgressExchangeUI : MonoBehaviour
         btnText.text = "Buy";
         btnText.fontSize = 22;
         btnText.alignment = TextAlignmentOptions.Center;
-        btnText.color = Color.black;
+        btnText.color = ConfirmationDialog.ButtonTextColor; // тёмный текст был под старую светлую заливку, на новой тёмно-синей рамке нужен светлый
     }
 
     private void Refresh()

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class GridManager : MonoBehaviour
@@ -26,6 +27,90 @@ public int redTypeIndex = 0; // проверь, что Element 0 = RedGem в т�
     private float idleTimer = 0f;
     private Item hintItem;
     private bool hintActive = false;
+
+    // Строгий порядок ходов, а не таймер: ИИ делает РОВНО один ход по запросу (RequestNextAiMove), затем
+    // молчит, пока BattleManager снова не попросит — тот открывает "окно игрока" между ходами ИИ
+    // (один скилл босса ИЛИ таймаут — см. BattleManager.OpenBossTrainingPlayerWindow) вместо простого
+    // тикающего таймера, который позволял спамить один и тот же скилл бесконечно между автоходами.
+    [Header("Boss Training — доской играет ИИ вместо игрока (см. BattleManager.isBossTraining)")]
+    public bool trainingMode;
+
+    private Coroutine aiMoveCoroutine;
+
+    public void SetTrainingMode(bool enabled)
+    {
+        trainingMode = enabled;
+
+        if (enabled)
+            RequestNextAiMove();
+        else if (aiMoveCoroutine != null)
+        {
+            StopCoroutine(aiMoveCoroutine);
+            aiMoveCoroutine = null;
+        }
+    }
+
+    // Вызывать, когда пора сходить ИИ: сразу при старте тренировки и затем каждый раз, когда
+    // BattleManager закрывает "окно игрока" (скилл использован или истёк таймаут).
+    public void RequestNextAiMove()
+    {
+        if (!trainingMode) return;
+        if (aiMoveCoroutine != null) return; // ход уже идёт — не дублируем запрос
+
+        aiMoveCoroutine = StartCoroutine(PlayOneAiMove());
+    }
+
+    private IEnumerator PlayOneAiMove()
+    {
+        // grid ещё может быть null: BattleManager.Awake() (который запускает тренировку и, значит, первый
+        // ход ИИ) выполняется РАНЬШЕ GridManager.Start() (которая и создаёт/заполняет grid) — Unity сначала
+        // прогоняет Awake() у всех объектов сцены, и только потом Start() у всех. Ждём, пока доска реально появится.
+        while (grid == null || isBusy)
+            yield return null;
+
+        // Прежде чем ходить по доске, ИИ пробует применить навык тренируемого героя (если хватает
+        // маны) — так же, как реальный игрок мог бы кликнуть по HeroCardUI вместо свапа фишек.
+        // Сам вызов уже закрывает окно/переходит ход дальше (см. BattleManager.TryUseSkill), поэтому
+        // ход по доске в этом случае не делаем.
+        if (battleManager != null && battleManager.TryUseTrainedHeroSkillIfPossible())
+        {
+            aiMoveCoroutine = null;
+            yield break;
+        }
+
+        if (!TryFindAnyValidMove(out int x1, out int y1, out int x2, out int y2))
+            yield return StartCoroutine(ReshuffleIfNoMoves());
+        else
+            yield return StartCoroutine(SwapItems(grid[x1, y1], grid[x2, y2]));
+
+        aiMoveCoroutine = null;
+    }
+
+    // Как WouldCreateMatch/FindHintItem, но возвращает координаты ОБЕИХ клеток свапа — игроку
+    // FindHintItem показывает только "куда ткнуть", а автоигроку нужна полная пара для SwapItems.
+    private bool TryFindAnyValidMove(out int x1, out int y1, out int x2, out int y2)
+    {
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                if (x < width - 1 && WouldCreateMatch(x, y, x + 1, y))
+                {
+                    x1 = x; y1 = y; x2 = x + 1; y2 = y;
+                    return true;
+                }
+
+                if (y < height - 1 && WouldCreateMatch(x, y, x, y + 1))
+                {
+                    x1 = x; y1 = y; x2 = x; y2 = y + 1;
+                    return true;
+                }
+            }
+        }
+
+        x1 = y1 = x2 = y2 = -1;
+        return false;
+    }
 
     private void Update()
     {
@@ -247,6 +332,10 @@ private IEnumerator PopInAnimation(Transform t)
                     case HarmfulTileType.Spike: item.MarkAsSpikeHarmful(rule.value); break;
                     case HarmfulTileType.Trap: item.MarkAsTrapHarmful(rule.value); break;
                     case HarmfulTileType.Anchor: item.MarkAsAnchorHarmful(rule.value); break;
+                    case HarmfulTileType.Cursed: item.MarkAsCursedHarmful(rule.value); break;
+                    case HarmfulTileType.BloodMark: item.MarkAsBloodMarkHarmful(rule.value); break;
+                    case HarmfulTileType.Rotten: item.MarkAsRottenHarmful(); break;
+                    case HarmfulTileType.Chaos: item.MarkAsChaosHarmful(); break;
                 }
             }
         }
@@ -477,6 +566,22 @@ public IEnumerator PlayDestroyAnimation()
 
     ThawAdjacentIce(toDestroy);       // сосед матчится рядом со льдом — лёд тает досрочно, сам не уничтожаясь
     TickAnchorsAdjacentToMatches(toDestroy); // якорь не входит в матч сам, но считает матчи по соседству
+
+    // Хаос-клетка: срабатывает, когда сама попадает в этот снос — меняет цвет всех живых соседей,
+    // которые сами НЕ входят в этот же снос (иначе бессмысленно красить то, что и так сейчас исчезнет).
+    foreach (var chaosItem in toDestroy.Where(i => i.harmfulType == HarmfulTileType.Chaos).ToList())
+    {
+        foreach (var neighbor in GetNeighborItems(chaosItem.x, chaosItem.y))
+        {
+            if (neighbor == null || toDestroy.Contains(neighbor) || neighbor.harmfulType == HarmfulTileType.Anchor)
+                continue;
+
+            int nx = neighbor.x, ny = neighbor.y;
+            int newType = Random.Range(0, itemPrefabs.Length);
+            Destroy(neighbor.gameObject);
+            SpawnItem(nx, ny, newType);
+        }
+    }
 
     foreach (var item in toDestroy)
     {
@@ -758,6 +863,12 @@ private bool WouldCreateMatch(int x1, int y1, int x2, int y2)
     Item a = grid[x1, y1];
     Item b = grid[x2, y2];
 
+    // Та же блокировка, что и в SwapItems — иначе ИИ/подсказка могут выбрать своп с замороженной
+    // (Ice) или заякоренной (Anchor) фишкой: WouldCreateMatch скажет "да, матч будет", а реальный
+    // SwapItems тихо оборвётся (yield break) до самого свопа — ход молча пропадёт, ИИ "зависнет".
+    if (a.isFrozen || b.isFrozen) return false;
+    if (a.harmfulType == HarmfulTileType.Anchor || b.harmfulType == HarmfulTileType.Anchor) return false;
+
     grid[x1, y1] = b;
     grid[x2, y2] = a;
 
@@ -1011,18 +1122,96 @@ private void TickFrozenTiles()
     }
 }
 
-// Шип наносит фиксированный урон герою каждый реальный ход, пока фишка остаётся на поле
+// Шип наносит фиксированный урон герою каждый реальный ход, пока фишка остаётся на поле.
+// Cursed/Rotten заражают соседей — снимок берётся ДО заражений этого тика, чтобы свежезаражённая
+// соседняя фишка не заражала дальше в тот же ход (иначе поле выгорело бы за пару ходов).
 private void TickHarmfulTiles()
 {
+    List<Item> snapshot = new List<Item>();
     for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+            if (grid[x, y] != null) snapshot.Add(grid[x, y]);
+
+    foreach (var item in snapshot)
     {
+        switch (item.harmfulType)
+        {
+            case HarmfulTileType.Spike:
+                battleManager?.DamageRandomHero(item.harmfulValue);
+                break;
+
+            case HarmfulTileType.Cursed:
+                item.cursedTurnsAlive++;
+                if (item.cursedTurnsAlive >= item.harmfulValue)
+                {
+                    item.cursedTurnsAlive = 0;
+                    int spreadValue = item.harmfulValue;
+                    SpreadHarmfulToRandomNeighbor(item, t => t.MarkAsCursedHarmful(spreadValue));
+                }
+                break;
+
+            case HarmfulTileType.Rotten:
+                SpreadHarmfulToRandomNeighbor(item, t => t.MarkAsRottenHarmful());
+                break;
+        }
+    }
+}
+
+// Заражает ОДНОГО случайного живого соседа (не Anchor, не уже заражённого тем же типом) — общий
+// хелпер для Cursed/Rotten. Ничего не делает, если подходящих соседей нет (например, все уже заражены).
+private void SpreadHarmfulToRandomNeighbor(Item source, System.Action<Item> markAction)
+{
+    var candidates = GetNeighborItems(source.x, source.y)
+        .Where(n => n != null && n.harmfulType != source.harmfulType && n.harmfulType != HarmfulTileType.Anchor)
+        .ToList();
+
+    if (candidates.Count == 0) return;
+
+    markAction(candidates[Random.Range(0, candidates.Count)]);
+}
+
+// Ставит вредную клетку заданного типа на случайную подходящую клетку поля (не Anchor, не уже такого же
+// типа) — используется скиллом CastTrap в Boss Training, но не привязан к нему специально.
+public void CastHarmfulTileRandom(HarmfulTileType type, int value)
+{
+    List<Item> candidates = new List<Item>();
+    for (int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
+            if (grid[x, y] != null && grid[x, y].harmfulType != type && grid[x, y].harmfulType != HarmfulTileType.Anchor)
+                candidates.Add(grid[x, y]);
+
+    if (candidates.Count == 0) return;
+
+    Item target = candidates[Random.Range(0, candidates.Count)];
+    switch (type)
+    {
+        case HarmfulTileType.Ice: target.MarkAsIceHarmful(value); break;
+        case HarmfulTileType.Spike: target.MarkAsSpikeHarmful(value); break;
+        case HarmfulTileType.Trap: target.MarkAsTrapHarmful(value); break;
+        case HarmfulTileType.Anchor: target.MarkAsAnchorHarmful(value); break;
+        case HarmfulTileType.Cursed: target.MarkAsCursedHarmful(value); break;
+        case HarmfulTileType.BloodMark: target.MarkAsBloodMarkHarmful(value); break;
+        case HarmfulTileType.Rotten: target.MarkAsRottenHarmful(); break;
+        case HarmfulTileType.Chaos: target.MarkAsChaosHarmful(); break;
+    }
+}
+
+// Пока на поле есть хоть одна BloodMark-фишка — суммарный множитель урона игроку (см.
+// BattleManager.ApplyDamageToHero). 1f, если ни одной такой фишки нет.
+public float GetBloodMarkDamageMultiplier()
+{
+    float mult = 1f;
+    if (grid == null) return mult;
+
+    for (int x = 0; x < width; x++)
         for (int y = 0; y < height; y++)
         {
             Item item = grid[x, y];
-            if (item != null && item.harmfulType == HarmfulTileType.Spike)
-                battleManager?.DamageRandomHero(item.harmfulValue);
+            if (item != null && item.harmfulType == HarmfulTileType.BloodMark)
+                mult += item.harmfulValue / 100f;
         }
-    }
+
+    return mult;
 }
 
 }

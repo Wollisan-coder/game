@@ -214,7 +214,7 @@ public class HeroCollectionUI : MonoBehaviour
         listRect.sizeDelta = new Vector2(300, listHeight);
         racePopupListRect = listRect;
         var listBg = listObj.AddComponent<Image>();
-        listBg.color = new Color(0.12f, 0.12f, 0.12f, 0.98f);
+        ConfirmationDialog.StyleAsPanel(listBg);
         // Пустой Button-блокер поверх фона списка — чтобы клик по самому списку (не по варианту)
         // не проваливался на dim-кнопку позади и не закрывал попап раньше времени.
         var listBlocker = listObj.AddComponent<Button>();
@@ -321,7 +321,7 @@ public class HeroCollectionUI : MonoBehaviour
         btnRect.anchoredPosition = anchoredPosition;
 
         var img = btnObj.AddComponent<Image>();
-        img.color = ConfirmationDialog.ButtonColor;
+        ConfirmationDialog.StyleAsButton(img);
         var btn = btnObj.AddComponent<Button>();
         btn.onClick.AddListener(onClick);
 
@@ -337,7 +337,7 @@ public class HeroCollectionUI : MonoBehaviour
         text.fontSizeMin = 16;
         text.fontSizeMax = 30;
         text.alignment = TextAlignmentOptions.Center;
-        text.color = Color.black;
+        text.color = ConfirmationDialog.ButtonTextColor; // тёмный текст был под старую светлую заливку, на новой тёмно-синей рамке нужен светлый
 
         return text;
     }

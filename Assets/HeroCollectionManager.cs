@@ -50,6 +50,10 @@ public class HeroCollectionManager : MonoBehaviour
     // Индекс слота, который сейчас редактируется (-1 = не в режиме выбора)
     public int slotBeingEdited = -1;
 
+    // Collection-экран как пикер героя для Boss Training (тот же приём, что и slotBeingEdited для отряда) —
+    // см. CastleUI.OnBossTrainingClicked / HeroCollectionCardUI.OnSelected.
+    public bool pickingForBossTraining;
+
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }

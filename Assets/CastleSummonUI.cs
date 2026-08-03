@@ -79,7 +79,7 @@ public class CastleSummonUI : MonoBehaviour
         windowRect.pivot = new Vector2(0.5f, 0.5f);
         windowRect.sizeDelta = new Vector2(480, 460);
         var windowBg = windowObj.AddComponent<Image>();
-        windowBg.color = new Color(0.12f, 0.12f, 0.12f, 0.98f);
+        ConfirmationDialog.StyleAsPanel(windowBg);
 
         var titleObj = new GameObject("Title", typeof(RectTransform));
         var titleRect = (RectTransform)titleObj.transform;
@@ -121,7 +121,7 @@ public class CastleSummonUI : MonoBehaviour
         closeBtnRect.sizeDelta = new Vector2(160, 34);
         closeBtnRect.anchoredPosition = new Vector2(0, 12);
         var closeBtnImg = closeBtnObj.AddComponent<Image>();
-        closeBtnImg.color = ConfirmationDialog.ButtonColor;
+        ConfirmationDialog.StyleAsButton(closeBtnImg);
         var closeBtn = closeBtnObj.AddComponent<Button>();
         closeBtn.onClick.AddListener(Close);
 
@@ -135,7 +135,7 @@ public class CastleSummonUI : MonoBehaviour
         var closeText = closeTextObj.AddComponent<TextMeshProUGUI>();
         closeText.text = "Close";
         closeText.alignment = TextAlignmentOptions.Center;
-        closeText.color = Color.black;
+        closeText.color = ConfirmationDialog.ButtonTextColor; // тёмный текст был под старую светлую заливку, на новой тёмно-синей рамке нужен светлый
 
         overlayRoot.SetActive(false);
     }
@@ -151,7 +151,7 @@ public class CastleSummonUI : MonoBehaviour
         btnRect.sizeDelta = new Vector2(170, 56);
 
         var img = btnObj.AddComponent<Image>();
-        img.color = ConfirmationDialog.ButtonColor;
+        ConfirmationDialog.StyleAsButton(img);
         button = btnObj.AddComponent<Button>();
         button.onClick.AddListener(onClick);
 
@@ -165,7 +165,7 @@ public class CastleSummonUI : MonoBehaviour
         var text = textObj.AddComponent<TextMeshProUGUI>();
         text.fontSize = 15;
         text.alignment = TextAlignmentOptions.Center;
-        text.color = Color.black; // текст кнопок замка — отдельно от глобального ConfirmationDialog.ButtonTextColor
+        text.color = ConfirmationDialog.ButtonTextColor; // тёмный текст был под старую светлую заливку, на новой тёмно-синей рамке нужен светлый
 
         return text;
     }

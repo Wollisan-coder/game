@@ -140,7 +140,7 @@ public class ItemDetailUI : MonoBehaviour
             }
         }
 
-        if (actionBg != null) actionBg.color = ConfirmationDialog.ButtonColor;
+        if (actionBg != null) ConfirmationDialog.StyleAsButton(actionBg);
         if (actionText != null) actionText.color = ConfirmationDialog.ButtonTextColor;
     }
 
@@ -175,7 +175,7 @@ public class ItemDetailUI : MonoBehaviour
         actionRect.anchoredPosition = new Vector2(0, -300);
 
         actionBg = actionObj.AddComponent<Image>();
-        actionBg.color = ConfirmationDialog.ButtonColor;
+        ConfirmationDialog.StyleAsButton(actionBg);
         actionButton = actionObj.AddComponent<Button>();
 
         var actionTextObj = new GameObject("Text", typeof(RectTransform));

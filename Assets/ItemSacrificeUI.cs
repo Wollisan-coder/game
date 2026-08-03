@@ -81,9 +81,9 @@ public class ItemSacrificeUI : MonoBehaviour
     // сразу применялись и к уже однажды построенному (закэшированному) окну, без рестарта Play Mode.
     private void RefreshButtonTheme()
     {
-        if (confirmBg != null) confirmBg.color = ConfirmationDialog.ButtonColor;
+        if (confirmBg != null) ConfirmationDialog.StyleAsButton(confirmBg);
         if (confirmButtonText != null) confirmButtonText.color = ConfirmationDialog.ButtonTextColor;
-        if (closeBg != null) closeBg.color = ConfirmationDialog.ButtonColor;
+        if (closeBg != null) ConfirmationDialog.StyleAsButton(closeBg);
         if (closeButtonText != null) closeButtonText.color = ConfirmationDialog.ButtonTextColor;
     }
 
@@ -128,7 +128,7 @@ public class ItemSacrificeUI : MonoBehaviour
         windowRect.pivot = new Vector2(0.5f, 0.5f);
         windowRect.sizeDelta = new Vector2(1000, 1650);
         var windowBg = windowObj.AddComponent<Image>();
-        windowBg.color = new Color(0.12f, 0.12f, 0.12f, 0.98f);
+        ConfirmationDialog.StyleAsPanel(windowBg);
 
         var titleObj = new GameObject("Title", typeof(RectTransform));
         var titleRect = (RectTransform)titleObj.transform;
@@ -219,7 +219,7 @@ public class ItemSacrificeUI : MonoBehaviour
         confirmRect.sizeDelta = new Vector2(220, 64);
         confirmRect.anchoredPosition = new Vector2(0, 10);
         confirmBg = confirmObj.AddComponent<Image>();
-        confirmBg.color = ConfirmationDialog.ButtonColor;
+        ConfirmationDialog.StyleAsButton(confirmBg);
         confirmButton = confirmObj.AddComponent<Button>();
         confirmButton.onClick.AddListener(OnConfirmClicked);
 
@@ -244,7 +244,7 @@ public class ItemSacrificeUI : MonoBehaviour
         closeBtnRect.sizeDelta = new Vector2(220, 64);
         closeBtnRect.anchoredPosition = new Vector2(0, 10);
         closeBg = closeBtnObj.AddComponent<Image>();
-        closeBg.color = ConfirmationDialog.ButtonColor;
+        ConfirmationDialog.StyleAsButton(closeBg);
         var closeBtn = closeBtnObj.AddComponent<Button>();
         closeBtn.onClick.AddListener(Close);
 

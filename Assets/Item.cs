@@ -48,8 +48,9 @@ public class Item : MonoBehaviour
 
     [Header("Вредные фишки поля (per-enemy дебаффы, см. HarmfulTileSpawnRule)")]
     public HarmfulTileType harmfulType = HarmfulTileType.None;
-    public int harmfulValue;      // Spike/Trap: урон герою; Anchor: сколько матчей по соседству нужно, чтобы снять
+    public int harmfulValue;      // Spike/Trap: урон герою; Anchor/Cursed: порог в ходах; BloodMark: % урона игроку
     public int anchorMatchStreak; // Anchor: сколько таких матчей уже пережила подряд
+    public int cursedTurnsAlive;  // Cursed: сколько ходов прожила без снятия — при достижении harmfulValue заражает соседа
 
     [Header("Заморозка (гемблинг-колесо: FreezeRandomRowOrColumn)")]
     public bool isFrozen;
@@ -129,11 +130,45 @@ public class Item : MonoBehaviour
         TintHarmful(new Color(0.4f, 0.4f, 0.45f));
     }
 
+    // Спреды за N ходов не снята матчем — см. GridManager.TickHarmfulTiles. Заражение соседа переносит
+    // тот же порог value, а счётчик текущей фишки обнуляется, чтобы она могла заразить ещё одного соседа позже.
+    public void MarkAsCursedHarmful(int turnsUntilSpread)
+    {
+        harmfulType = HarmfulTileType.Cursed;
+        harmfulValue = Mathf.Max(1, turnsUntilSpread);
+        cursedTurnsAlive = 0;
+        TintHarmful(new Color(0.35f, 0.05f, 0.45f));
+    }
+
+    // Пассивная — пока хоть одна такая фишка на поле, весь урон игроку увеличен на value% (см.
+    // GridManager.GetBloodMarkDamageMultiplier / BattleManager.ApplyDamageToHero).
+    public void MarkAsBloodMarkHarmful(int damageIncreasePercent)
+    {
+        harmfulType = HarmfulTileType.BloodMark;
+        harmfulValue = Mathf.Max(0, damageIncreasePercent);
+        TintHarmful(new Color(0.55f, 0f, 0.05f));
+    }
+
+    // Заражает случайного соседа каждый ход, пока её не уберут матчем — см. GridManager.TickHarmfulTiles.
+    public void MarkAsRottenHarmful()
+    {
+        harmfulType = HarmfulTileType.Rotten;
+        TintHarmful(new Color(0.3f, 0.28f, 0.05f));
+    }
+
+    // Само уничтожение (обычным матчем) триггерит эффект — см. GridManager.ProcessMatches.
+    public void MarkAsChaosHarmful()
+    {
+        harmfulType = HarmfulTileType.Chaos;
+        TintHarmful(new Color(0.9f, 0.1f, 0.8f));
+    }
+
     public void ClearHarmful()
     {
         harmfulType = HarmfulTileType.None;
         harmfulValue = 0;
         anchorMatchStreak = 0;
+        cursedTurnsAlive = 0;
 
         if (trapIndicator != null)
             trapIndicator.SetActive(false);
@@ -210,6 +245,8 @@ public class Item : MonoBehaviour
 
     private void OnMouseDown()
     {
+        if (gridManager != null && gridManager.trainingMode) return; // Boss Training — доской играет ИИ, не игрок
+
         gridManager?.ResetIdleTimer(); // любой клик сбрасывает таймер подсказки и прячет её
 
         if (gridManager != null && gridManager.isBusy) return; // поле ещё анимируется — игнорируем клик
@@ -219,6 +256,7 @@ public class Item : MonoBehaviour
 
     private void OnMouseUp()
     {
+        if (gridManager != null && gridManager.trainingMode) return;
         if (gridManager != null && gridManager.isBusy) return;
 
         Vector3 delta = (Vector3)Mouse.current.position.ReadValue() - mouseDownScreenPos;

@@ -50,7 +50,7 @@ public class HeroExperienceItemPickerUI : MonoBehaviour
 
     private void RefreshButtonTheme()
     {
-        if (closeBg != null) closeBg.color = ConfirmationDialog.ButtonColor;
+        if (closeBg != null) ConfirmationDialog.StyleAsButton(closeBg);
         if (closeButtonText != null) closeButtonText.color = ConfirmationDialog.ButtonTextColor;
     }
 
@@ -90,7 +90,7 @@ public class HeroExperienceItemPickerUI : MonoBehaviour
         windowRect.pivot = new Vector2(0.5f, 0.5f);
         windowRect.sizeDelta = new Vector2(560, 440);
         var windowBg = windowObj.AddComponent<Image>();
-        windowBg.color = new Color(0.12f, 0.12f, 0.12f, 0.98f);
+        ConfirmationDialog.StyleAsPanel(windowBg);
 
         var titleObj = new GameObject("Title", typeof(RectTransform));
         var titleRect = (RectTransform)titleObj.transform;

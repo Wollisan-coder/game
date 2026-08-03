@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1241cc762264d31901818a75df19bbd, type: 3}
+  m_Name: Passive_DemonsBoss_DemonicRetribution
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyPassiveData
+  passiveName: Demonic Retribution
+  description: A portion of damage taken is reflected back at a random hero.
+  effectType: 2
+  percent: 0.25
+  absorbColorType: 0
+  absorbDamageBonus: 0.5

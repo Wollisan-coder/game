@@ -114,7 +114,17 @@ public class ItemCollectionUI : MonoBehaviour
     private void RefreshTabVisuals()
     {
         for (int i = 0; i < tabBackgrounds.Count; i++)
-            tabBackgrounds[i].color = i == selectedTabIndex ? ConfirmationDialog.ButtonColor : TabInactiveColor;
+        {
+            if (i == selectedTabIndex)
+            {
+                ConfirmationDialog.StyleAsButton(tabBackgrounds[i]);
+            }
+            else
+            {
+                tabBackgrounds[i].sprite = null;
+                tabBackgrounds[i].color = TabInactiveColor;
+            }
+        }
     }
 
     private bool MatchesCurrentTab(ItemData item)

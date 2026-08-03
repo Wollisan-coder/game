@@ -21,6 +21,7 @@ MonoBehaviour:
   damageMultiplier: 1
   price: 100
   skills: []
+  passives: []
   harmfulTileSpawns: []
   loot:
     accountExperience: 20

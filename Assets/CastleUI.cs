@@ -100,7 +100,8 @@ public class CastleUI : MonoBehaviour
         CreateDailyRewardButton(panelRect, new Vector2(330, 50));
         // Second row above the first — keeps the already-working bottom row untouched instead of
         // squeezing a 5th button into it.
-        CreateNavButton(panelRect, "Exchange", new Vector2(0, 160), () => { exchangeUI?.Open(canvasRoot, Refresh); });
+        CreateNavButton(panelRect, "Exchange", new Vector2(-110, 160), () => { exchangeUI?.Open(canvasRoot, Refresh); });
+        CreateNavButton(panelRect, "Boss Training", new Vector2(110, 160), OnBossTrainingClicked);
 
         // --- Сетка зданий ---
         var scrollObj = new GameObject("Scroll View", typeof(RectTransform));
@@ -164,7 +165,7 @@ public class CastleUI : MonoBehaviour
         btnRect.anchoredPosition = anchoredPosition;
 
         var img = btnObj.AddComponent<Image>();
-        img.color = ConfirmationDialog.ButtonColor;
+        ConfirmationDialog.StyleAsButton(img);
         var btn = btnObj.AddComponent<Button>();
         btn.onClick.AddListener(() => onClick?.Invoke());
 
@@ -178,7 +179,7 @@ public class CastleUI : MonoBehaviour
         var text = textObj.AddComponent<TextMeshProUGUI>();
         text.text = label;
         text.alignment = TextAlignmentOptions.Center;
-        text.color = Color.black; // текст кнопок замка — отдельно от глобального ConfirmationDialog.ButtonTextColor
+        text.color = ConfirmationDialog.ButtonTextColor; // тёмный текст был под старую светлую заливку, на новой тёмно-синей рамке нужен светлый
     }
 
     // Отдельно от CreateNavButton — держит ссылки на bg/text, чтобы Refresh() мог менять подпись/цвет
@@ -208,7 +209,19 @@ public class CastleUI : MonoBehaviour
         dailyRewardButtonText = textObj.AddComponent<TextMeshProUGUI>();
         dailyRewardButtonText.alignment = TextAlignmentOptions.Center;
         dailyRewardButtonText.fontSize = 24;
-        dailyRewardButtonText.color = Color.black;
+        dailyRewardButtonText.color = ConfirmationDialog.ButtonTextColor; // тёмный текст был под старую светлую заливку, на новой тёмно-синей рамке нужен светлый
+    }
+
+    // Открывает Collection как пикер героя для тренировки (тот же приём, что и выбор героя в слот отряда —
+    // HeroCollectionManager.pickingForBossTraining, см. HeroCollectionCardUI.OnSelected).
+    // Лимит 1/день отключён по просьбе пользователя — AccountManager.HasDoneBossTrainingToday()/
+    // MarkBossTrainingDone() оставлены нетронутыми на случай, если лимит понадобится вернуть.
+    private void OnBossTrainingClicked()
+    {
+        if (AccountManager.Instance == null || HeroCollectionManager.Instance == null) return;
+
+        HeroCollectionManager.Instance.pickingForBossTraining = true;
+        owner?.ShowCollection();
     }
 
     private void OnDailyRewardClicked()
@@ -231,7 +244,10 @@ public class CastleUI : MonoBehaviour
 
         dailyRewardButton.interactable = !claimed;
         if (dailyRewardButtonBg != null)
-            dailyRewardButtonBg.color = claimed ? new Color(1, 1, 1, 0.15f) : ConfirmationDialog.ButtonColor;
+        {
+            ConfirmationDialog.StyleAsButton(dailyRewardButtonBg);
+            dailyRewardButtonBg.color = claimed ? new Color(0.5f, 0.5f, 0.5f, 0.6f) : Color.white; // тускло-серый поверх той же рамки, пока не получена
+        }
         if (dailyRewardButtonText != null)
             dailyRewardButtonText.text = claimed ? "Daily reward\nclaimed" : $"Daily reward\n+{amount} PP";
     }
@@ -417,7 +433,7 @@ public class CastleUI : MonoBehaviour
         btnRect.anchoredPosition = new Vector2(0, 6);
 
         var img = btnObj.AddComponent<Image>();
-        img.color = ConfirmationDialog.ButtonColor;
+        ConfirmationDialog.StyleAsButton(img);
         var btn = btnObj.AddComponent<Button>();
         btn.onClick.AddListener(() => onClick?.Invoke());
 
@@ -432,6 +448,6 @@ public class CastleUI : MonoBehaviour
         text.text = label;
         text.fontSize = 12;
         text.alignment = TextAlignmentOptions.Center;
-        text.color = Color.black; // текст кнопок замка — отдельно от глобального ConfirmationDialog.ButtonTextColor
+        text.color = ConfirmationDialog.ButtonTextColor; // тёмный текст был под старую светлую заливку, на новой тёмно-синей рамке нужен светлый
     }
 }

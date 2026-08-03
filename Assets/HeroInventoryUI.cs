@@ -539,7 +539,7 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         ascendRect.anchoredPosition = referenceRect.anchoredPosition + new Vector2(0, referenceRect.sizeDelta.y + 12f);
 
         heroAscendBg = ascendObj.AddComponent<Image>();
-        heroAscendBg.color = ConfirmationDialog.ButtonColor;
+        ConfirmationDialog.StyleAsButton(heroAscendBg);
         heroAscendButton = ascendObj.AddComponent<Button>();
         heroAscendButton.onClick.AddListener(OnAscendClicked);
 
@@ -580,7 +580,7 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
     private void RefreshUpgradeButtonTheme()
     {
-        if (heroUpgradeBg != null) heroUpgradeBg.color = ConfirmationDialog.ButtonColor;
+        if (heroUpgradeBg != null) ConfirmationDialog.StyleAsButton(heroUpgradeBg);
         if (heroUpgradeText != null) heroUpgradeText.color = ConfirmationDialog.ButtonTextColor;
     }
 

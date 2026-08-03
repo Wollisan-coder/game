@@ -151,7 +151,7 @@ public class ItemPickerUI : MonoBehaviour
 
     private void RefreshUpgradeButtonTheme()
     {
-        if (upgradeButtonBg != null) upgradeButtonBg.color = ConfirmationDialog.ButtonColor;
+        if (upgradeButtonBg != null) ConfirmationDialog.StyleAsButton(upgradeButtonBg);
         if (upgradeButtonText != null) upgradeButtonText.color = ConfirmationDialog.ButtonTextColor;
     }
 

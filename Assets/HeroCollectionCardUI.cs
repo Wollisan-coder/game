@@ -51,6 +51,24 @@ public class HeroCollectionCardUI : MonoBehaviour
 
     private void OnSelected()
     {
+        // Collection используется как пикер героя для Boss Training — забираем клик раньше обычной логики
+        // выбора отряда/открытия инвентаря, запускаем боевую сцену в training-режиме (см. BattleManager.Awake).
+        if (collectionManager.pickingForBossTraining)
+        {
+            if (!collectionManager.IsUnlocked(heroData)) return; // нельзя тренировать ещё не открытого героя
+
+            collectionManager.pickingForBossTraining = false;
+
+            if (AccountManager.Instance != null)
+            {
+                AccountManager.Instance.pendingBossTraining = true;
+                AccountManager.Instance.pendingBossTrainingHeroId = heroData.heroId;
+            }
+
+            UnityEngine.SceneManagement.SceneManager.LoadScene("SampleScene");
+            return;
+        }
+
         // Если сейчас активен режим выбора героя для конкретного слота — назначаем туда
         if (collectionManager.slotBeingEdited >= 0)
         {

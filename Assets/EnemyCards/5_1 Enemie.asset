@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 98b5e3f879f3ee14db0d174b4aae035d, type: 3}
+  m_Name: 5_1 Enemie
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyData
+  enemyId: 5_1 Enemie
+  enemyName: Banshe
+  maxHP: 1000
+  maxMana: 50
+  minAttack: 10
+  maxAttack: 10
+  damageMultiplier: 1
+  price: 100
+  skills: []
+  passives: []
+  harmfulTileSpawns:
+  - type: 3
+    count: 3
+    value: 15
+  loot:
+    accountExperience: 20
+    heroExperience: 20
+    progressPoints: 30
+    currency:
+    - type: 0
+      amount: 100
+    items:
+    - item: {fileID: 11400000, guid: ad773ad50d64587ccfa3e865205bff72, type: 2}
+      count: 1
+  portrait: {fileID: 21300000, guid: f73ecb2cda9bf554ca87de314d21db7c, type: 3}
+  themeColor: {r: 0.0244749, g: 0.20754719, b: 0.050476167, a: 1}

@@ -36,7 +36,17 @@ public class MainMenuUI : MonoBehaviour
             WorldMapManager.Instance.lastActiveMapPanelName = null;
         }
 
-        if (returningFromMapBattle)
+        // Тренировка запускается только из замка, поэтому по её завершении логично вернуться именно туда,
+        // а не сбрасывать на Collection по умолчанию (см. BattleManager.EndBossTraining).
+        bool returningFromBossTraining = AccountManager.Instance != null && AccountManager.Instance.returningFromBossTraining;
+        if (AccountManager.Instance != null)
+            AccountManager.Instance.returningFromBossTraining = false;
+
+        if (returningFromBossTraining)
+        {
+            ShowCastle();
+        }
+        else if (returningFromMapBattle)
         {
             ShowWorldMap();
             OpenCityPanelByName(lastPanelName); // если бой был начат внутри города — переключаемся именно туда

@@ -22,6 +22,11 @@ public class BattleManager : MonoBehaviour
     public float heroDamageMultiplier = 1f;
     public int heroDamageMultiplierTurnsRemaining = 0;
 
+    // Пассивка Демонов — накопительно, без таймера (в отличие от enemyIncomingDamageMultiplier/
+    // enemyArmorDebuffTurnsRemaining, которые сбрасываются по истечении скилловых дебаффов брони) —
+    // отдельное поле, чтобы не конфликтовать с ними. См. ApplyRacePassivesPerTurn.
+    private float demonsResistanceShredBonus = 0f;
+
     [Header("Герои в бою")]
     public HeroData[] heroRoster; // назначить в Inspector всех героев, участвующих в бою
     public List<HeroRuntimeState> activeHeroes = new List<HeroRuntimeState>();
@@ -91,6 +96,26 @@ public class BattleManager : MonoBehaviour
     [Header("Гемблинг-колесо — щит команды на N ходов, оглушение/блок скилла героя")]
     public int extendedShieldTurnsRemaining = 0; // пока > 0, щит НЕ сбрасывается после хода врага (ShieldTeamTurns)
 
+    [Header("Boss Training (см. project_boss_training_mechanic_concept) — игрок управляет боссом, ИИ играет доску за тренируемого героя")]
+    public bool isBossTraining;
+    // ОЦЕНКА, не измерено живым тестом — см. project_campaign_difficulty_curve для методологии перекалибровки после плейтеста.
+    public int bossTrainingMaxHP = 300;
+    public int bossTrainingTotalTurns = 15;
+    public int baseTrainingXp = 1600; // = ценность одного HeroExpGemPurple — см. project_campaign_difficulty_curve
+    public BossTrainingSkillData[] bossTrainingSkillKit; // один общий набор на всех тренируемых героев — см. BattleUI
+
+    // Прямая ссылка на ассет, а не heroId-строка — при запуске SampleScene напрямую (Play без похода через
+    // MainMenuScene) HeroCollectionManager.Instance ещё не существует (DontDestroyOnLoad не успел создаться
+    // в этом Play-сеансе), так что искать героя по id через менеджер тут не получится.
+    [Header("Debug — тест Boss Training без похода через Castle/пикер героя (жать Play прямо в SampleScene)")]
+    public bool debugForceBossTraining;
+    public HeroData debugTrainingHero;
+    public float bossTrainingPlayerWindowSeconds = 5f; // сколько ждать бездействия игрока, прежде чем сходить ИИ сама (пасс по таймауту)
+    private int bossTrainingTurnsRemaining;
+    private string bossTrainingHeroId;
+    private Coroutine bossTrainingWindowCoroutine;
+    private readonly Dictionary<BossTrainingSkillData, int> bossTrainingSkillUses = new Dictionary<BossTrainingSkillData, int>();
+
     [System.Serializable]
     private class PendingDamage
     {
@@ -122,6 +147,14 @@ public class BattleManager : MonoBehaviour
     {
         playerHP = playerMaxHP;
         boardFlipUsedThisBattle = false;
+
+        isBossTraining = debugForceBossTraining ||
+            (AccountManager.Instance != null && AccountManager.Instance.pendingBossTraining);
+        if (isBossTraining)
+        {
+            InitializeBossTraining();
+            return; // отдельная инициализация — обычный путь (currentEnemy/EnemyStatCurve/сквод) не нужен
+        }
 
         currentEnemy = ResolveEnemy();
         if (currentEnemy != null)
@@ -191,11 +224,72 @@ public class BattleManager : MonoBehaviour
         }
     }
 
+    // Отдельная инициализация Boss Training: тренируется ОДИН выбранный герой (не весь отряд), "враг" (enemyHP)
+    // на самом деле представляет собственный HP-пул игрока-босса — гемм-матчи ИИ (см. GridManager.AutoPlayLoop)
+    // бьют по нему через уже существующий DealDamageToEnemy, никакой новой боевой математики не нужно.
+    private void InitializeBossTraining()
+    {
+        var accountManager = AccountManager.Instance;
+        HeroData trainedHero;
+
+        if (debugForceBossTraining)
+        {
+            trainedHero = debugTrainingHero;
+            bossTrainingHeroId = trainedHero != null ? trainedHero.heroId : null;
+        }
+        else
+        {
+            bossTrainingHeroId = accountManager != null ? accountManager.pendingBossTrainingHeroId : null;
+            if (accountManager != null) accountManager.pendingBossTraining = false; // одноразовый флаг, гасим сразу
+
+            trainedHero = HeroCollectionManager.Instance != null
+                ? HeroCollectionManager.Instance.allHeroes.FirstOrDefault(h => h != null && h.heroId == bossTrainingHeroId)
+                : null;
+        }
+
+        heroRoster = trainedHero != null ? new[] { trainedHero } : new HeroData[0];
+
+        enemyMaxHP = bossTrainingMaxHP;
+        enemyHP = enemyMaxHP;
+        enemyShield = 0;
+        bossTrainingTurnsRemaining = bossTrainingTotalTurns;
+
+        activeHeroes.Clear();
+        foreach (var hero in heroRoster)
+        {
+            if (hero == null) continue;
+
+            int level = 1;
+            int ascensionLevel = 0;
+            HeroOwnershipData ownership = HeroCollectionManager.Instance?.ownership.Find(o => o.heroId == hero.heroId);
+            if (ownership != null)
+            {
+                level = ownership.level;
+                ascensionLevel = ownership.ascensionLevel;
+            }
+
+            // Тренируется герой в своём реальном виде — экипировка работает как обычно (это не Death Dungeon
+            // с уравниванием статов, тут смысл именно прокачать существующего героя таким, какой он есть).
+            var heroState = new HeroRuntimeState(hero, level, ascensionLevel);
+            var bonuses = HeroStatUtility.CalculateEquipmentBonuses(ownership);
+            heroState.maxHealth += bonuses.health;
+            heroState.currentHealth += bonuses.health;
+            heroState.maxResource += bonuses.mana;
+            heroState.damageMultiplier += bonuses.damageMultiplier;
+            heroState.armor += bonuses.armor;
+
+            activeHeroes.Add(heroState);
+        }
+
+        if (gridManager != null)
+            gridManager.SetTrainingMode(true);
+    }
+
     // raiseEvent=false — для вызовов, которые сами суммируют несколько попаданий за один ход
     // (см. ResolvePlayerTurn) и поднимают OnEnemyDamaged один раз с итоговой суммой, а не по кускам.
     public int DealDamageToEnemy(int amount, bool raiseEvent = true)
     {
-        float multiplier = enemyIncomingDamageMultiplier * nextHitDamageMultiplier;
+        float multiplier = enemyIncomingDamageMultiplier * nextHitDamageMultiplier * GetPassiveDamageReductionMultiplier() * (1f + demonsResistanceShredBonus);
         int scaledAmount = Mathf.RoundToInt(amount * multiplier);
         nextHitDamageMultiplier = 1f; // метка слабости — одноразовая
 
@@ -209,6 +303,8 @@ public class BattleManager : MonoBehaviour
             OnBattleLog?.Invoke($"Enemy took {applied} damage");
             if (raiseEvent)
                 OnEnemyDamaged?.Invoke(applied);
+
+            ApplyReflectPassives(applied);
         }
 
         return applied;
@@ -246,6 +342,11 @@ public class BattleManager : MonoBehaviour
             {
                 int baseDamage = count * GetDamagePerGem(type);
                 int finalDamage = Mathf.RoundToInt(baseDamage * damageMultiplier * heroDamageMultiplier);
+
+                // Орки — пассивка: 10% шанс утроить урон этого попадания ("3х удар"), любой цвет.
+                if (HasLivingHeroOfRace(Race.Orcs) && Random.value < 0.10f)
+                    finalDamage *= 3;
+
                 totalEnemyDamageThisTurn += DealDamageToEnemy(finalDamage, raiseEvent: false);
 
                 // Каждый живой активный герой этого цвета получает полную порцию ресурса
@@ -257,6 +358,12 @@ public class BattleManager : MonoBehaviour
                 }
             }
         }
+
+        // Эльфы — пассивка: 10% шанс оглушить врага при обычном матче (любой цвет). enemyStunnedNextTurn —
+        // bool, не счётчик, поэтому одной попытки за ход достаточно (несколько цветов в одном ходу не дают
+        // накопления оглушения).
+        if (matchedTypeCounts.Count > 0 && HasLivingHeroOfRace(Race.Elves) && Random.value < 0.10f)
+            enemyStunnedNextTurn = true;
 
         if (totalEnemyDamageThisTurn > 0)
             OnEnemyDamaged?.Invoke(totalEnemyDamageThisTurn);
@@ -335,7 +442,23 @@ public class BattleManager : MonoBehaviour
             }
         }
 
+        ApplyRacePassivesPerTurn();
+
         OnStateChanged?.Invoke();
+
+        if (isBossTraining)
+        {
+            // ИИ-гемм-матч — это и есть "атака героя", отдельного хода-ответа врага (=босса-игрока) нет:
+            // босс защищается своими скиллами по клику игрока, не автоматически. Сессия кончается по HP
+            // босса до нуля ИЛИ по истечении фиксированного числа ходов — что раньше.
+            bossTrainingTurnsRemaining--;
+            if (enemyHP <= 0 || bossTrainingTurnsRemaining <= 0)
+                EndBossTraining();
+            else
+                OpenBossTrainingPlayerWindow();
+
+            return;
+        }
 
         if (enemyHP <= 0)
         {
@@ -350,6 +473,132 @@ public class BattleManager : MonoBehaviour
         {
             StartCoroutine(EnemyTurnRoutine());
         }
+    }
+
+    // "Ход игрока" между автоходами ИИ: игрок может использовать РОВНО один скилл босса (клик сразу
+    // обрывает ожидание и передаёт ход дальше — см. UseBossTrainingSkill), либо ничего не делать и
+    // дождаться таймаута — тогда ход переходит к ИИ сам. Так нельзя заспамить один скилл несколько
+    // раз подряд между ходами ИИ (баг, который поймал пользователь с Set Trap).
+    private void OpenBossTrainingPlayerWindow()
+    {
+        if (bossTrainingWindowCoroutine != null) StopCoroutine(bossTrainingWindowCoroutine);
+        bossTrainingWindowCoroutine = StartCoroutine(BossTrainingPlayerWindowRoutine());
+    }
+
+    private IEnumerator BossTrainingPlayerWindowRoutine()
+    {
+        yield return new WaitForSeconds(bossTrainingPlayerWindowSeconds);
+        bossTrainingWindowCoroutine = null;
+        gridManager?.RequestNextAiMove();
+    }
+
+    // FindAnyObjectByType<Canvas>() ненадёжен, если в сцене больше одного Canvas (в SampleScene их минимум
+    // два) — может найти не тот, и попап рисуется криво/не по центру. BattleUI уже решает ровно эту же
+    // проблему через enemyPortrait.GetComponentInParent<Canvas>() — переиспользуем то же самое решение
+    // здесь, а не гадаем заново с FindAnyObjectByType<Canvas>().
+    private Transform ResolveDialogRoot()
+    {
+        var battleUI = FindAnyObjectByType<BattleUI>();
+        if (battleUI != null && battleUI.enemyPortrait != null)
+        {
+            var uiCanvas = battleUI.enemyPortrait.GetComponentInParent<Canvas>();
+            if (uiCanvas != null) return uiCanvas.transform;
+        }
+
+        var anyCanvas = FindAnyObjectByType<Canvas>();
+        return anyCanvas != null ? anyCanvas.transform : transform;
+    }
+
+    // Итог тренировки: XP тренируемому герою пропорционален доле оставшегося HP босса (минимум 10%, чтобы
+    // полный разгром не ощущался как "впустую") — см. project_boss_training_mechanic_concept про анти-абьюз принцип.
+    public void EndBossTraining()
+    {
+        if (battleEnded) return;
+        battleEnded = true;
+
+        gridManager?.SetTrainingMode(false);
+
+        float hpFraction = enemyMaxHP > 0 ? (float)enemyHP / enemyMaxHP : 0f;
+        int heroXp = Mathf.RoundToInt(baseTrainingXp * Mathf.Max(0.1f, hpFraction));
+
+        if (!string.IsNullOrEmpty(bossTrainingHeroId))
+            HeroCollectionManager.Instance?.GrantExperience(bossTrainingHeroId, heroXp);
+
+        AccountManager.Instance?.MarkBossTrainingDone();
+
+        string summary = $"Training complete!\nBoss HP held: {Mathf.RoundToInt(hpFraction * 100)}%\nHero XP +{heroXp}";
+        OnBattleLog?.Invoke(summary.Replace("\n", " | "));
+
+        Transform root = ResolveDialogRoot();
+        ConfirmationDialog.ShowInfo(root, summary, 220, () =>
+        {
+            if (AccountManager.Instance != null)
+                AccountManager.Instance.returningFromBossTraining = true;
+
+            SceneManager.LoadScene(mainMenuSceneName);
+        });
+    }
+
+    // Универсальный набор скиллов босса (игрока) в Boss Training — все эффекты переиспользуют уже
+    // существующие поля/методы врага (enemyShield/enemyHP/heroDamageMultiplier/enemyIncomingDamageMultiplier),
+    // просто с ролями наоборот: тут игрок нажимает кнопку, а не AI выбирает скилл случайно.
+    public void UseBossTrainingSkill(BossTrainingSkillData skill)
+    {
+        if (!isBossTraining || skill == null) return;
+        if (bossTrainingWindowCoroutine == null) return; // не "окно игрока" — ход сейчас не у босса
+
+        int used = bossTrainingSkillUses.TryGetValue(skill, out int u) ? u : 0;
+        if (skill.usesPerTraining > 0 && used >= skill.usesPerTraining)
+        {
+            OnBattleLog?.Invoke($"{skill.skillName}: no uses left this training.");
+            return;
+        }
+
+        bossTrainingSkillUses[skill] = used + 1;
+
+        switch (skill.effectType)
+        {
+            case BossTrainingSkillEffectType.Shield:
+                enemyShield += Mathf.RoundToInt(enemyMaxHP * skill.percentOfMaxHP);
+                break;
+
+            case BossTrainingSkillEffectType.Heal:
+                enemyHP = Mathf.Min(enemyMaxHP, enemyHP + Mathf.RoundToInt(enemyMaxHP * skill.percentOfMaxHP));
+                break;
+
+            case BossTrainingSkillEffectType.WeakenAIDamage:
+                heroDamageMultiplier = 1f - skill.reductionPercent;
+                heroDamageMultiplierTurnsRemaining = skill.durationTurns;
+                break;
+
+            case BossTrainingSkillEffectType.ReduceIncoming:
+                enemyIncomingDamageMultiplier = 1f - skill.reductionPercent;
+                enemyArmorDebuffTurnsRemaining = skill.durationTurns;
+                break;
+
+            case BossTrainingSkillEffectType.CastTrap:
+                gridManager?.CastHarmfulTileRandom(skill.trapType, skill.trapValue);
+                break;
+        }
+
+        OnStateChanged?.Invoke();
+
+        // Игрок потратил своё единственное действие в этом окне — сразу закрываем окно и передаём ход ИИ,
+        // не дожидаясь bossTrainingPlayerWindowSeconds (иначе можно было бы использовать ещё один скилл до таймаута).
+        if (bossTrainingWindowCoroutine != null)
+        {
+            StopCoroutine(bossTrainingWindowCoroutine);
+            bossTrainingWindowCoroutine = null;
+        }
+        gridManager?.RequestNextAiMove();
+    }
+
+    // Остаток кликов скилла в текущей тренировке — для счётчика на кнопке в BattleUI. -1 = без лимита (счётчик не показываем).
+    public int GetBossTrainingSkillUsesRemaining(BossTrainingSkillData skill)
+    {
+        if (skill == null || skill.usesPerTraining <= 0) return -1;
+        int used = bossTrainingSkillUses.TryGetValue(skill, out int u) ? u : 0;
+        return Mathf.Max(0, skill.usesPerTraining - used);
     }
 
     public void Heal(int amount) => playerHP = Mathf.Min(playerMaxHP, playerHP + amount);
@@ -439,6 +688,8 @@ public class BattleManager : MonoBehaviour
     {
         yield return new WaitForSeconds(0.5f);
 
+        ApplyRegenPassives(); // тикает независимо от оглушения — это не действие, а пассивный эффект
+
         if (enemyStunnedNextTurn)
         {
             enemyStunnedNextTurn = false;
@@ -466,6 +717,69 @@ public class BattleManager : MonoBehaviour
 
         if (playerHP <= 0)
             OnPlayerDefeated();
+    }
+
+    // --- Пассивки врага (EnemyPassiveData) — всегда активны, без хода ---
+
+    private void ApplyRegenPassives()
+    {
+        if (currentEnemy?.passives == null) return;
+
+        foreach (var p in currentEnemy.passives)
+        {
+            if (p.effectType != EnemyPassiveEffectType.Regen) continue;
+
+            int healAmount = Mathf.RoundToInt(enemyMaxHP * p.percent);
+            if (healAmount <= 0 || enemyHP >= enemyMaxHP) continue;
+
+            enemyHP = Mathf.Min(enemyMaxHP, enemyHP + healAmount);
+            OnBattleLog?.Invoke($"Enemy regenerates {healAmount} HP");
+        }
+    }
+
+    private float GetPassiveDamageReductionMultiplier()
+    {
+        float mult = 1f;
+        if (currentEnemy?.passives == null) return mult;
+
+        foreach (var p in currentEnemy.passives)
+            if (p.effectType == EnemyPassiveEffectType.DamageReduction)
+                mult *= Mathf.Clamp01(1f - p.percent);
+
+        return mult;
+    }
+
+    private void ApplyReflectPassives(int damageTaken)
+    {
+        if (currentEnemy?.passives == null || damageTaken <= 0) return;
+
+        foreach (var p in currentEnemy.passives)
+        {
+            if (p.effectType != EnemyPassiveEffectType.Reflect) continue;
+
+            int reflected = Mathf.RoundToInt(damageTaken * p.percent);
+            if (reflected > 0)
+                ApplyDamageToHero(GetRandomAliveHero(), reflected);
+        }
+    }
+
+    // +% к урону врага, пока в отряде жив хотя бы один герой "поглощаемого" цвета (design intent из
+    // project_game_design_concept: AbsorbedColors) — форсирует разнообразие состава вместо одного лучшего отряда.
+    private float GetPassiveOutgoingDamageMultiplier()
+    {
+        float mult = 1f;
+        if (currentEnemy?.passives == null) return mult;
+
+        foreach (var p in currentEnemy.passives)
+        {
+            if (p.effectType == EnemyPassiveEffectType.ColorAbsorb &&
+                activeHeroes.Any(h => h.currentHealth > 0 && (int)h.data.resourceType == p.absorbColorType))
+            {
+                mult += p.absorbDamageBonus;
+            }
+        }
+
+        return mult;
     }
 
     private EnemySkillData PickEnemySkill()
@@ -498,7 +812,7 @@ public class BattleManager : MonoBehaviour
                     OnBattleLog?.Invoke("Enemy missed!");
                     break;
                 }
-                ApplyDamageToHero(GetRandomAliveHero(), Mathf.RoundToInt(skill.effectValue * currentEnemy.damageMultiplier * enemyDamageMultiplier));
+                ApplyDamageToHero(GetRandomAliveHero(), Mathf.RoundToInt(skill.effectValue * currentEnemy.damageMultiplier * enemyDamageMultiplier * GetPassiveOutgoingDamageMultiplier()));
                 break;
 
             case EnemySkillEffectType.ShieldSelf:
@@ -522,7 +836,7 @@ public class BattleManager : MonoBehaviour
         }
 
         int rawDamage = Random.Range(enemyMinAttack, enemyMaxAttack + 1);
-        float multiplier = (currentEnemy != null ? currentEnemy.damageMultiplier : 1f) * enemyDamageMultiplier;
+        float multiplier = (currentEnemy != null ? currentEnemy.damageMultiplier : 1f) * enemyDamageMultiplier * GetPassiveOutgoingDamageMultiplier();
         int finalDamage = Mathf.RoundToInt(rawDamage * multiplier);
 
         ApplyDamageToHero(PickBasicAttackTarget(), finalDamage);
@@ -539,6 +853,44 @@ public class BattleManager : MonoBehaviour
         if (candidates.Count == 0) return null; // все герои погибли
 
         return candidates[Random.Range(0, candidates.Count)];
+    }
+
+    // Жив, не оглушён (та же логика, что и в GetDamagePerGem — оглушённый герой считается недоступным)
+    private bool HasLivingHeroOfRace(Race race) =>
+        activeHeroes.Any(h => h.currentHealth > 0 && h.stunnedTurnsRemaining <= 0 && h.data.race == race);
+
+    private HeroRuntimeState GetLivingHeroOfRace(Race race, HeroRuntimeState exclude = null) =>
+        activeHeroes.FirstOrDefault(h => h.currentHealth > 0 && h.stunnedTurnsRemaining <= 0 && h.data.race == race && h != exclude);
+
+    // Пассивки рас — по одной на расу, включаются, пока в отряде жив (не оглушён) хотя бы один герой этой
+    // расы. Проки Эльфов/Орков (завязаны на конкретное попадание) — прямо в цикле ResolvePlayerTurn, здесь —
+    // тикающие раз в ход. Список и проценты — по прямому ТЗ пользователя, не выведены из дизайн-доков.
+    private void ApplyRacePassivesPerTurn()
+    {
+        // Феи (Fairy, "Гномы" в разговоре) — щит на 15% макс. HP случайного героя, каждый ход. Щит в этом
+        // проекте общий на отряд (playerShield), не per-hero — случайный герой определяет только % базу.
+        if (HasLivingHeroOfRace(Race.Fairy))
+        {
+            var randomHero = GetRandomAliveHero();
+            if (randomHero != null)
+                AddShield(Mathf.RoundToInt(randomHero.maxHealth * 0.15f));
+        }
+
+        // Драконы (Dragonkin) — периодический урон врагу, 1% от его максимального HP, каждый ход.
+        if (HasLivingHeroOfRace(Race.Dragonkin))
+            DealDamageToEnemy(Mathf.RoundToInt(enemyMaxHP * 0.01f));
+
+        // Демоны — сопротивление врага снижается на 2% каждый ход, накопительно (см. demonsResistanceShredBonus).
+        if (HasLivingHeroOfRace(Race.Demons))
+            demonsResistanceShredBonus += 0.02f;
+
+        // Ангелы — лечение всей команде, 5% от playerMaxHP каждый ход.
+        if (HasLivingHeroOfRace(Race.Angels))
+            Heal(Mathf.RoundToInt(playerMaxHP * 0.05f));
+
+        // Зверолюди (Beastfolk) — 10% шанс не потратить ход на этом матче (лишний бесплатный ход).
+        if (HasLivingHeroOfRace(Race.Beastfolk) && Random.value < 0.10f)
+            freeExtraTurnsRemaining++;
     }
 
     // Обычная атака врага не может попасть в одного героя 3 раза подряд
@@ -565,6 +917,10 @@ public class BattleManager : MonoBehaviour
             OnBattleLog?.Invoke("Attack blocked — invulnerable!");
             return;
         }
+
+        // Проклятая клетка BloodMark на поле — увеличивает весь входящий урон игроку, пока не убрана.
+        if (gridManager != null)
+            rawDamage = Mathf.RoundToInt(rawDamage * gridManager.GetBloodMarkDamageMultiplier());
 
         int absorbed = Mathf.Min(playerShield, rawDamage);
         playerShield -= absorbed;
@@ -700,8 +1056,7 @@ public class BattleManager : MonoBehaviour
         string summary = "Victory!\n" + string.Join("\n", rewardLines);
         OnBattleLog?.Invoke(summary.Replace("\n", " | "));
 
-        var canvas = FindAnyObjectByType<Canvas>();
-        Transform root = canvas != null ? canvas.transform : transform;
+        Transform root = ResolveDialogRoot();
         ConfirmationDialog.ShowInfo(root, summary, 260, () => SceneManager.LoadScene(mainMenuSceneName));
     }
     private void OnPlayerDefeated()
@@ -720,8 +1075,7 @@ public class BattleManager : MonoBehaviour
         const string summary = "Defeat...";
         OnBattleLog?.Invoke(summary);
 
-        var canvas = FindAnyObjectByType<Canvas>();
-        Transform root = canvas != null ? canvas.transform : transform;
+        Transform root = ResolveDialogRoot();
         ConfirmationDialog.ShowInfo(root, summary, 170, () => SceneManager.LoadScene(mainMenuSceneName));
     }
 
@@ -746,6 +1100,12 @@ public class BattleManager : MonoBehaviour
 
         ApplySkillEffect(hero, skill);
 
+        // Люди — пассивка: 15% от потраченной маны возвращается живому герою-Человеку рядом (не самому
+        // кастующему — если кастующий и есть тот единственный Человек, возвращать некому).
+        var humanAlly = GetLivingHeroOfRace(Race.Humans, exclude: hero);
+        if (humanAlly != null)
+            humanAlly.currentResource = Mathf.Min(humanAlly.maxResource, humanAlly.currentResource + Mathf.RoundToInt(actualCost * 0.15f));
+
         OnStateChanged?.Invoke();
 
         bool skipsImmediateEnemyTurn =
@@ -759,13 +1119,52 @@ public class BattleManager : MonoBehaviour
 
         if (!skipsImmediateEnemyTurn)
         {
-            if (enemyHP <= 0)
+            // В Boss Training нет обычного врага (currentEnemy == null) — EnemyTurnRoutine там бессмысленна
+            // (PickEnemySkill вернёт null и отработает BasicEnemyAttack по playerHP, чего быть не должно).
+            // Вместо этого — та же ветка, что и после гемм-матча в ResolvePlayerTurn.
+            if (isBossTraining)
+            {
+                bossTrainingTurnsRemaining--;
+                if (enemyHP <= 0 || bossTrainingTurnsRemaining <= 0)
+                    EndBossTraining();
+                else
+                    OpenBossTrainingPlayerWindow();
+            }
+            else if (enemyHP <= 0)
+            {
                 OnEnemyDefeated();
+            }
             else
+            {
                 StartCoroutine(EnemyTurnRoutine());
+            }
         }
 
         return true;
+    }
+
+    // ИИ тренируемого героя пытается применить свой активный навык вместо хода по доске — аналог клика
+    // игрока по HeroCardUI.OnActivateClicked, но автоматически (см. GridManager.PlayOneAiMove).
+    public bool TryUseTrainedHeroSkillIfPossible()
+    {
+        if (!isBossTraining || activeHeroes.Count == 0) return false;
+
+        HeroRuntimeState hero = activeHeroes[0];
+        SkillData skill = ResolveTrainedHeroActiveSkill(hero);
+        return skill != null && TryUseSkill(hero, skill);
+    }
+
+    // Тот же выбор активного навыка, что и HeroCardUI.ResolveActiveSkill — выбранный игроком в инвентаре, иначе первый.
+    private SkillData ResolveTrainedHeroActiveSkill(HeroRuntimeState hero)
+    {
+        if (hero.data.skills == null || hero.data.skills.Length == 0) return null;
+
+        int activeIndex = 0;
+        var ownership = HeroCollectionManager.Instance?.ownership.Find(o => o.heroId == hero.data.heroId);
+        if (ownership != null)
+            activeIndex = Mathf.Clamp(ownership.activeSkillIndex, 0, hero.data.skills.Length - 1);
+
+        return hero.data.skills[activeIndex];
     }
 
     // Случайный живой герой, кроме exclude (без фолбэка на самого exclude — в отличие от GetRandomAliveHero)

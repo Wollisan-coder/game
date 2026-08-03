@@ -35,7 +35,7 @@ public static class BattlePrepPopup
         windowRect.pivot = new Vector2(0.5f, 0.5f);
         windowRect.sizeDelta = new Vector2(700, 1400);
         var windowBg = windowObj.AddComponent<Image>();
-        windowBg.color = new Color(0.15f, 0.15f, 0.15f, 1f);
+        ConfirmationDialog.StyleAsPanel(windowBg);
         // Пустой Button-блокер поверх фона окна — чтобы клик по самому попапу не проваливался
         // на dim-кнопку позади и не закрывал его вместе с кликом "вне".
         var windowBlocker = windowObj.AddComponent<Button>();
@@ -101,7 +101,7 @@ public static class BattlePrepPopup
         btnRect.sizeDelta = new Vector2(380, 160);
         btnRect.anchoredPosition = new Vector2(0, 40);
         var btnBg = btnObj.AddComponent<Image>();
-        btnBg.color = ConfirmationDialog.ButtonColor;
+        ConfirmationDialog.StyleAsButton(btnBg);
         var btn = btnObj.AddComponent<Button>();
         btn.onClick.AddListener(() =>
         {
