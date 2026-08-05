@@ -2,26 +2,22 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
+// Числовые значения проставлены явно и совпадают со старыми позициями в enum —
+// GambleEffectPool.asset хранит effectType как int, менять их нельзя без пересборки ассета.
 public enum BoardEffectType
 {
-    HealPlayer,
-    ShieldPlayer,
-    DamageBuff,
-    FreeHitOnEnemy,
-    DamageRandomHero,
-    EnemyShield,
-    WeakenHeroes,
-    BlockMana,
+    FreeHitOnEnemy = 3,
+    WeakenHeroes = 6,
 
     // --- Гемблинг-колесо: пользовательский список позитив/негатив ---
-    FullManaAllHeroes,      // позитив: полная мана всем героям сразу
-    HealPercentMaxHP,       // позитив: лечение команды на % от максимального HP (multiplier = процент)
-    ShieldTeamTurns,        // позитив: щит на всю команду, не сбрасывается N ходов
-    ExtraTurnsFree,         // позитив: N дополнительных ходов без затрат (amount = кол-во ходов)
-    FreezeRandomRowOrColumn,// негатив: заморозка случайной строки/столбца на N ходов
-    StunRandomHero,         // негатив: случайный герой "пропускает" N ходов (его цвет не работает)
-    EnemyDamageBuff,        // негатив: враг получает бафф урона на N ходов
-    BlockHeroSkill          // негатив: случайному герою блокируется скилл на N ходов
+    FullManaAllHeroes = 8,      // позитив: полная мана всем героям сразу
+    HealPercentMaxHP = 9,       // позитив: лечение команды на % от максимального HP (multiplier = процент)
+    ShieldTeamTurns = 10,       // позитив: щит на всю команду, не сбрасывается N ходов
+    ExtraTurnsFree = 11,        // позитив: N дополнительных ходов без затрат (amount = кол-во ходов)
+    FreezeRandomRowOrColumn = 12,// негатив: заморозка случайной строки/столбца на N ходов
+    StunRandomHero = 13,        // негатив: случайный герой "пропускает" N ходов (его цвет не работает)
+    EnemyDamageBuff = 14,       // негатив: враг получает бафф урона на N ходов
+    BlockHeroSkill = 15         // негатив: случайному герою блокируется скилл на N ходов
 }
 
 // Вешается на каждую из 8 кнопок-вариантов в панели шаффла.
@@ -85,14 +81,8 @@ public class BoardEffectOption : MonoBehaviour
     {
         switch (effectType)
         {
-            case BoardEffectType.HealPlayer: return $"+{amount} HP";
-            case BoardEffectType.ShieldPlayer: return $"+{amount} Shield";
-            case BoardEffectType.DamageBuff: return $"Damage x{multiplier} ({turns} turns)";
             case BoardEffectType.FreeHitOnEnemy: return $"{amount} damage to enemy";
-            case BoardEffectType.DamageRandomHero: return $"-{amount} HP to a hero";
-            case BoardEffectType.EnemyShield: return $"+{amount} Shield to enemy";
             case BoardEffectType.WeakenHeroes: return $"Heroes' damage x{multiplier} ({turns} turns)";
-            case BoardEffectType.BlockMana: return "Mana block";
 
             case BoardEffectType.FullManaAllHeroes: return "Full mana to all heroes";
             case BoardEffectType.HealPercentMaxHP: return $"Heal team {multiplier * 100:0}% HP";
@@ -115,29 +105,11 @@ public class BoardEffectOption : MonoBehaviour
 
         switch (effectType)
         {
-            case BoardEffectType.HealPlayer:
-                battleManager.Heal(amount);
-                break;
-            case BoardEffectType.ShieldPlayer:
-                battleManager.AddShield(amount);
-                break;
-            case BoardEffectType.DamageBuff:
-                battleManager.ApplyDamageBuff(multiplier, turns);
-                break;
             case BoardEffectType.FreeHitOnEnemy:
                 battleManager.DealDamageToEnemy(amount);
                 break;
-            case BoardEffectType.DamageRandomHero:
-                targetedHero = battleManager.DamageRandomHero(amount);
-                break;
-            case BoardEffectType.EnemyShield:
-                battleManager.AddEnemyShield(amount);
-                break;
             case BoardEffectType.WeakenHeroes:
                 battleManager.ApplyWeakenHeroes(multiplier, turns);
-                break;
-            case BoardEffectType.BlockMana:
-                battleManager.BlockManaForAllHeroes();
                 break;
 
             case BoardEffectType.FullManaAllHeroes:

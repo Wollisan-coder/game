@@ -65,11 +65,11 @@ public static class UIAssetImportSetup
         // Обёрточные префабы (пользователь вручную подобрал Scale в сцене и сохранил как Prefab) —
         // а не сырые .glb напрямую: у сырых ассетов масштаб экспорта (Tripo/Meshy) в разы больше
         // размера обычной фишки, эти префабы уже несут правильный Transform.localScale.
-        // LineClearSpecial_Pivot — вторая итерация LineClearSpecial: у сырой модели pivot был не в
-        // геометрическом центре (звезда "свисала" от gizmo), обёрнута в пустой родитель с центрированным
-        // ребёнком — см. Item.MarkAsSpecial, который ставит localPosition=zero этому prefab'у как
-        // ребёнку фишки, так что смещённый pivot без этой обёртки давал видимый сдвиг модели в клетке.
-        var lineClear = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/3inrow base/LineClearSpecial_Pivot.prefab");
+        // LineClearSpecial.prefab — третья итерация: звезда (LineClearSpecial_Pivot, обёрнутый вокруг
+        // 2Sides.glb) заменена на double-headed-arrow модель (2462 треугольника — на порядок легче
+        // изначального arroow.glb на 19802 треугольника, см. LineClearSpecialFixer). Тот же принцип —
+        // Item.MarkAsSpecial ставит localPosition=zero этому prefab'у как ребёнку фишки.
+        var lineClear = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/3inrow base/LineClearSpecial.prefab");
         var colorBomb = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/3inrow base/BombClearSpecial_Pivot.prefab");
 
         bool dirty = false;

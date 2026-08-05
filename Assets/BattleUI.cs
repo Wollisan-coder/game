@@ -21,6 +21,39 @@ public class BattleUI : MonoBehaviour
     public TMP_Text enemyHPText;
     public TMP_Text enemyShieldText; // назначить в Inspector, по аналогии с playerShieldText — раньше поля не было вообще, enemyShield (в Boss Training это щит босса) нигде не отображался
 
+    [Header("Статус-иконки врага (правый нижний угол портрета)")]
+    public Sprite enemyStunIconSprite;
+    public Sprite enemyShieldIconSprite;
+    public Sprite enemyDamageBuffIconSprite;
+    public Sprite enemyDamageDebuffIconSprite;
+    private Image enemyStunIcon;
+    private Image enemyShieldIcon;
+    private Image enemyDamageBuffIcon;
+    private Image enemyDamageDebuffIcon;
+
+    [Header("Картинки для всплывающей анимации врага (отдельные от угловых иконок)")]
+    public Sprite enemyStunPopupSprite;
+    public Sprite enemyShieldPopupSprite;
+    public Sprite enemyDamageBuffPopupSprite;
+    public Sprite enemyDamageDebuffPopupSprite;
+
+    [Header("Размер всплывающей картинки врага (px)")]
+    public float enemyStunPopupSize = 48f;
+    public float enemyShieldPopupSize = 48f;
+    public float enemyDamageBuffPopupSize = 48f;
+    public float enemyDamageDebuffPopupSize = 48f;
+
+    [Header("Звук статус-эффектов врага (необязательно, на каждый свой)")]
+    public AudioClip enemyStunSound;
+    public AudioClip enemyShieldSound;
+    public AudioClip enemyDamageBuffSound;
+    public AudioClip enemyDamageDebuffSound;
+
+    private bool wasEnemyStunned;
+    private bool wasEnemyShielded;
+    private bool wasEnemyDamageBuffed;
+    private bool wasEnemyDamageDebuffed;
+
     // Слоты вместо жёсткой привязки HeroData->текст: отряд собирается игроком из
     // произвольных героев, поэтому слот просто занимает i-й герой из activeHeroes,
     // а лишние слоты (отряд меньше, чем слотов) скрываются, как и в HeroInventoryUI.PopulateSkillSelectors.
@@ -47,6 +80,7 @@ if (enemyPortrait != null && battleManager.currentEnemy != null && battleManager
     enemyPortrait.sprite = battleManager.currentEnemy.portrait;
 
         EnsureEnemyShieldText();
+        EnsureEnemyStatusIcons();
 
         if (battleManager.isBossTraining)
             BuildBossTrainingSkillBar();
@@ -78,6 +112,82 @@ if (enemyPortrait != null && battleManager.currentEnemy != null && battleManager
         text.color = enemyHPText.color;
 
         enemyShieldText = text;
+    }
+
+    // Ряд статус-иконок в правом нижнем углу портрета врага — тот же EnsureExtraUI-паттерн, что и у enemyShieldText,
+    // потому что в сцене этот элемент никогда не размещался вручную.
+    private void EnsureEnemyStatusIcons()
+    {
+        if (enemyPortrait == null) return;
+
+        var container = new GameObject("EnemyStatusIcons", typeof(RectTransform));
+        var containerRect = (RectTransform)container.transform;
+        containerRect.SetParent(enemyPortrait.transform, false);
+        containerRect.anchorMin = new Vector2(1, 0);
+        containerRect.anchorMax = new Vector2(1, 0);
+        containerRect.pivot = new Vector2(1, 0);
+        containerRect.anchoredPosition = new Vector2(-4, 4);
+        containerRect.sizeDelta = new Vector2(100, 18);
+
+        var layout = container.AddComponent<HorizontalLayoutGroup>();
+        layout.childAlignment = TextAnchor.MiddleRight;
+        layout.spacing = 2;
+        layout.childControlWidth = false;
+        layout.childControlHeight = false;
+        layout.childForceExpandWidth = false;
+        layout.childForceExpandHeight = false;
+
+        enemyStunIcon = CreateStatusIcon(containerRect, "StunIcon", enemyStunIconSprite);
+        enemyShieldIcon = CreateStatusIcon(containerRect, "ShieldIcon", enemyShieldIconSprite);
+        enemyDamageBuffIcon = CreateStatusIcon(containerRect, "DamageBuffIcon", enemyDamageBuffIconSprite);
+        enemyDamageDebuffIcon = CreateStatusIcon(containerRect, "DamageDebuffIcon", enemyDamageDebuffIconSprite);
+    }
+
+    private static Image CreateStatusIcon(RectTransform parent, string name, Sprite sprite)
+    {
+        var obj = new GameObject(name, typeof(RectTransform));
+        var rect = (RectTransform)obj.transform;
+        rect.SetParent(parent, false);
+        rect.sizeDelta = new Vector2(18, 18);
+
+        var image = obj.AddComponent<Image>();
+        image.sprite = sprite;
+        image.preserveAspect = true;
+        image.raycastTarget = false;
+
+        return image;
+    }
+
+    private void RefreshEnemyStatusIcons()
+    {
+        if (battleManager == null) return;
+
+        bool isStunned = battleManager.enemyStunnedNextTurn;
+        bool isShielded = battleManager.enemyShield > 0;
+        bool isDamageBuffed = battleManager.enemyDamageMultiplierTurnsRemaining > 0 && battleManager.enemyDamageMultiplier > 1f;
+        bool isDamageDebuffed = battleManager.enemyDamageMultiplierTurnsRemaining > 0 && battleManager.enemyDamageMultiplier < 1f;
+
+        if (enemyStunIcon != null) enemyStunIcon.gameObject.SetActive(isStunned);
+        if (enemyShieldIcon != null) enemyShieldIcon.gameObject.SetActive(isShielded);
+        if (enemyDamageBuffIcon != null) enemyDamageBuffIcon.gameObject.SetActive(isDamageBuffed);
+        if (enemyDamageDebuffIcon != null) enemyDamageDebuffIcon.gameObject.SetActive(isDamageDebuffed);
+
+        // Всплывающая иконка + звук — только в момент, когда эффект только что стал активным
+        if (isStunned && !wasEnemyStunned) SpawnEnemyStatusPopup(enemyStunPopupSprite, enemyStunSound, enemyStunPopupSize);
+        if (isShielded && !wasEnemyShielded) SpawnEnemyStatusPopup(enemyShieldPopupSprite, enemyShieldSound, enemyShieldPopupSize);
+        if (isDamageBuffed && !wasEnemyDamageBuffed) SpawnEnemyStatusPopup(enemyDamageBuffPopupSprite, enemyDamageBuffSound, enemyDamageBuffPopupSize);
+        if (isDamageDebuffed && !wasEnemyDamageDebuffed) SpawnEnemyStatusPopup(enemyDamageDebuffPopupSprite, enemyDamageDebuffSound, enemyDamageDebuffPopupSize);
+
+        wasEnemyStunned = isStunned;
+        wasEnemyShielded = isShielded;
+        wasEnemyDamageBuffed = isDamageBuffed;
+        wasEnemyDamageDebuffed = isDamageDebuffed;
+    }
+
+    private void SpawnEnemyStatusPopup(Sprite sprite, AudioClip sound, float size)
+    {
+        if (enemyPortrait == null) return;
+        FloatingStatusIcon.Spawn((RectTransform)enemyPortrait.transform, sprite, sound, size);
     }
 
     // Панель кнопок скиллов босса — только в Boss Training (см. BattleManager.isBossTraining/UseBossTrainingSkill).
@@ -224,6 +334,8 @@ if (enemyPortrait != null && battleManager.currentEnemy != null && battleManager
         enemyHPText.text = $"{battleManager.enemyHP} / {battleManager.enemyMaxHP}";
         if (enemyShieldText != null)
             enemyShieldText.text = battleManager.enemyShield > 0 ? $"Shield: {battleManager.enemyShield}" : "";
+
+        RefreshEnemyStatusIcons();
 
         if (battleManager.isBossTraining)
             RefreshBossTrainingSkillCounters();

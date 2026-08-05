@@ -19,6 +19,40 @@ public class HeroCardUI : MonoBehaviour
     public Button activateButton; // если у героя один основной навык (skills[0])
     public Image buttonOverlay;
 
+    [Header("Статус-иконки (правый нижний угол карточки)")]
+    public Image stunStatusIcon;
+    public Image shieldStatusIcon;
+    public Image damageBuffStatusIcon;
+    public Image damageDebuffStatusIcon;
+    public Image invulnerabilityStatusIcon;
+
+    [Header("Картинки для всплывающей анимации (отдельные от угловых иконок)")]
+    public Sprite stunPopupSprite;
+    public Sprite shieldPopupSprite;
+    public Sprite damageBuffPopupSprite;
+    public Sprite damageDebuffPopupSprite;
+    public Sprite invulnerabilityPopupSprite;
+
+    [Header("Размер всплывающей картинки (px)")]
+    public float stunPopupSize = 48f;
+    public float shieldPopupSize = 48f;
+    public float damageBuffPopupSize = 48f;
+    public float damageDebuffPopupSize = 48f;
+    public float invulnerabilityPopupSize = 48f;
+
+    [Header("Звук статус-эффектов (необязательно, на каждый свой)")]
+    public AudioClip stunSound;
+    public AudioClip shieldSound;
+    public AudioClip damageBuffSound;
+    public AudioClip damageDebuffSound;
+    public AudioClip invulnerabilitySound;
+
+    private bool wasStunned;
+    private bool wasShielded;
+    private bool wasDamageBuffed;
+    private bool wasDamageDebuffed;
+    private bool wasInvulnerable;
+
     [Header("Состояние гибели")]
     public Color deadTintColor = new Color(0.25f, 0.25f, 0.25f, 1f);
 
@@ -188,6 +222,44 @@ public class HeroCardUI : MonoBehaviour
 
         if (portraitImage != null)
             portraitImage.color = isDead ? deadTintColor : Color.white;
+
+        RefreshStatusIcons();
+    }
+
+    // Личный статус героя (оглушение) + командные статусы, действующие сейчас на всю команду
+    private void RefreshStatusIcons()
+    {
+        if (battleManager == null) return;
+
+        bool isStunned = heroState.stunnedTurnsRemaining > 0;
+        bool isShielded = battleManager.playerShield > 0;
+        bool isDamageBuffed = battleManager.damageMultiplierTurnsRemaining > 0 && battleManager.damageMultiplier > 1f;
+        bool isDamageDebuffed = battleManager.heroDamageMultiplierTurnsRemaining > 0 && battleManager.heroDamageMultiplier < 1f;
+        bool isInvulnerable = battleManager.playerInvulnerableNextEnemyTurn || battleManager.teamDebuffImmuneTurnsRemaining > 0;
+
+        SetStatusIconActive(stunStatusIcon, isStunned);
+        SetStatusIconActive(shieldStatusIcon, isShielded);
+        SetStatusIconActive(damageBuffStatusIcon, isDamageBuffed);
+        SetStatusIconActive(damageDebuffStatusIcon, isDamageDebuffed);
+        SetStatusIconActive(invulnerabilityStatusIcon, isInvulnerable);
+
+        // Всплывающая иконка + звук — только в момент, когда эффект только что стал активным (было false, стало true)
+        if (isStunned && !wasStunned) FloatingStatusIcon.Spawn((RectTransform)transform, stunPopupSprite, stunSound, stunPopupSize);
+        if (isShielded && !wasShielded) FloatingStatusIcon.Spawn((RectTransform)transform, shieldPopupSprite, shieldSound, shieldPopupSize);
+        if (isDamageBuffed && !wasDamageBuffed) FloatingStatusIcon.Spawn((RectTransform)transform, damageBuffPopupSprite, damageBuffSound, damageBuffPopupSize);
+        if (isDamageDebuffed && !wasDamageDebuffed) FloatingStatusIcon.Spawn((RectTransform)transform, damageDebuffPopupSprite, damageDebuffSound, damageDebuffPopupSize);
+        if (isInvulnerable && !wasInvulnerable) FloatingStatusIcon.Spawn((RectTransform)transform, invulnerabilityPopupSprite, invulnerabilitySound, invulnerabilityPopupSize);
+
+        wasStunned = isStunned;
+        wasShielded = isShielded;
+        wasDamageBuffed = isDamageBuffed;
+        wasDamageDebuffed = isDamageDebuffed;
+        wasInvulnerable = isInvulnerable;
+    }
+
+    private static void SetStatusIconActive(Image icon, bool active)
+    {
+        if (icon != null) icon.gameObject.SetActive(active);
     }
 
     private void OnActivateClicked()

@@ -556,9 +556,20 @@ public IEnumerator PlayDestroyAnimation()
     HashSet<Item> survivors = new HashSet<Item>();
     foreach (var run in runs)
     {
-        Item survivor = preferredSurvivors != null
-            ? run.items.FirstOrDefault(i => preferredSurvivors.Contains(i)) ?? run.items[run.items.Count / 2]
-            : run.items[run.items.Count / 2];
+        // Никогда не выбираем УЖЕ спец-фишку выживающей — иначе MarkAsSpecial перезапишет её тип поверх
+        // старого, а ExpandSpecialEffects ниже пропустит её (раз она теперь в survivors), так и не дав
+        // сработать эффекту, который она несла ДО этого матча (баг: "фишка Line была на поле — эффект
+        // не сработал, просто стала новой Line"). Предпочитаем свайпнутую фишку, если она НЕ спец, иначе
+        // любую не-спец фишку рана; если совсем все фишки рана уже спец (редкий крайний случай) —
+        // старый индексный фолбэк, переигрывать всё равно что-то придётся.
+        Item survivor = null;
+        if (preferredSurvivors != null)
+            survivor = run.items.FirstOrDefault(i => preferredSurvivors.Contains(i) && i.specialType == Item.SpecialType.None);
+        if (survivor == null)
+            survivor = run.items.FirstOrDefault(i => i.specialType == Item.SpecialType.None);
+        if (survivor == null)
+            survivor = run.items[run.items.Count / 2];
+
         if (survivors.Contains(survivor)) continue; // гориз- и верт-ран пересеклись в одной клетке — не переразмечаем дважды
 
         survivors.Add(survivor);

@@ -21,6 +21,10 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     public Image raceEmblem;
     public RaceEmblemSet raceEmblemSet;
 
+    [Header("Вознесение — общий ассет AscensionOverlaySet на всю игру")]
+    public Image ascensionOverlay;
+    public AscensionOverlaySet ascensionOverlaySet;
+
     [Header("Пассивка расы — вкл/выкл за RacePassiveUtility.ManaCost маны, см. BattleManager")]
     public TMP_Text racePassiveInfoText;
     public Button racePassiveToggleButton;
@@ -163,6 +167,7 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         if (descriptionText != null) descriptionText.text = currentHero.description;
 
         RarityUtility.ApplyFrame(rarityFrame, rarityFrameSet, currentHero.rarity);
+        HeroAscensionUtility.ApplyOverlay(ascensionOverlay, ascensionOverlaySet, currentHero.rarity, currentOwnership != null ? currentOwnership.ascensionLevel : 0);
 
         if (raceEmblem != null)
         {

@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 84c535b026e2493d97323b5b6ada9103, type: 3}
+  m_Name: AscensionOverlaySet
+  m_EditorClassIdentifier: Assembly-CSharp::AscensionOverlaySet
+  orangeOverlays:
+  - {fileID: 21300000, guid: fea43187e63094d4499bb6f7ac95ec7c, type: 3}
+  - {fileID: 21300000, guid: 861315021b963c246b49725accc79c63, type: 3}
+  - {fileID: 21300000, guid: 0ce11d3eabd7f4b46b043f3548aab2e3, type: 3}
+  - {fileID: 21300000, guid: ce8c482d7b11fd5439ae3d4a6b9e7974, type: 3}
+  purpleOverlays:
+  - {fileID: 21300000, guid: 90a230235afc7d84bbfb6605ef5cfbbb, type: 3}
+  - {fileID: 21300000, guid: 2d1d4815ce3853b4da85e78e130b039d, type: 3}
+  - {fileID: 21300000, guid: d137f39547a13a9409d207aa4fd9284c, type: 3}

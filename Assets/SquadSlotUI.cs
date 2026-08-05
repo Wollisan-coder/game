@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class SquadSlotUI : MonoBehaviour
 {
@@ -10,9 +11,21 @@ public class SquadSlotUI : MonoBehaviour
     public Button selectButton;
     public GameObject emptyPlaceholder;
 
+    [Header("Имя и уровень")]
+    public TMP_Text nameText;
+    public TMP_Text levelText;
+
     [Header("Рамка редкости — общий ассет RarityFrameSet на всю игру")]
     public Image rarityFrame;
     public RarityFrameSet rarityFrameSet;
+
+    [Header("Эмблема расы — общий ассет RaceEmblemSet на всю игру")]
+    public Image raceEmblem;
+    public RaceEmblemSet raceEmblemSet;
+
+    [Header("Вознесение — общий ассет AscensionOverlaySet на всю игру")]
+    public Image ascensionOverlay;
+    public AscensionOverlaySet ascensionOverlaySet;
 
     private HeroData heroData;
     private SquadUI parentUI;
@@ -41,7 +54,18 @@ public class SquadSlotUI : MonoBehaviour
         removeButton.onClick.RemoveAllListeners();
         removeButton.onClick.AddListener(OnRemoveClicked);
 
+        if (nameText != null) nameText.text = data.heroName;
+        if (levelText != null) levelText.text = ownership != null ? $"Lv. {ownership.level}" : "";
+
         RarityUtility.ApplyFrame(rarityFrame, rarityFrameSet, data.rarity);
+        HeroAscensionUtility.ApplyOverlay(ascensionOverlay, ascensionOverlaySet, data.rarity, ownership != null ? ownership.ascensionLevel : 0);
+
+        if (raceEmblem != null)
+        {
+            Sprite emblem = raceEmblemSet != null ? raceEmblemSet.GetEmblem(data.race) : null;
+            raceEmblem.sprite = emblem;
+            raceEmblem.enabled = emblem != null;
+        }
     }
 
     public void SetEmpty()
@@ -51,7 +75,11 @@ public class SquadSlotUI : MonoBehaviour
         emptyPlaceholder.SetActive(true);
         removeButton.gameObject.SetActive(false);
 
+        if (nameText != null) nameText.text = "";
+        if (levelText != null) levelText.text = "";
         if (rarityFrame != null) rarityFrame.enabled = false;
+        if (raceEmblem != null) raceEmblem.enabled = false;
+        if (ascensionOverlay != null) ascensionOverlay.enabled = false;
     }
 
     private void Awake()

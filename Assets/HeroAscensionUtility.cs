@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 // Система вознесения карт героев — ОТДЕЛЬНАЯ от системы редкости предметов (свои уровни/кап).
 // Green/Blue вознесения не требуют вообще (кап фиксирован), Purple/Orange раскрывают уровень поэтапно.
@@ -74,5 +75,17 @@ public static class HeroAscensionUtility
             return hero.ascendedPortrait;
 
         return hero.portrait;
+    }
+
+    // Общая подстановка картинки вознесения (трикветра медальонов) — используется в карточке коллекции,
+    // инвентаре героя и слоте отряда. Если у редкости нет вознесения (Green/Blue/White) или спрайта для
+    // текущего уровня нет в наборе — просто скрывает Image, как и RarityUtility.ApplyFrame.
+    public static void ApplyOverlay(Image overlayImage, AscensionOverlaySet overlaySet, Rarity rarity, int ascensionLevel)
+    {
+        if (overlayImage == null) return;
+
+        Sprite sprite = overlaySet != null ? overlaySet.GetOverlay(rarity, ascensionLevel) : null;
+        overlayImage.sprite = sprite;
+        overlayImage.enabled = sprite != null;
     }
 }

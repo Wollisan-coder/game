@@ -1,11 +1,16 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class HeroCollectionCardUI : MonoBehaviour
 {
     public Image portrait;
     public Image lockOverlay;
     public Button selectButton;
+
+    [Header("Имя и уровень")]
+    public TMP_Text nameText;
+    public TMP_Text levelText;
 
     [Header("Рамка редкости — общий ассет RarityFrameSet на всю игру")]
     public Image rarityFrame;
@@ -14,6 +19,10 @@ public class HeroCollectionCardUI : MonoBehaviour
     [Header("Эмблема расы — общий ассет RaceEmblemSet на всю игру")]
     public Image raceEmblem;
     public RaceEmblemSet raceEmblemSet;
+
+    [Header("Вознесение — общий ассет AscensionOverlaySet на всю игру")]
+    public Image ascensionOverlay;
+    public AscensionOverlaySet ascensionOverlaySet;
 
     private HeroInventoryUI inventoryUI; // общий на всю сцену, передаётся из HeroCollectionUI при спавне
 
@@ -29,6 +38,9 @@ public class HeroCollectionCardUI : MonoBehaviour
         var ownership = manager.ownership.Find(o => o.heroId == data.heroId);
         if (portrait != null) portrait.sprite = HeroAscensionUtility.GetDisplayPortrait(data, ownership);
 
+        if (nameText != null) nameText.text = data.heroName;
+        if (levelText != null) levelText.text = ownership != null ? $"Lv. {ownership.level}" : "";
+
         bool unlocked = manager.IsUnlocked(data);
         if (lockOverlay != null) lockOverlay.gameObject.SetActive(!unlocked);
         if (selectButton != null) selectButton.interactable = unlocked;
@@ -40,6 +52,7 @@ public class HeroCollectionCardUI : MonoBehaviour
         }
 
         RarityUtility.ApplyFrame(rarityFrame, rarityFrameSet, data.rarity);
+        HeroAscensionUtility.ApplyOverlay(ascensionOverlay, ascensionOverlaySet, data.rarity, ownership != null ? ownership.ascensionLevel : 0);
 
         if (raceEmblem != null)
         {

@@ -627,32 +627,12 @@ public class BattleManager : MonoBehaviour
     public void AddShield(int amount) => playerShield += amount;
 
     // Эффекты для панели переворота доски (BoardEffectOption)
-    public void ApplyDamageBuff(float multiplier, int turns)
-    {
-        damageMultiplier = multiplier;
-        damageMultiplierTurnsRemaining = turns;
-        OnStateChanged?.Invoke();
-    }
-
     public void ApplyWeakenHeroes(float multiplier, int turns)
     {
         if (teamDebuffImmuneTurnsRemaining > 0) return; // команда иммунна к дебаффам (Ангелы)
 
         heroDamageMultiplier = multiplier;
         heroDamageMultiplierTurnsRemaining = turns;
-        OnStateChanged?.Invoke();
-    }
-
-    public void AddEnemyShield(int amount)
-    {
-        enemyShield += amount;
-        OnStateChanged?.Invoke();
-    }
-
-    public void BlockManaForAllHeroes()
-    {
-        foreach (var hero in activeHeroes)
-            hero.blockManaGainThisTurn = true;
         OnStateChanged?.Invoke();
     }
 

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98b5e3f879f3ee14db0d174b4aae035d, type: 3}
   m_Name: 2 Boss
   m_EditorClassIdentifier: Assembly-CSharp::EnemyData
-  enemyId: 2_2 Enemie
+  enemyId: 2 Boss
   enemyName: 
   maxHP: 100
   maxMana: 50
