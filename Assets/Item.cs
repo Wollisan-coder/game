@@ -18,20 +18,80 @@ public class Item : MonoBehaviour
     [Header("Спец-фишки (созданы матчем 4/5 в ряд)")]
     public SpecialType specialType = SpecialType.None;
 
-    // Не перекрашивает фишку целиком (в отличие от MarkAsJoker) — цвет должен остаться читаемым,
-    // чтобы игрок понимал, каким обычным матчем её можно активировать. Вместо этого — форма (растянута
-    // вдоль линии, которую снесёт) + лёгкое осветление тона.
+    // Отдельная 3D-модель под спец-фишку (GridManager.lineClearSpecialPrefab/colorBombSpecialPrefab —
+    // общие на все цвета, не тонируются под цвет матча, эти модели уже сами по себе "особенные" по
+    // дизайну). Исходный гем не удаляется — только прячется (Renderer.enabled=false, не SetActive), так
+    // что его Collider остаётся кликабельным в тех же границах, что и раньше.
+    private GameObject specialVisualInstance;
+
+    // Если под тип спец-фишки модель ещё не назначена в GridManager — фолбэк на старое поведение:
+    // поворот самого гема на 90° вокруг Y (Row/Column, поле лежит в плоскости XZ — см.
+    // GridManager.SpawnItem, Y-поворот меняет местами X/Z-протяжённость без искажения геометрии) +
+    // лёгкое осветление тона, чтобы цвет остался читаемым (в отличие от MarkAsJoker, который красит целиком).
     public void MarkAsSpecial(SpecialType type)
     {
         specialType = type;
 
+        GameObject prefab = type switch
+        {
+            SpecialType.LineClearRow or SpecialType.LineClearColumn => gridManager != null ? gridManager.lineClearSpecialPrefab : null,
+            SpecialType.ColorBomb => gridManager != null ? gridManager.colorBombSpecialPrefab : null,
+            _ => null,
+        };
+
+        if (prefab != null)
+        {
+            // Цвет матча — берём с исходного гема ДО того, как его спрячем (все Renderer'ы одной фишки
+            // одного цвета, хватает первого попавшегося). Модель спец-фишки обесцвечена нейтральным
+            // серым (см. SpecialTileTextureDesaturator) специально под это — тонирование поверх серой
+            // базы даёт чистый цвет, а не грязный оттенок, как было бы поверх исходной красной текстуры.
+            Color matchColor = Color.white;
+            foreach (var r in GetComponentsInChildren<Renderer>())
+            {
+                matchColor = GetTintColor(r.material);
+                r.enabled = false;
+            }
+
+            // "Сырой" _BaseColor/baseColorFactor гема нередко бледнее, чем кажется на доске (яркость там
+            // во многом от PBR-освещения, не от самого базового цвета) — умножение на серое сохраняет
+            // соотношение каналов, но не добавляет насыщенности, так что блёклый исходник даёт мутный
+            // тинт (замечено на синем: на фиолетовом было терпимо, на синем — явно грязно). Принудительно
+            // поднимаем насыщенность и яркость через HSV перед тонированием — цвет спец-фишки всегда чёткий,
+            // независимо от того, насколько бледный конкретный гем "по паспорту".
+            Color.RGBToHSV(matchColor, out float hue, out float saturation, out float value);
+            matchColor = Color.HSVToRGB(hue, Mathf.Max(saturation, 0.75f), Mathf.Max(value, 0.85f));
+
+            specialVisualInstance = Instantiate(prefab, transform);
+            specialVisualInstance.transform.localPosition = Vector3.zero;
+            // Относительный поворот, а не абсолютный — у LineClearSpecial_Pivot уже запечён свой базовый
+            // разворот (подобран вручную в редакторе, см. Row-случай). Если поставить сюда абсолютное
+            // значение, это затрёт запечённый поворот префаба — вместо этого только докручиваем ещё
+            // 90° для Column, Row не трогаем вообще.
+            if (type == SpecialType.LineClearColumn)
+                specialVisualInstance.transform.localRotation *= Quaternion.Euler(0f, 0f, 90f);
+
+            var specialRend = specialVisualInstance.GetComponentInChildren<Renderer>();
+            if (specialRend != null)
+            {
+                specialRend.material = new Material(specialRend.material);
+                SetTintColor(specialRend.material, matchColor);
+            }
+
+            // Плавный рост вместо мгновенной подмены — GridManager.ProcessMatches запускает уничтожение
+            // остальных фишек рана СРАЗУ следом (0.25с анимация), а MarkAsSpecial раньше подменяла модель
+            // мгновенно за один кадр — визуально казалось, что спец-фишка появляется "до того", как
+            // соседние фишки успевают исчезнуть, а не одновременно с ними.
+            StartCoroutine(PopInSpecialVisual());
+            return;
+        }
+
         switch (type)
         {
             case SpecialType.LineClearRow:
-                transform.localScale = new Vector3(baseScale.x * 1.6f, baseScale.y, baseScale.z * 0.6f);
+                transform.localRotation = Quaternion.identity;
                 break;
             case SpecialType.LineClearColumn:
-                transform.localScale = new Vector3(baseScale.x * 0.6f, baseScale.y, baseScale.z * 1.6f);
+                transform.localRotation = Quaternion.Euler(0f, 0f, 00f);
                 break;
             case SpecialType.ColorBomb:
                 transform.localScale = baseScale * 1.3f;
@@ -183,12 +243,15 @@ public class Item : MonoBehaviour
         SetTintColor(rend.material, color);
     }
 
-    // У разных шейдеров (в т.ч. glTF Shader Graph без стандартных _BaseColor/_Color)
-    // может не быть ни одного из привычных цветовых свойств — не падаем в этом случае, а просто игнорируем тонирование
+    // У разных шейдеров может не быть ни одного из привычных цветовых свойств — не падаем в этом случае,
+    // а просто игнорируем тонирование. baseColorFactor — это конкретно glTF Shader Graph (gltFast):
+    // свойства там называются буквально как в спецификации glTF (baseColorTexture/baseColorFactor), а
+    // не по юнитёвской конвенции _BaseColor/_Color — см. LineClearSpecial_Gray.mat/BombClearSpecial_Gray.mat.
     private static Color GetTintColor(Material mat)
     {
         if (mat.HasProperty("_BaseColor")) return mat.GetColor("_BaseColor");
         if (mat.HasProperty("_Color")) return mat.color;
+        if (mat.HasProperty("baseColorFactor")) return mat.GetColor("baseColorFactor");
         return Color.white;
     }
 
@@ -196,6 +259,7 @@ public class Item : MonoBehaviour
     {
         if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
         else if (mat.HasProperty("_Color")) mat.color = color;
+        else if (mat.HasProperty("baseColorFactor")) mat.SetColor("baseColorFactor", color);
     }
 
     // Простая визуальная отметка джокера — золотистая подсветка поверх цвета фишки
@@ -382,6 +446,28 @@ public class Item : MonoBehaviour
         }
 
         transform.position = target;
+    }
+
+    // Растёт от нуля до целевого масштаба за 0.25с — та же длительность, что и PlayDestroyAnimation
+    // ниже, так что появление спец-фишки визуально совпадает по времени с исчезновением соседних фишек
+    // того же рана, а не выглядит мгновенным щелчком раньше/позже них.
+    private IEnumerator PopInSpecialVisual()
+    {
+        if (specialVisualInstance == null) yield break;
+
+        Vector3 targetScale = specialVisualInstance.transform.localScale;
+        specialVisualInstance.transform.localScale = Vector3.zero;
+
+        float duration = 0.25f;
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+            specialVisualInstance.transform.localScale = targetScale * Mathf.Clamp01(t / duration);
+            yield return null;
+        }
+
+        specialVisualInstance.transform.localScale = targetScale;
     }
 
     public IEnumerator PlayDestroyAnimation()

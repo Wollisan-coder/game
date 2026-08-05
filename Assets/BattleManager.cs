@@ -535,6 +535,9 @@ public class BattleManager : MonoBehaviour
         if (battleEnded) return;
         battleEnded = true;
 
+        DailyQuestManager.Instance?.ReportBossTrainingCompleted();
+        AchievementManager.Instance?.ReportBossTrainingCompleted();
+
         gridManager?.SetTrainingMode(false);
 
         float hpFraction = enemyMaxHP > 0 ? (float)enemyHP / enemyMaxHP : 0f;
@@ -1013,6 +1016,9 @@ public class BattleManager : MonoBehaviour
         if (battleEnded) return;
         battleEnded = true;
 
+        DailyQuestManager.Instance?.ReportBattleWon();
+        AchievementManager.Instance?.ReportEnemyDefeated();
+
         LootReward loot = currentEnemy != null ? currentEnemy.loot : null;
         int accountXp = loot != null ? loot.accountExperience : accountExperienceReward; // ОСТАЁТСЯ плоским — см. "Вариант C"
         int heroXp = loot != null ? loot.heroExperience : 0;
@@ -1022,6 +1028,9 @@ public class BattleManager : MonoBehaviour
         var rewardNode = WorldMapManager.Instance != null ? WorldMapManager.Instance.currentNode : null;
         if (rewardNode != null)
             heroXp = EnemyStatCurve.GetHeroExperience(rewardNode.territory, rewardNode.nodeIndex);
+
+        if (rewardNode != null && rewardNode.isFarmNode)
+            AchievementManager.Instance?.ReportFarmDungeonCompleted();
 
         var rewardLines = new List<string>();
 

@@ -226,6 +226,11 @@ public class CastleSummonUI : MonoBehaviour
                 ? SinglePullAsList(SummonService.Instance.PullHero(building.heroSummonPool, premium))
                 : SummonService.Instance.PullHeroMultiple(building.heroSummonPool, premium, count);
 
+            if (results.Count > 0)
+            {
+                DailyQuestManager.Instance?.ReportSummonPulled();
+                AchievementManager.Instance?.ReportSummonsCompleted(results.Count);
+            }
             ShowResult(results.Count, count, results.Select(h => (h.heroName, h.rarity.ToString())));
         }
         else
@@ -234,6 +239,11 @@ public class CastleSummonUI : MonoBehaviour
                 ? SinglePullAsList(SummonService.Instance.PullItem(building.itemSummonPool, premium))
                 : SummonService.Instance.PullItemMultiple(building.itemSummonPool, premium, count);
 
+            if (results.Count > 0)
+            {
+                DailyQuestManager.Instance?.ReportSummonPulled();
+                AchievementManager.Instance?.ReportSummonsCompleted(results.Count);
+            }
             ShowResult(results.Count, count, results.Select(i => (i.itemName, i.rarity.ToString())));
         }
 

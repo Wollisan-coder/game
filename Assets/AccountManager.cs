@@ -31,6 +31,12 @@ public class AccountManager : MonoBehaviour
     private System.DateTime? lastBossTrainingDate;
     private const string DateFormat = "yyyyMMdd";
 
+    // Стрик входов подряд (для AchievementManager.LoginStreak) — НЕ то же самое, что GetDailyRewardDay()
+    // выше: тот считает календарные дни с первого входа и НЕ сбрасывается за пропуск, этот — наоборот,
+    // именно последовательность без пропусков, сбрасывается в 1 при разрыве.
+    public int currentLoginStreak = 1;
+    private System.DateTime? lastLoginDate;
+
     // Одноразовый сигнал перед загрузкой боевой сцены (BattleManager.Awake читает и сразу гасит pendingBossTraining) —
     // не персистится, как и WorldMapManager.lastActiveMapPanelName.
     [Header("Boss Training")]
@@ -50,6 +56,23 @@ public class AccountManager : MonoBehaviour
         Load();
         level = 20; // ВРЕМЕННО для теста зданий — разблокирует все здания сразу
         RegenerateEnergyFromElapsedTime();
+        UpdateLoginStreak();
+    }
+
+    // Вызывается один раз за запуск (Awake) — сегодня уже засчитан, ничего не делать; вчера — стрик
+    // продолжается (+1); любой другой разрыв (или самый первый запуск) — стрик начинается заново с 1.
+    private void UpdateLoginStreak()
+    {
+        var today = System.DateTime.UtcNow.Date;
+
+        if (lastLoginDate == today) return; // уже открывали игру сегодня
+
+        currentLoginStreak = lastLoginDate.HasValue && lastLoginDate.Value == today.AddDays(-1)
+            ? currentLoginStreak + 1
+            : 1;
+
+        lastLoginDate = today;
+        Save();
     }
 
     // Сколько опыта нужно на указанном уровне, чтобы подняться на следующий (плейсхолдер — легко поменять)
@@ -71,7 +94,10 @@ public class AccountManager : MonoBehaviour
         // Левел-ап аккаунта полностью восстанавливает энергию (до НОВОГО, уже увеличенного MaxEnergy) —
         // это часть бюджета энергии на прохождение территории за одну сессию, см. AccountManager.baseMaxEnergy.
         if (level > levelBefore)
+        {
             currentEnergy = MaxEnergy;
+            AchievementManager.Instance?.ReportValue(AchievementCategory.AccountLevel, level);
+        }
 
         Save();
     }
@@ -85,6 +111,7 @@ public class AccountManager : MonoBehaviour
 
         currentEnergy -= amount;
         Save();
+        DailyQuestManager.Instance?.ReportEnergySpent(amount);
         return true;
     }
 
@@ -183,6 +210,9 @@ public class AccountManager : MonoBehaviour
             PlayerPrefs.SetString("account_last_daily_claim_date", lastDailyClaimDate.Value.ToString(DateFormat));
         if (lastBossTrainingDate.HasValue)
             PlayerPrefs.SetString("account_last_boss_training_date", lastBossTrainingDate.Value.ToString(DateFormat));
+        PlayerPrefs.SetInt("account_login_streak", currentLoginStreak);
+        if (lastLoginDate.HasValue)
+            PlayerPrefs.SetString("account_last_login_date", lastLoginDate.Value.ToString(DateFormat));
         PlayerPrefs.Save();
     }
 
@@ -220,6 +250,13 @@ public class AccountManager : MonoBehaviour
         lastBossTrainingDate = !string.IsNullOrEmpty(savedLastTraining) &&
             System.DateTime.TryParseExact(savedLastTraining, DateFormat, null, System.Globalization.DateTimeStyles.None, out var parsedTraining)
             ? parsedTraining
+            : (System.DateTime?)null;
+
+        currentLoginStreak = PlayerPrefs.GetInt("account_login_streak", 1);
+        string savedLastLogin = PlayerPrefs.GetString("account_last_login_date", "");
+        lastLoginDate = !string.IsNullOrEmpty(savedLastLogin) &&
+            System.DateTime.TryParseExact(savedLastLogin, DateFormat, null, System.Globalization.DateTimeStyles.None, out var parsedLogin)
+            ? parsedLogin
             : (System.DateTime?)null;
     }
 }

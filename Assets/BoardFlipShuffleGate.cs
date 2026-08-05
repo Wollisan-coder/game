@@ -167,6 +167,7 @@ public class BoardFlipShuffleGate : MonoBehaviour
 
         option.Apply(battleManager);
         option.ShowRevealed(); // открываем именно выбранную кнопку, остальные остаются заблюренными
+        AchievementManager.Instance?.ReportGambleSpin();
 
         awaitingFlipBack = true;
 

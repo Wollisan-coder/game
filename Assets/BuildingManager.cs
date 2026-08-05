@@ -96,6 +96,7 @@ public class BuildingManager : MonoBehaviour
 
         data.level++;
         Save();
+        AchievementManager.Instance?.ReportBuildingUpgraded();
         return true;
     }
 

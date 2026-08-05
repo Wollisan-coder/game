@@ -95,6 +95,7 @@ public class HeroCollectionManager : MonoBehaviour
         if (data == null || data.isUnlocked) return;
 
         data.isUnlocked = true;
+        AchievementManager.Instance?.ReportHeroCollected();
         SaveOwnership();
     }
 
@@ -145,6 +146,7 @@ public class HeroCollectionManager : MonoBehaviour
 
         data.ascensionGems -= HeroAscensionUtility.GemsPerAscension;
         data.ascensionLevel++;
+        AchievementManager.Instance?.ReportAscension();
 
         SaveOwnership();
         return true;
@@ -166,6 +168,7 @@ public class HeroCollectionManager : MonoBehaviour
         if (data.level >= levelCap) return false; // уже на потолке — опыт девать некуда, пока не вознесётся дальше
 
         data.experience += amount;
+        int levelBefore = data.level;
 
         while (data.level < levelCap && data.experience >= ExperienceToNextLevel(data.level))
         {
@@ -175,6 +178,9 @@ public class HeroCollectionManager : MonoBehaviour
 
         if (data.level >= levelCap)
             data.experience = 0; // упёрлись в потолок — остаток сгорает, а не копится "про запас"
+
+        if (data.level > levelBefore)
+            DailyQuestManager.Instance?.ReportHeroLeveledUp();
 
         SaveOwnership();
         return true;

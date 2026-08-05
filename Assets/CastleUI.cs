@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -13,18 +14,19 @@ public class CastleUI : MonoBehaviour
     private GameObject panelRoot;
     private Transform buildingHotspotsContainer;
     private GameObject buildingDetailPopupRoot;
-    private TMP_Text currencyText;
+    private readonly Dictionary<CurrencyType, TMP_Text> currencyTexts = new Dictionary<CurrencyType, TMP_Text>();
     private TMP_Text accountText;
+    private TMP_Text energyText;
 
     [Header("2D-сцена базы")]
     public Image baseBackground;
 
-    private Button dailyRewardButton;
-    private Image dailyRewardButtonBg;
-    private TMP_Text dailyRewardButtonText;
-
     private CastleSummonUI summonUI;
     private ProgressExchangeUI exchangeUI;
+    private DailyQuestUI dailyQuestUI;
+    private AchievementUI achievementUI;
+    private GameObject questsBadge;
+    private GameObject achieveBadge;
 
     public void Open(MainMenuUI mainMenu)
     {
@@ -73,17 +75,51 @@ public class CastleUI : MonoBehaviour
         var topBarBg = topBarObj.AddComponent<Image>();
         topBarBg.color = new Color(0, 0, 0, 0.35f);
 
-        var currencyObj = new GameObject("CurrencyText", typeof(RectTransform));
-        var currencyRect = (RectTransform)currencyObj.transform;
-        currencyRect.SetParent(topBarRect, false);
-        currencyRect.anchorMin = new Vector2(0, 0);
-        currencyRect.anchorMax = new Vector2(0.6f, 1);
-        currencyRect.offsetMin = new Vector2(16, 0);
-        currencyRect.offsetMax = new Vector2(0, 0);
-        currencyText = currencyObj.AddComponent<TextMeshProUGUI>();
-        currencyText.fontSize = 20;
-        currencyText.alignment = TextAlignmentOptions.MidlineLeft;
-        currencyText.color = Color.white;
+        var currencyAreaObj = new GameObject("CurrencyBar", typeof(RectTransform));
+        var currencyAreaRect = (RectTransform)currencyAreaObj.transform;
+        currencyAreaRect.SetParent(topBarRect, false);
+        currencyAreaRect.anchorMin = new Vector2(0, 0);
+        currencyAreaRect.anchorMax = new Vector2(0.6f, 1);
+        currencyAreaRect.offsetMin = new Vector2(16, 0);
+        currencyAreaRect.offsetMax = new Vector2(0, 0);
+        CreateCurrencyBar(currencyAreaRect);
+
+        // Energy — иконка+число, фиксированный слот у правого края topBar. accountText (Lvl/XP) занимает
+        // остаток области 0.6-1 слева от этого слота, тоже правым выравниванием.
+        const float energySlotWidth = 140f;
+        var energyObj = new GameObject("Energy", typeof(RectTransform));
+        var energyRect = (RectTransform)energyObj.transform;
+        energyRect.SetParent(topBarRect, false);
+        energyRect.anchorMin = new Vector2(1, 0.5f);
+        energyRect.anchorMax = new Vector2(1, 0.5f);
+        energyRect.pivot = new Vector2(1, 0.5f);
+        energyRect.sizeDelta = new Vector2(energySlotWidth, 50);
+        energyRect.anchoredPosition = new Vector2(-16, 0);
+
+        var energyIconObj = new GameObject("Icon", typeof(RectTransform));
+        var energyIconRect = (RectTransform)energyIconObj.transform;
+        energyIconRect.SetParent(energyRect, false);
+        energyIconRect.anchorMin = new Vector2(0, 0.5f);
+        energyIconRect.anchorMax = new Vector2(0, 0.5f);
+        energyIconRect.pivot = new Vector2(0, 0.5f);
+        energyIconRect.sizeDelta = new Vector2(30, 44);
+        energyIconRect.anchoredPosition = Vector2.zero;
+        var energyIconImg = energyIconObj.AddComponent<Image>();
+        energyIconImg.sprite = Resources.Load<Sprite>("UI/Currency/Energy");
+        energyIconImg.preserveAspect = true;
+
+        var energyTextObj = new GameObject("Text", typeof(RectTransform));
+        var energyTextRect = (RectTransform)energyTextObj.transform;
+        energyTextRect.SetParent(energyRect, false);
+        energyTextRect.anchorMin = new Vector2(0, 0.5f);
+        energyTextRect.anchorMax = new Vector2(1, 0.5f);
+        energyTextRect.pivot = new Vector2(0, 0.5f);
+        energyTextRect.offsetMin = new Vector2(36, -25);
+        energyTextRect.offsetMax = new Vector2(0, 25);
+        energyText = energyTextObj.AddComponent<TextMeshProUGUI>();
+        energyText.fontSize = 20;
+        energyText.alignment = TextAlignmentOptions.MidlineLeft;
+        energyText.color = Color.white;
 
         var accountObj = new GameObject("AccountText", typeof(RectTransform));
         var accountRect = (RectTransform)accountObj.transform;
@@ -91,7 +127,7 @@ public class CastleUI : MonoBehaviour
         accountRect.anchorMin = new Vector2(0.6f, 0);
         accountRect.anchorMax = new Vector2(1, 1);
         accountRect.offsetMin = new Vector2(0, 0);
-        accountRect.offsetMax = new Vector2(-16, 0);
+        accountRect.offsetMax = new Vector2(-(energySlotWidth + 24), 0);
         accountText = accountObj.AddComponent<TextMeshProUGUI>();
         accountText.fontSize = 20;
         accountText.alignment = TextAlignmentOptions.MidlineRight;
@@ -128,13 +164,20 @@ public class CastleUI : MonoBehaviour
         hotspotsRect.offsetMax = Vector2.zero;
         buildingHotspotsContainer = hotspotsRect;
 
+        // TopBar создаётся в коде раньше BaseBackground/хотспотов — без этого более поздний sibling
+        // (фон базы) рисуется поверх и полностью перекрывает панель ресурсов.
+        topBarRect.SetAsLastSibling();
+
         // --- Навигация — так же, как кнопки внизу SquadPanel: якорь (0.5,0), размер 200x100, y=50 ---
         CreateNavButton(panelRect, "Squad", new Vector2(6, 55), () => { owner?.ShowSquad(); });
         CreateNavButton(panelRect, "Inventory", new Vector2(-425, 55), () => { owner?.ShowItemCollection(); });
         CreateNavButton(panelRect, "Collection", new Vector2(-210, 55), () => { owner?.ShowCollection(); });
         CreateNavButton(panelRect, "Castle", new Vector2(221, 55), () => { owner?.ShowCastle(); });
         CreateNavButton(panelRect, "Map", new Vector2(436, 55), () => { owner?.ShowWorldMap(); });
-        CreateDailyRewardButton(panelRect, new Vector2(330, 250));
+        // Daily Reward перестал быть отдельной кнопкой — теперь это первая строка внутри попапа Quests
+        // (DailyQuestUI), рядом с остальными дневными наградами.
+        questsBadge = CreateBareIconButton(panelRect, "UI/Castle/DailyQIcon", new Vector2(482.9f, 723f), new Vector2(100, 200), () => { dailyQuestUI?.Open(canvasRoot, RefreshNotificationBadges); });
+        achieveBadge = CreateBareIconButton(panelRect, "UI/Castle/AchivIcon", new Vector2(486f, 1526f), new Vector2(100, 200), () => { achievementUI?.Open(canvasRoot, RefreshNotificationBadges); });
         // Second row above the first — keeps the already-working bottom row untouched instead of
         // squeezing a 5th button into it. Boss Training moved off this row onto its own map hotspot
         // (Training zone.png, see CreateTrainingZoneHotspot) once the user provided real art for it.
@@ -142,8 +185,67 @@ public class CastleUI : MonoBehaviour
 
         summonUI = gameObject.AddComponent<CastleSummonUI>();
         exchangeUI = gameObject.AddComponent<ProgressExchangeUI>();
+        dailyQuestUI = gameObject.AddComponent<DailyQuestUI>();
+        achievementUI = gameObject.AddComponent<AchievementUI>();
 
         panelRoot.SetActive(false);
+    }
+
+    // Иконка+число на каждую валюту вместо одной текстовой строки "Wood: X   Stone: Y   ...".
+    // Слоты идут подряд слева направо внутри currencyAreaRect (0.6 ширины topBar), фиксированная
+    // ширина слота — 5 валют детерминированно, авто-layout тут не нужен.
+    private void CreateCurrencyBar(RectTransform parent)
+    {
+        var entries = new (CurrencyType type, string iconResourcePath)[]
+        {
+            (CurrencyType.Wood, "UI/Currency/Wood"),
+            (CurrencyType.Stone, "UI/Currency/Stone"),
+            (CurrencyType.SummonShards, "UI/Currency/Shards"),
+            (CurrencyType.PremiumGems, "UI/Currency/Gems"),
+            (CurrencyType.ProgressPoints, "UI/Currency/PP"),
+        };
+
+        const float slotWidth = 126f;
+        for (int i = 0; i < entries.Length; i++)
+        {
+            var (type, iconResourcePath) = entries[i];
+
+            var slotObj = new GameObject($"Currency_{type}", typeof(RectTransform));
+            var slotRect = (RectTransform)slotObj.transform;
+            slotRect.SetParent(parent, false);
+            slotRect.anchorMin = new Vector2(0, 0.5f);
+            slotRect.anchorMax = new Vector2(0, 0.5f);
+            slotRect.pivot = new Vector2(0, 0.5f);
+            slotRect.sizeDelta = new Vector2(slotWidth, 50);
+            slotRect.anchoredPosition = new Vector2(i * slotWidth, 0);
+
+            var iconObj = new GameObject("Icon", typeof(RectTransform));
+            var iconRect = (RectTransform)iconObj.transform;
+            iconRect.SetParent(slotRect, false);
+            iconRect.anchorMin = new Vector2(0, 0.5f);
+            iconRect.anchorMax = new Vector2(0, 0.5f);
+            iconRect.pivot = new Vector2(0, 0.5f);
+            iconRect.sizeDelta = new Vector2(44, 44);
+            iconRect.anchoredPosition = Vector2.zero;
+            var iconImg = iconObj.AddComponent<Image>();
+            iconImg.sprite = Resources.Load<Sprite>(iconResourcePath);
+            iconImg.preserveAspect = true;
+
+            var textObj = new GameObject("Text", typeof(RectTransform));
+            var textRect = (RectTransform)textObj.transform;
+            textRect.SetParent(slotRect, false);
+            textRect.anchorMin = new Vector2(0, 0.5f);
+            textRect.anchorMax = new Vector2(0, 0.5f);
+            textRect.pivot = new Vector2(0, 0.5f);
+            textRect.sizeDelta = new Vector2(slotWidth - 48, 50);
+            textRect.anchoredPosition = new Vector2(48, 0);
+            var text = textObj.AddComponent<TextMeshProUGUI>();
+            text.fontSize = 18;
+            text.alignment = TextAlignmentOptions.MidlineLeft;
+            text.color = Color.white;
+
+            currencyTexts[type] = text;
+        }
     }
 
     private void CreateNavButton(RectTransform parent, string label, Vector2 anchoredPosition, System.Action onClick)
@@ -174,39 +276,137 @@ public class CastleUI : MonoBehaviour
         text.fontSize = 30;
         text.alignment = TextAlignmentOptions.Center;
         text.color = ConfirmationDialog.ButtonTextColor; // тёмный текст был под старую светлую заливку, на новой тёмно-синей рамке нужен светлый
-    
+
     }
 
-    // Отдельно от CreateNavButton — держит ссылки на bg/text, чтобы Refresh() мог менять подпись/цвет
-    // в зависимости от того, забирали ли награду сегодня.
-    private void CreateDailyRewardButton(RectTransform parent, Vector2 anchoredPosition)
+    // Кнопка = сама иконка (Achiv.png/DailyQ.png), без рамки/подписи — preserveAspect не даёт исказиться
+    // при непортретном sizeDelta. Возвращает GameObject бейджа-уведомления (красный кружок) — скрыт по
+    // умолчанию, показывается/прячется снаружи (см. RefreshNotificationBadges) по DailyQuestManager/
+    // AchievementManager HasAnyClaimable — сигнал "тут есть что забрать", без открытия самого попапа.
+    private GameObject CreateBareIconButton(RectTransform parent, string iconResourcePath, Vector2 anchoredPosition, Vector2 size, System.Action onClick)
     {
-        var btnObj = new GameObject("DailyReward", typeof(RectTransform));
+        // Мягкое жёлтое "пятно" позади иконки — отдельный sibling ПЕРЕД кнопкой (рендерится раньше =
+        // ниже по слоям), крупнее самой иконки, чтобы выступать за края и не сливаться с фоном базы.
+        // (Отдельный компонент Outline тут не подходит — он не обводит по силуэту спрайта, а просто
+        // дублирует всю текстуру со сдвигом, для фото-подобной иконки это выглядит как "повторы".)
+        var glowObj = new GameObject("Glow", typeof(RectTransform));
+        var glowRect = (RectTransform)glowObj.transform;
+        glowRect.SetParent(parent, false);
+        glowRect.anchorMin = new Vector2(0.5f, 0f);
+        glowRect.anchorMax = new Vector2(0.5f, 0f);
+        glowRect.pivot = new Vector2(0.5f, 0.5f);
+        glowRect.sizeDelta = size * 1.5f;
+        glowRect.anchoredPosition = anchoredPosition;
+        var glowImg = glowObj.AddComponent<Image>();
+        glowImg.sprite = GetRadialGlowSprite();
+        glowImg.color = new Color(1f, 0.85f, 0.2f, 0.8f);
+        glowImg.raycastTarget = false;
+
+        var btnObj = new GameObject("Icon", typeof(RectTransform));
         var btnRect = (RectTransform)btnObj.transform;
         btnRect.SetParent(parent, false);
         btnRect.anchorMin = new Vector2(0.5f, 0f);
         btnRect.anchorMax = new Vector2(0.5f, 0f);
         btnRect.pivot = new Vector2(0.5f, 0.5f);
-        btnRect.sizeDelta = new Vector2(200, 100);
+        btnRect.sizeDelta = size;
         btnRect.anchoredPosition = anchoredPosition;
 
-        dailyRewardButtonBg = btnObj.AddComponent<Image>();
-        dailyRewardButton = btnObj.AddComponent<Button>();
-        dailyRewardButton.onClick.AddListener(OnDailyRewardClicked);
+        var iconImg = btnObj.AddComponent<Image>();
+        iconImg.sprite = Resources.Load<Sprite>(iconResourcePath);
+        iconImg.preserveAspect = true;
+        var btn = btnObj.AddComponent<Button>();
+        btn.onClick.AddListener(() => onClick?.Invoke());
 
-        var textObj = new GameObject("Text", typeof(RectTransform));
-        var textRect = (RectTransform)textObj.transform;
-        textRect.SetParent(btnRect, false);
-        textRect.anchorMin = Vector2.zero;
-        textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = Vector2.zero;
-        textRect.offsetMax = Vector2.zero;
-        dailyRewardButtonText = textObj.AddComponent<TextMeshProUGUI>();
-        dailyRewardButtonText.alignment = TextAlignmentOptions.Center;
-        dailyRewardButtonText.fontSize = 24;
-        dailyRewardButtonText.color = ConfirmationDialog.ButtonTextColor; // тёмный текст был под старую светлую заливку, на новой тёмно-синей рамке нужен светлый
+        var badgeObj = new GameObject("Badge", typeof(RectTransform));
+        var badgeRect = (RectTransform)badgeObj.transform;
+        badgeRect.SetParent(btnRect, false);
+        badgeRect.anchorMin = new Vector2(1, 1);
+        badgeRect.anchorMax = new Vector2(1, 1);
+        badgeRect.pivot = new Vector2(1, 1);
+        badgeRect.sizeDelta = new Vector2(32, 32);
+        badgeRect.anchoredPosition = new Vector2(0, -15);
+        var badgeImg = badgeObj.AddComponent<Image>();
+        badgeImg.sprite = GetRoundBadgeSprite();
+        badgeImg.color = new Color(0.85f, 0.15f, 0.15f, 1f);
+
+        var badgeTextObj = new GameObject("Text", typeof(RectTransform));
+        var badgeTextRect = (RectTransform)badgeTextObj.transform;
+        badgeTextRect.SetParent(badgeRect, false);
+        badgeTextRect.anchorMin = Vector2.zero;
+        badgeTextRect.anchorMax = Vector2.one;
+        badgeTextRect.offsetMin = Vector2.zero;
+        badgeTextRect.offsetMax = Vector2.zero;
+        var badgeText = badgeTextObj.AddComponent<TextMeshProUGUI>();
+        badgeText.text = "!";
+        badgeText.fontSize = 22;
+        badgeText.fontStyle = FontStyles.Bold;
+        badgeText.alignment = TextAlignmentOptions.Center;
+        badgeText.color = Color.white;
+
+        badgeObj.SetActive(false);
+        return badgeObj;
     }
 
+    private static Sprite roundBadgeSprite;
+
+    // Круглый спрайт для бейджа, сгенерированный на лету — в этой версии Unity 6 Resources
+    // .GetBuiltinResource для встроенных UI-спрайтов (Knob, Checkmark и т.п.) молча возвращает null при
+    // загрузке из кода (см. feedback_unity6_no_builtin_ui_sprites), так что вместо ссылки на builtin
+    // рисуем свою текстуру с кругом один раз и кэшируем.
+    private static Sprite GetRoundBadgeSprite()
+    {
+        if (roundBadgeSprite != null) return roundBadgeSprite;
+
+        const int size = 64;
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        var center = new Vector2(size / 2f, size / 2f);
+        float radius = size / 2f - 1f;
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float dist = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), center);
+                tex.SetPixel(x, y, dist <= radius ? Color.white : new Color(1f, 1f, 1f, 0f));
+            }
+        }
+        tex.Apply();
+
+        roundBadgeSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
+        return roundBadgeSprite;
+    }
+
+    private static Sprite radialGlowSprite;
+
+    // Мягкое радиальное пятно (белое, непрозрачное в центре → прозрачное к краю, квадратичный спад) —
+    // тонируется цветом снаружи через Image.color. Сгенерировано один раз и закэшировано.
+    private static Sprite GetRadialGlowSprite()
+    {
+        if (radialGlowSprite != null) return radialGlowSprite;
+
+        const int size = 128;
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        var center = new Vector2(size / 2f, size / 2f);
+        float radius = size / 2f;
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float dist = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), center);
+                float a = Mathf.Clamp01(1f - dist / radius);
+                a *= a; // квадратичный спад — плотный центр, мягкий длинный хвост к краю
+                tex.SetPixel(x, y, new Color(1f, 1f, 1f, a));
+            }
+        }
+        tex.Apply();
+
+        radialGlowSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
+        return radialGlowSprite;
+    }
+
+    // Отдельно от CreateNavButton — держит ссылки на bg/text, чтобы Refresh() мог менять подпись/цвет
+    // в зависимости от того, забирали ли награду сегодня.
     // Открывает Collection как пикер героя для тренировки (тот же приём, что и выбор героя в слот отряда —
     // HeroCollectionManager.pickingForBossTraining, см. HeroCollectionCardUI.OnSelected).
     // Лимит 1/день отключён по просьбе пользователя — AccountManager.HasDoneBossTrainingToday()/
@@ -219,59 +419,36 @@ public class CastleUI : MonoBehaviour
         owner?.ShowCollection();
     }
 
-    private void OnDailyRewardClicked()
-    {
-        if (AccountManager.Instance == null) return;
-
-        int granted = AccountManager.Instance.ClaimDailyReward();
-        if (granted > 0 && canvasRoot != null)
-            ConfirmationDialog.ShowInfo(canvasRoot, $"Daily reward claimed!\n+{granted} Progress Points");
-
-        Refresh();
-    }
-
-    private void RefreshDailyRewardButton()
-    {
-        if (dailyRewardButton == null || AccountManager.Instance == null) return;
-
-        bool claimed = AccountManager.Instance.HasClaimedDailyRewardToday();
-        int amount = AccountManager.Instance.GetDailyRewardAmount();
-
-        dailyRewardButton.interactable = !claimed;
-        if (dailyRewardButtonBg != null)
-        {
-            ConfirmationDialog.StyleAsButton(dailyRewardButtonBg);
-            dailyRewardButtonBg.color = claimed ? new Color(0.5f, 0.5f, 0.5f, 0.6f) : Color.white; // тускло-серый поверх той же рамки, пока не получена
-        }
-        if (dailyRewardButtonText != null)
-            dailyRewardButtonText.text = claimed ? "Daily reward\nclaimed" : $"Daily reward\n+{amount} PP";
-    }
-
     public void Refresh()
     {
         if (panelRoot == null || !panelRoot.activeSelf) return;
 
         AccountManager.Instance?.RegenerateEnergyFromElapsedTime();
 
-        if (currencyText != null && PlayerCurrencies.Instance != null)
+        if (PlayerCurrencies.Instance != null)
         {
-            currencyText.text =
-                $"Wood: {PlayerCurrencies.Instance.GetBalance(CurrencyType.Wood)}   " +
-                $"Stone: {PlayerCurrencies.Instance.GetBalance(CurrencyType.Stone)}   " +
-                $"Shards: {PlayerCurrencies.Instance.GetBalance(CurrencyType.SummonShards)}   " +
-                $"Gems: {PlayerCurrencies.Instance.GetBalance(CurrencyType.PremiumGems)}   " +
-                $"PP: {PlayerCurrencies.Instance.GetBalance(CurrencyType.ProgressPoints)}";
+            foreach (var kvp in currencyTexts)
+                kvp.Value.text = PlayerCurrencies.Instance.GetBalance(kvp.Key).ToString();
         }
 
         if (accountText != null && AccountManager.Instance != null)
         {
             var acc = AccountManager.Instance;
-            accountText.text = $"Lvl {acc.level} ({acc.experience}/{acc.ExperienceToNextLevel(acc.level)})   Energy: {acc.currentEnergy}/{acc.MaxEnergy}";
+            accountText.text = $"Lvl {acc.level} ({acc.experience}/{acc.ExperienceToNextLevel(acc.level)})";
+            if (energyText != null)
+                energyText.text = $"{acc.currentEnergy}/{acc.MaxEnergy}";
         }
 
-        RefreshDailyRewardButton();
-
+        RefreshNotificationBadges();
         PopulateBuildings();
+    }
+
+    private void RefreshNotificationBadges()
+    {
+        if (questsBadge != null)
+            questsBadge.SetActive(DailyQuestManager.Instance != null && DailyQuestManager.Instance.HasAnyClaimable);
+        if (achieveBadge != null)
+            achieveBadge.SetActive(AchievementManager.Instance != null && AchievementManager.Instance.HasAnyClaimable());
     }
 
     private void PopulateBuildings()

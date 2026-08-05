@@ -87,7 +87,14 @@ public class WorldMapManager : MonoBehaviour
         if (string.IsNullOrEmpty(currentNodeId)) return;
 
         if (!completedNodeIds.Contains(currentNodeId))
+        {
             completedNodeIds.Add(currentNodeId);
+            AchievementManager.Instance?.ReportMapNodeCleared();
+
+            // Босс территории — всегда nodeIndex 18, см. IsTerritoryCompleted выше.
+            if (currentNode != null && currentNode.nodeIndex == 18)
+                AchievementManager.Instance?.ReportTerritoryCleared();
+        }
 
         SaveProgress();
         OnProgressChanged?.Invoke();

@@ -198,5 +198,10 @@ public class HeroCardUI : MonoBehaviour
         bool success = battleManager.TryUseSkill(heroState, primarySkill);
         if (!success)
             Debug.Log($"Недостаточно ресурса для навыка {primarySkill.skillName}");
+        else
+        {
+            DailyQuestManager.Instance?.ReportSkillUsed(); // только реальный клик игрока — не AI-каст тренируемого героя в Boss Training (см. TryUseTrainedHeroSkillIfPossible)
+            AchievementManager.Instance?.ReportSkillUsed();
+        }
     }
 }

@@ -201,6 +201,7 @@ public class ItemCollectionManager : MonoBehaviour
         }
 
         leveledStack.experience += gainedExperience;
+        int levelBefore = leveledStack.level;
 
         while (leveledStack.level < maxLevel && leveledStack.experience >= ExperienceToNextLevel(leveledStack.level))
         {
@@ -213,6 +214,9 @@ public class ItemCollectionManager : MonoBehaviour
             wastedExperience = leveledStack.experience;
             leveledStack.experience = 0;
         }
+
+        if (leveledStack.level > levelBefore)
+            DailyQuestManager.Instance?.ReportItemLeveledUp();
 
         MergeIdenticalStacks(leveledStack);
         resultingTargetInstanceId = leveledStack.instanceId;

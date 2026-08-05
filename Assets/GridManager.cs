@@ -13,6 +13,13 @@ public class GridManager : MonoBehaviour
     [Header("Префабы")]
     public GameObject[] itemPrefabs; // Массив 3D-префабов разных типов
 
+    // Отдельные модели под спец-фишки (матч 4/5+) — общие для всех цветов, не завязаны на itemPrefabs.
+    // Если не назначены — Item.MarkAsSpecial откатывается на старый фолбэк (поворот/тонирование самого
+    // гема), см. комментарий там же.
+    [Header("Спец-фишки (матч 4/5+) — общие модели, см. Item.MarkAsSpecial")]
+    public GameObject lineClearSpecialPrefab; // 2Sides.glb — звезда с орнаментом, поворачивается 90° под Row/Column
+    public GameObject colorBombSpecialPrefab; // Bomb.glb — гранат-кристалл
+
     [Header("Бой")]
     public BattleManager battleManager;
 
@@ -432,7 +439,7 @@ private IEnumerator PopInAnimation(Transform t)
     if (matches.Count > 0)
     {
         turnMatchedTypes.Clear(); // старт учёта нового хода
-        yield return StartCoroutine(ProcessMatches(matches));
+        yield return StartCoroutine(ProcessMatches(matches, preferredSurvivors: new HashSet<Item> { a, b }));
     }
     else
     {
@@ -533,18 +540,25 @@ public IEnumerator PlayDestroyAnimation()
     // Обработка уничтожения и падения
     // isSkillDestroy: true, когда фишки убираются скиллом (не обычным матчем игрока) — в этом случае
     // Trap не наносит урон герою, ведь наказание за ловушку привязано именно к попаданию в матч, а не к её снятию.
-    private IEnumerator ProcessMatches(List<Item> matches, bool isSkillDestroy = false)
+    private IEnumerator ProcessMatches(List<Item> matches, bool isSkillDestroy = false, HashSet<Item> preferredSurvivors = null)
 {
     List<Coroutine> animations = new List<Coroutine>();
 
     // --- Спец-фишки (4/5 в ряд) ---
-    // Раны 4+ по прямой линии внутри matches: центральная фишка ранга выживает и становится спец-фишкой
-    // (не уничтожается в этом проходе), остальные из этого рана уничтожаются как обычно.
+    // Раны 4+ по прямой линии внутри matches: одна фишка рана выживает и становится спец-фишкой (не
+    // уничтожается в этом проходе), остальные из этого рана уничтожаются как обычно. Если матч пришёл
+    // от свайпа игрока (preferredSurvivors = {a, b} из SwapItems) — выживает именно та из двух свайпнутых
+    // фишек, что попала в этот ран: игрок ожидает, что фишка, которую он передвинул, и станет особенной,
+    // а не "геометрический центр" рана (у чётного рана — 4 фишки — центра как такового и не существует,
+    // items.Count/2 всегда смещён к одному концу). Для матчей без свайпа (каскады, скиллы) — старый
+    // индексный фолбэк, там нет "той самой" фишки, на которую можно было бы ориентироваться.
     List<MatchRun> runs = FindStraightRuns(matches);
     HashSet<Item> survivors = new HashSet<Item>();
     foreach (var run in runs)
     {
-        Item survivor = run.items[run.items.Count / 2];
+        Item survivor = preferredSurvivors != null
+            ? run.items.FirstOrDefault(i => preferredSurvivors.Contains(i)) ?? run.items[run.items.Count / 2]
+            : run.items[run.items.Count / 2];
         if (survivors.Contains(survivor)) continue; // гориз- и верт-ран пересеклись в одной клетке — не переразмечаем дважды
 
         survivors.Add(survivor);
@@ -557,7 +571,11 @@ public IEnumerator PlayDestroyAnimation()
 
     // Уже существующие спец-фишки, попавшие в этот же матч, — раскрываем в цепочку целей их эффекта
     // (может зацепить ещё одну спец-фишку — цепная реакция обрабатывается тут же, за один проход).
-    HashSet<Item> toDestroySet = ExpandSpecialEffects(matches);
+    // survivors передаём отдельно — только что созданная этим же матчем спец-фишка не должна СРАБАТЫВАТЬ
+    // как источник эффекта (сносить весь ряд/столбец/цвет) в момент своего рождения, только при
+    // реальной активации отдельным матчем позже. ExceptWith ниже защищает её от уничтожения, но не от
+    // того, чтобы она сама стала триггером — это и была причина "эффект срабатывает при превращении".
+    HashSet<Item> toDestroySet = ExpandSpecialEffects(matches, survivors);
     toDestroySet.ExceptWith(survivors); // новые спец-фишки этого хода не должны уничтожаться сами собой
 
     // List, не HashSet — TickAnchorsAdjacentToMatches ДОБАВЛЯЕТ в переданный список снятые якоря (see ниже),
@@ -673,7 +691,7 @@ public IEnumerator PlayDestroyAnimation()
 
     // Раскрывает набор фишек в реальный список на уничтожение: любая спец-фишка внутри matches добавляет
     // всю свою линию/цвет в очередь, и если туда попадает ещё одна спец-фишка — цепная реакция продолжается.
-    private HashSet<Item> ExpandSpecialEffects(List<Item> matches)
+    private HashSet<Item> ExpandSpecialEffects(List<Item> matches, HashSet<Item> newlyCreatedSurvivors)
     {
         var toDestroy = new HashSet<Item>(matches);
         var queue = new Queue<Item>(matches);
@@ -682,6 +700,7 @@ public IEnumerator PlayDestroyAnimation()
         {
             Item item = queue.Dequeue();
             if (item.specialType == Item.SpecialType.None) continue;
+            if (newlyCreatedSurvivors.Contains(item)) continue; // родилась этим же матчем — не триггерит эффект на себя
 
             foreach (var extra in GetSpecialEffectTargets(item))
             {
