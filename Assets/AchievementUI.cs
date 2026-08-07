@@ -23,7 +23,7 @@ public class AchievementUI : MonoBehaviour
         EnsureOverlay();
         overlayRoot.transform.SetAsLastSibling();
         overlayRoot.SetActive(true);
-        Refresh();
+        Refresh(resetScroll: true);
     }
 
     public void Close()
@@ -87,7 +87,7 @@ public class AchievementUI : MonoBehaviour
         var claimAllBtnImg = claimAllBtnObj.AddComponent<Image>();
         ConfirmationDialog.StyleAsButton(claimAllBtnImg);
         var claimAllBtn = claimAllBtnObj.AddComponent<Button>();
-        claimAllBtn.onClick.AddListener(() => { AchievementManager.Instance?.ClaimAll(); Refresh(); });
+        claimAllBtn.onClick.AddListener(() => { AchievementManager.Instance?.ClaimAll(); Refresh(); }); // resetScroll: false — сохраняем позицию
 
         var claimAllTextObj = new GameObject("Text", typeof(RectTransform));
         var claimAllTextRect = (RectTransform)claimAllTextObj.transform;
@@ -168,10 +168,14 @@ public class AchievementUI : MonoBehaviour
         overlayRoot.SetActive(false);
     }
 
-    private void Refresh()
+    // resetScroll — только при Open() (свежий заход в попап). Клейм одной категории/Claim All раньше
+    // тоже безусловно прыгали в начало списка, сбивая игрока, если он клеймил что-то ближе к концу.
+    private void Refresh(bool resetScroll = false)
     {
         var manager = AchievementManager.Instance;
         if (manager == null || content == null) return;
+
+        float previousScroll = scrollRect.verticalNormalizedPosition;
 
         foreach (Transform child in content)
             Destroy(child.gameObject);
@@ -197,6 +201,6 @@ public class AchievementUI : MonoBehaviour
         }
 
         content.sizeDelta = new Vector2(0, -yTop);
-        scrollRect.verticalNormalizedPosition = 1f; // всегда открываем список сверху
+        scrollRect.verticalNormalizedPosition = resetScroll ? 1f : previousScroll;
     }
 }

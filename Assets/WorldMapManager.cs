@@ -58,14 +58,17 @@ public class WorldMapManager : MonoBehaviour
     // им ничего не мешает по ошибке получить тот же territory+nodeIndex=1, что и настоящей первой боевой ноде.
     public bool IsTerritoryOpened(Race territory)
     {
-        var firstNode = allNodes?.FirstOrDefault(n => n != null && n.enemy != null && n.territory == territory && n.nodeIndex == 1);
+        // !isFarmNode — фарм-данжи (PurpleFarmDungeon/OrangeFarmDungeon) намеренно делят territory/nodeIndex
+        // с настоящими боевыми нодами (см. их же description) только ради EnemyStatCurve, координаты не
+        // означают, что это ОНИ и есть "первая нода"/"босс" территории.
+        var firstNode = allNodes?.FirstOrDefault(n => n != null && n.enemy != null && !n.isFarmNode && n.territory == territory && n.nodeIndex == 1);
         return firstNode != null && IsUnlocked(firstNode);
     }
 
     // Территория "пройдена" — её босс (nodeIndex 18) пройден.
     public bool IsTerritoryCompleted(Race territory)
     {
-        var bossNode = allNodes?.FirstOrDefault(n => n != null && n.enemy != null && n.territory == territory && n.nodeIndex == 18);
+        var bossNode = allNodes?.FirstOrDefault(n => n != null && n.enemy != null && !n.isFarmNode && n.territory == territory && n.nodeIndex == 18);
         return bossNode != null && IsCompleted(bossNode);
     }
 
@@ -91,8 +94,9 @@ public class WorldMapManager : MonoBehaviour
             completedNodeIds.Add(currentNodeId);
             AchievementManager.Instance?.ReportMapNodeCleared();
 
-            // Босс территории — всегда nodeIndex 18, см. IsTerritoryCompleted выше.
-            if (currentNode != null && currentNode.nodeIndex == 18)
+            // Босс территории — всегда nodeIndex 18, см. IsTerritoryCompleted выше. !isFarmNode — фарм-данж
+            // на тех же координатах (см. OrangeFarmDungeon) не должен засчитываться за победу над боссом.
+            if (currentNode != null && currentNode.nodeIndex == 18 && !currentNode.isFarmNode)
                 AchievementManager.Instance?.ReportTerritoryCleared();
         }
 

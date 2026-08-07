@@ -44,7 +44,9 @@ public class BuildingManager : MonoBehaviour
             case BuildingUnlockType.TerritoryCompleted:
                 return WorldMapManager.Instance != null && WorldMapManager.Instance.IsTerritoryCompleted(building.requiredTerritory);
             default:
-                return AccountManager.Instance == null || AccountManager.Instance.level >= building.requiredAccountLevel;
+                // Fail-closed, как и ветки выше (TerritoryOpened/Completed) — раньше отсутствующий
+                // AccountManager.Instance считался "разблокировано", в отличие от остальных веток.
+                return AccountManager.Instance != null && AccountManager.Instance.level >= building.requiredAccountLevel;
         }
     }
 
@@ -100,11 +102,31 @@ public class BuildingManager : MonoBehaviour
         return true;
     }
 
+    // TerritoryMine_<Race>_<Resource> (см. Assets/TerritoryMines/, project_territory_mines) — если для
+    // этой расы сейчас активна угроза шахтам (см. MineThreatManager, project_death_dungeon_concept piece 5),
+    // все 3 её здания блокируются целиком: не копят и не выдают продукцию, пока угроза не будет побеждена.
+    private bool IsBlockedByMineThreat(BuildingData building)
+    {
+        if (building == null || MineThreatManager.Instance == null) return false;
+
+        string[] parts = building.buildingId.Split('_');
+        if (parts.Length != 3 || parts[0] != "TerritoryMine") return false;
+        if (!System.Enum.TryParse(parts[1], out Race race)) return false;
+
+        return MineThreatManager.Instance.IsRaceBlocked(race);
+    }
+
     // Сколько продукции накоплено сейчас (без списания) — для UI. Ограничивается складом.
     public float GetPendingAmount(BuildingData building)
     {
         var data = GetOwnership(building.buildingId);
         if (data == null || !data.isBuilt) return 0f;
+
+        if (IsBlockedByMineThreat(building))
+        {
+            data.lastCollectedAtTicks = System.DateTime.UtcNow.Ticks; // простой не копится молча
+            return 0f;
+        }
 
         double hoursElapsed = (System.DateTime.UtcNow.Ticks - data.lastCollectedAtTicks) / (double)System.TimeSpan.TicksPerHour;
         float produced = (float)(hoursElapsed * building.GetProductionPerHour(data.level));
@@ -118,12 +140,39 @@ public class BuildingManager : MonoBehaviour
         var data = GetOwnership(building.buildingId);
         if (data == null || !data.isBuilt || PlayerCurrencies.Instance == null) return 0;
 
-        int amount = Mathf.FloorToInt(GetPendingAmount(building));
+        if (IsBlockedByMineThreat(building))
+        {
+            data.lastCollectedAtTicks = System.DateTime.UtcNow.Ticks;
+            Save();
+            return 0;
+        }
+
+        float rate = building.GetProductionPerHour(data.level);
+        float storageCap = building.GetStorageCap(data.level);
+
+        double hoursElapsed = (System.DateTime.UtcNow.Ticks - data.lastCollectedAtTicks) / (double)System.TimeSpan.TicksPerHour;
+        float producedRaw = (float)(hoursElapsed * rate);
+        bool cappedByStorage = producedRaw > storageCap;
+        int amount = Mathf.FloorToInt(Mathf.Clamp(producedRaw, 0f, storageCap));
 
         if (amount > 0)
             PlayerCurrencies.Instance.Add(building.producedCurrency, amount);
 
-        data.lastCollectedAtTicks = System.DateTime.UtcNow.Ticks;
+        if (cappedByStorage || rate <= 0f)
+        {
+            // Копилось дольше, чем вмещает склад (или производство сейчас нулевое) — лишнее время
+            // законно "сгорает", сброс отметки на текущий момент здесь корректен.
+            data.lastCollectedAtTicks = System.DateTime.UtcNow.Ticks;
+        }
+        else
+        {
+            // Переносим остаток времени, не успевший накопить целую единицу, на следующий сбор — без
+            // "дрейфа" к нулю при частых сборах (тот же приём, что и
+            // AccountManager.RegenerateEnergyFromElapsedTime.consumedTicks).
+            long consumedTicks = (long)(amount / rate * System.TimeSpan.TicksPerHour);
+            data.lastCollectedAtTicks += consumedTicks;
+        }
+
         Save();
 
         return amount;

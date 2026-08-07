@@ -24,6 +24,10 @@ public class CastleSummonUI : MonoBehaviour
     private TMP_Text shardsX10Text;
     private TMP_Text premiumX1Text;
     private TMP_Text premiumX10Text;
+    private Button shardsX1Button;
+    private Button shardsX10Button;
+    private Button premiumX1Button;
+    private Button premiumX10Button;
 
     public void Open(BuildingData building, Transform canvasRoot, System.Action onClosed)
     {
@@ -107,10 +111,10 @@ public class CastleSummonUI : MonoBehaviour
         infoText.color = new Color(1, 1, 1, 0.85f);
 
         // Левая колонка — Shards (x1 сверху, x10 снизу); правая колонка — Premium Gems
-        shardsX1Text = CreateBigButton(windowRect, new Vector2(0.27f, 0.46f), () => Pull(false, 1), out _);
-        shardsX10Text = CreateBigButton(windowRect, new Vector2(0.27f, 0.27f), () => Pull(false, MultiPullCount), out _);
-        premiumX1Text = CreateBigButton(windowRect, new Vector2(0.73f, 0.46f), () => Pull(true, 1), out _);
-        premiumX10Text = CreateBigButton(windowRect, new Vector2(0.73f, 0.27f), () => Pull(true, MultiPullCount), out _);
+        shardsX1Text = CreateBigButton(windowRect, new Vector2(0.27f, 0.46f), () => Pull(false, 1), out shardsX1Button);
+        shardsX10Text = CreateBigButton(windowRect, new Vector2(0.27f, 0.27f), () => Pull(false, MultiPullCount), out shardsX10Button);
+        premiumX1Text = CreateBigButton(windowRect, new Vector2(0.73f, 0.46f), () => Pull(true, 1), out premiumX1Button);
+        premiumX10Text = CreateBigButton(windowRect, new Vector2(0.73f, 0.27f), () => Pull(true, MultiPullCount), out premiumX10Button);
 
         var closeBtnObj = new GameObject("CloseButton", typeof(RectTransform));
         var closeBtnRect = (RectTransform)closeBtnObj.transform;
@@ -188,17 +192,22 @@ public class CastleSummonUI : MonoBehaviour
         if (IsAltar)
         {
             var pool = building.heroSummonPool;
-            if (pool == null) { infoText.text = "No summon pool assigned."; return; }
+            if (pool == null) { ShowNoPoolState(); return; }
             poolId = pool.poolId; shardCost = pool.shardCost; premiumCost = pool.premiumCost;
             hasPity = pool.hasPity; pityThreshold = pool.pityThreshold;
         }
         else
         {
             var pool = building.itemSummonPool;
-            if (pool == null) { infoText.text = "No summon pool assigned."; return; }
+            if (pool == null) { ShowNoPoolState(); return; }
             poolId = pool.poolId; shardCost = pool.shardCost; premiumCost = pool.premiumCost;
             hasPity = pool.hasPity; pityThreshold = pool.pityThreshold;
         }
+
+        shardsX1Button.interactable = true;
+        shardsX10Button.interactable = true;
+        premiumX1Button.interactable = true;
+        premiumX10Button.interactable = true;
 
         int pityCount = SummonService.Instance != null
             ? SummonService.Instance.pityStates.FirstOrDefault(p => p.poolId == poolId)?.pullsSincePity ?? 0
@@ -216,6 +225,22 @@ public class CastleSummonUI : MonoBehaviour
         premiumX10Text.text = $"Pull x{MultiPullCount}\n({premiumCost * MultiPullCount} Gems)";
     }
 
+    // Здание без назначенного пула призыва (ещё не доавторено) — раньше окно продолжало показывать
+    // цены/кликабельные кнопки от ПРЕДЫДУЩЕГО открытого здания (общий переиспользуемый инстанс), и клик
+    // реально уходил в SummonService.PullHero/PullItem с null-пулом. Теперь явно чистим и блокируем.
+    private void ShowNoPoolState()
+    {
+        infoText.text = "No summon pool assigned.";
+        shardsX1Text.text = "";
+        shardsX10Text.text = "";
+        premiumX1Text.text = "";
+        premiumX10Text.text = "";
+        shardsX1Button.interactable = false;
+        shardsX10Button.interactable = false;
+        premiumX1Button.interactable = false;
+        premiumX10Button.interactable = false;
+    }
+
     private void Pull(bool premium, int count)
     {
         if (SummonService.Instance == null) return;
@@ -231,7 +256,11 @@ public class CastleSummonUI : MonoBehaviour
                 DailyQuestManager.Instance?.ReportSummonPulled();
                 AchievementManager.Instance?.ReportSummonsCompleted(results.Count);
             }
-            ShowResult(results.Count, count, results.Select(h => (h.heroName, h.rarity.ToString())));
+
+            if (count > 1 && SummonService.Instance.LastPullWasJackpot)
+                ShowJackpotResult(results.Select(h => (h.heroName, h.rarity.ToString())));
+            else
+                ShowResult(results.Count, count, results.Select(h => (h.heroName, h.rarity.ToString())));
         }
         else
         {
@@ -255,6 +284,22 @@ public class CastleSummonUI : MonoBehaviour
         var list = new List<T>();
         if (result != null) list.Add(result);
         return list;
+    }
+
+    // Джекпот на x10 (0.05% шанс, см. HeroSummonPoolData.jackpotChance) — гарантирует 2 разных Orange-героя
+    // (любых открытых рас) среди результатов; отдельное окно вместо обычного списка, чтобы "shareable moment" бросался в глаза.
+    private void ShowJackpotResult(IEnumerable<(string name, string rarity)> items)
+    {
+        var grouped = items
+            .GroupBy(i => (i.name, i.rarity))
+            .Select(g => $"{g.Key.name} ({g.Key.rarity}) x{g.Count()}")
+            .ToList();
+
+        var sb = new StringBuilder("JACKPOT!\n2 Legendary heroes guaranteed!\n\nYou got:\n");
+        sb.Append(string.Join("\n", grouped));
+
+        float height = Mathf.Max(200, 150 + grouped.Count * 24);
+        ConfirmationDialog.ShowInfo(canvasRoot, sb.ToString(), height);
     }
 
     private void ShowResult(int obtainedCount, int requestedCount, IEnumerable<(string name, string rarity)> items)

@@ -47,6 +47,30 @@ public class AccountManager : MonoBehaviour
     // MainMenuUI.Start() (и сразу гасится), чтобы после тренировки открылся замок, а не Collection по умолчанию.
     public bool returningFromBossTraining;
 
+    // Одноразовый сигнал перед загрузкой боевой сцены, тот же приём, что и pendingBossTraining выше —
+    // BattleManager.Awake читает и сразу гасит. См. project_death_dungeon_concept — пока только
+    // "статы уравниваются" (первый кусок фичи), без гаунтлета/permadeath/наград.
+    [Header("Death Dungeon")]
+    public bool pendingDeathDungeon;
+
+    // Обратный сигнал, тот же приём, что и returningFromBossTraining выше — читается MainMenuUI.Start()
+    // (и сразу гасится), чтобы после узла гаунтлета игрок вернулся в Замок и сразу увидел карту данжа
+    // (см. CastleUI), а не Коллекцию по умолчанию.
+    public bool returningFromDeathDungeon;
+
+    // Одноразовый сигнал перед загрузкой боевой сцены (см. MineThreatManager, project_death_dungeon_concept
+    // piece 5) — тот же приём, что и pendingBossTraining выше. НЕ использует WorldMapManager.currentNodeId/
+    // SelectNode (это не настоящая нода кампании — ни ОП, ни завершение ноды тут не должны срабатывать),
+    // только race — какую именно расу защищаем.
+    [Header("Mine Defense (см. project_death_dungeon_concept piece 5)")]
+    public bool pendingMineDefense;
+    public Race pendingMineDefenseRace;
+
+    // Обратный сигнал — читается MainMenuUI.Start() (и сразу гасится), чтобы после боя (победа ИЛИ
+    // поражение — тут нет штрафа, можно пробовать снова) игрок вернулся на карту мира в ту же городскую
+    // панель, откуда кликнул хотспот угрозы, а не на Коллекцию по умолчанию.
+    public bool returningFromMineDefense;
+
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -54,7 +78,6 @@ public class AccountManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
 
         Load();
-        level = 20; // ВРЕМЕННО для теста зданий — разблокирует все здания сразу
         RegenerateEnergyFromElapsedTime();
         UpdateLoginStreak();
     }

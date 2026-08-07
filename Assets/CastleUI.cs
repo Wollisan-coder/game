@@ -25,8 +25,12 @@ public class CastleUI : MonoBehaviour
     private ProgressExchangeUI exchangeUI;
     private DailyQuestUI dailyQuestUI;
     private AchievementUI achievementUI;
+    private DeathDungeonEntryUI deathDungeonEntryUI;
+    private DeathDungeonMapUI deathDungeonMapUI;
+    private TerritoryMinesUI territoryMinesUI;
     private GameObject questsBadge;
     private GameObject achieveBadge;
+    private GameObject mineThreatBadge;
 
     public void Open(MainMenuUI mainMenu)
     {
@@ -182,11 +186,20 @@ public class CastleUI : MonoBehaviour
         // squeezing a 5th button into it. Boss Training moved off this row onto its own map hotspot
         // (Training zone.png, see CreateTrainingZoneHotspot) once the user provided real art for it.
         CreateNavButton(panelRect, "Exchange", new Vector2(0, 160), () => { exchangeUI?.Open(canvasRoot, Refresh); });
+        CreateNavButton(panelRect, "Mines", new Vector2(230, 160), () => { territoryMinesUI?.Open(canvasRoot); });
+        // Простой красный кружок "!" поверх угла кнопки Mines — нет готовой иконки под конкретно эту
+        // угрозу (в отличие от Quests/Achieve, у которых есть UI/Castle/*Icon), поэтому не через
+        // CreateBareIconButton, а минимальный самодостаточный маркер без внешнего арта.
+        mineThreatBadge = CreateSimpleAlertBadge(panelRect, new Vector2(230 + 90, 160 + 40));
 
         summonUI = gameObject.AddComponent<CastleSummonUI>();
         exchangeUI = gameObject.AddComponent<ProgressExchangeUI>();
         dailyQuestUI = gameObject.AddComponent<DailyQuestUI>();
         achievementUI = gameObject.AddComponent<AchievementUI>();
+        deathDungeonEntryUI = gameObject.AddComponent<DeathDungeonEntryUI>();
+        deathDungeonMapUI = gameObject.AddComponent<DeathDungeonMapUI>();
+        gameObject.AddComponent<DeathDungeonRetreatSelectionUI>();
+        territoryMinesUI = gameObject.AddComponent<TerritoryMinesUI>();
 
         panelRoot.SetActive(false);
     }
@@ -408,7 +421,7 @@ public class CastleUI : MonoBehaviour
     // Отдельно от CreateNavButton — держит ссылки на bg/text, чтобы Refresh() мог менять подпись/цвет
     // в зависимости от того, забирали ли награду сегодня.
     // Открывает Collection как пикер героя для тренировки (тот же приём, что и выбор героя в слот отряда —
-    // HeroCollectionManager.pickingForBossTraining, см. HeroCollectionCardUI.OnSelected).
+    // HeroCollectionManager.pickingForBossTraining, см. HeroCollectionUI.OnCardSelected).
     // Лимит 1/день отключён по просьбе пользователя — AccountManager.HasDoneBossTrainingToday()/
     // MarkBossTrainingDone() оставлены нетронутыми на случай, если лимит понадобится вернуть.
     private void OnBossTrainingClicked()
@@ -449,6 +462,44 @@ public class CastleUI : MonoBehaviour
             questsBadge.SetActive(DailyQuestManager.Instance != null && DailyQuestManager.Instance.HasAnyClaimable);
         if (achieveBadge != null)
             achieveBadge.SetActive(AchievementManager.Instance != null && AchievementManager.Instance.HasAnyClaimable());
+        if (mineThreatBadge != null)
+            mineThreatBadge.SetActive(MineThreatManager.Instance != null && MineThreatManager.Instance.HasAnyActiveThreat);
+    }
+
+    // Минимальный самодостаточный маркер "!" — без внешнего арта, просто закрашенный круг + текст.
+    // Только сигнал "тут что-то не так" (кусок 5, см. MineThreatManager) — сам клик по нему не нужен,
+    // реальная точка входа в бой — хотспот на карте мира (см. MineThreatMapHotspots), эта иконка просто
+    // привлекает внимание к уже существующей кнопке Mines.
+    private GameObject CreateSimpleAlertBadge(RectTransform parent, Vector2 anchoredPosition)
+    {
+        var badgeObj = new GameObject("MineThreatBadge", typeof(RectTransform));
+        var badgeRect = (RectTransform)badgeObj.transform;
+        badgeRect.SetParent(parent, false);
+        badgeRect.anchorMin = new Vector2(0.5f, 0f);
+        badgeRect.anchorMax = new Vector2(0.5f, 0f);
+        badgeRect.pivot = new Vector2(0.5f, 0.5f);
+        badgeRect.sizeDelta = new Vector2(44, 44);
+        badgeRect.anchoredPosition = anchoredPosition;
+
+        var bg = badgeObj.AddComponent<Image>();
+        bg.color = new Color(0.85f, 0.1f, 0.1f, 0.95f);
+
+        var textObj = new GameObject("Text", typeof(RectTransform));
+        var textRect = (RectTransform)textObj.transform;
+        textRect.SetParent(badgeRect, false);
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+        var text = textObj.AddComponent<TextMeshProUGUI>();
+        text.text = "!";
+        text.fontSize = 28;
+        text.fontStyle = FontStyles.Bold;
+        text.alignment = TextAlignmentOptions.Center;
+        text.color = Color.white;
+
+        badgeObj.SetActive(false);
+        return badgeObj;
     }
 
     private void PopulateBuildings()
@@ -468,6 +519,7 @@ public class CastleUI : MonoBehaviour
         }
 
         CreateTrainingZoneHotspot();
+        CreateDeathDungeonHotspot();
     }
 
     // Не BuildingData — Boss Training не участвует в экономике (нет стоимости постройки/апгрейда,
@@ -494,6 +546,54 @@ public class CastleUI : MonoBehaviour
 
         var btn = hotspotObj.AddComponent<Button>();
         btn.onClick.AddListener(OnBossTrainingClicked);
+    }
+
+    // Первый кусок Death Dungeon (см. project_death_dungeon_concept/project_death_dungeon_implementation) —
+    // клик открывает экран подготовки (DeathDungeonEntryUI: отряд/жертвы/предупреждение), сам гаунтлет/
+    // баффы/permadeath/ретрит/награды — ещё впереди отдельными шагами.
+    private void CreateDeathDungeonHotspot()
+    {
+        var sprite = Resources.Load<Sprite>("UI/Castle/DeathDung");
+        if (sprite == null) return;
+
+        var hotspotObj = new GameObject("DeathDungeon", typeof(RectTransform));
+        var hotspotRect = (RectTransform)hotspotObj.transform;
+        hotspotRect.SetParent(buildingHotspotsContainer, false);
+        hotspotRect.anchorMin = new Vector2(0.5f, 0.5f);
+        hotspotRect.anchorMax = new Vector2(0.5f, 0.5f);
+        hotspotRect.pivot = new Vector2(0.5f, 0.5f);
+        hotspotRect.sizeDelta = new Vector2(200, 340); // соотношение сторон реального арта (383x651)
+        hotspotRect.anchoredPosition = new Vector2(-457, 702); // зеркально TrainingZone по X — поправить в редакторе при необходимости
+
+        var img = hotspotObj.AddComponent<Image>();
+        img.sprite = sprite;
+        img.preserveAspect = true;
+
+        var btn = hotspotObj.AddComponent<Button>();
+        btn.onClick.AddListener(OnDeathDungeonClicked);
+    }
+
+    private void OnDeathDungeonClicked()
+    {
+        // Недельная блокировка после ретрита (см. DeathDungeonManager.ApplyRetreatConsequence) — не
+        // штрафуем игрока за нормальный клин clear, только за спасение бегством.
+        if (DeathDungeonManager.Instance != null && DeathDungeonManager.Instance.IsRetreatLockoutActive)
+        {
+            var remaining = System.TimeSpan.FromTicks(DeathDungeonManager.Instance.retreatLockoutExpiryTicks - System.DateTime.UtcNow.Ticks);
+            int daysLeft = Mathf.Max(1, Mathf.CeilToInt((float)remaining.TotalDays));
+            ConfirmationDialog.ShowInfo(canvasRoot, $"The Death Dungeon is sealed to you for {daysLeft} more day(s) after your retreat.");
+            return;
+        }
+
+        deathDungeonEntryUI?.Open(canvasRoot, owner);
+    }
+
+    // Вызывается MainMenuUI.Start() после возврата с боя-узла гаунтлета (returningFromDeathDungeon) —
+    // если забег ещё не завершён, сразу показываем карту вместо голого Замка.
+    public void ReopenDeathDungeonMapIfActive()
+    {
+        if (DeathDungeonManager.Instance != null && DeathDungeonManager.Instance.IsRunActive)
+            deathDungeonMapUI?.Open(canvasRoot, owner);
     }
 
     // Маленький кликабельный маркер здания прямо на фоне сцены (вместо целой карточки в сетке) —

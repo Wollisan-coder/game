@@ -16,7 +16,8 @@ public class HeroData : ScriptableObject
     public SkillData[] skills;          // количество умений = длина массива, отдельное поле не нужно
 
     [Header("Визуал")]
-    public Sprite portrait;
+    public Sprite portrait;          // общая маленькая карточка (Collection + Squad)
+    public Sprite inventoryPortrait; // крупный портрет для окна инвентаря — черновое поле, не финал
     public Color themeColor = Color.white;
     public ResourceType resourceType;
 

@@ -7,9 +7,17 @@ using System.Linq;
 public class BattleManager : MonoBehaviour
 {
     [Header("Игрок")]
+    // playerMaxHP/playerHP — НЕ реальный запас прочности отряда (тот — per-hero, activeHeroes[i].currentHealth);
+    // это отдельный "ресурс" под конкретные скилл-эффекты (Heal/HealTeamPercent, AddShield-масштаб,
+    // SacrificeForDamage), который урон от врага никогда не трогает. Верхний HP-бар в бою показывает
+    // TotalHeroHealth/TotalHeroMaxHealth ниже (реальную сумму по живым героям), а не эти поля — иначе бар
+    // всю битву стоял на месте независимо от исхода боя.
     public int playerMaxHP = 100;
     public int playerHP;
     public int playerShield = 0;
+
+    public int TotalHeroHealth => activeHeroes.Sum(h => Mathf.Max(0, h.currentHealth));
+    public int TotalHeroMaxHealth => activeHeroes.Sum(h => h.maxHealth);
 
     [Header("Враг")]
     public int enemyMaxHP = 80;
@@ -70,6 +78,9 @@ public class BattleManager : MonoBehaviour
 
     [Header("Переворот доски (эффекты) — раз за бой")]
     public bool boardFlipUsedThisBattle = false;
+    // Доп. использования сверх обычного лимита раз-в-бой — Death Dungeon узел Gamble / бафф FortunesGambit
+    // (см. BoardFlipShuffleGate.OnFlipPressed: расходуется вместо установки boardFlipUsedThisBattle).
+    public int extraBoardFlipUses = 0;
 
     [Header("Гномы — броня врага / невязвимость / отражение урона")]
     public float enemyIncomingDamageMultiplier = 1f; // >1 = враг получает больше урона (ReduceEnemyArmor)
@@ -83,6 +94,11 @@ public class BattleManager : MonoBehaviour
     public int lastTurnMatchCount = 0;
     public int freeExtraTurnsRemaining = 0; // ExtraTurn/DoubleFreeTurn — следующий(е) ход(ы) без ответа врага
 
+    // Кто из героев реально кастовал скилл последним (команда в целом, не конкретный герой) — для
+    // CopyAllyLastSkill. Раньше искали "первого в ростере, у кого lastUsedSkill != null", что копировало
+    // скилл давно бездействующего героя, стоящего раньше в списке, а не фактически последний каст.
+    private HeroRuntimeState lastSkillCaster;
+
     [Header("Демоны — точность врага / слабость / перенос дебаффа")]
     public float enemyMissChancePercent = 0f;
     public int enemyMissChanceTurnsRemaining = 0;
@@ -95,6 +111,21 @@ public class BattleManager : MonoBehaviour
 
     [Header("Гемблинг-колесо — щит команды на N ходов, оглушение/блок скилла героя")]
     public int extendedShieldTurnsRemaining = 0; // пока > 0, щит НЕ сбрасывается после хода врага (ShieldTeamTurns)
+
+    [Header("Death Dungeon (см. project_death_dungeon_concept) — экипировка не даёт бонуса, только база+уровень+вознесение героя")]
+    public bool isDeathDungeon;
+    public DeathDungeonNodeType currentDungeonNodeType; // валиден только если isDeathDungeon
+
+    // Кусок 5 Death Dungeon (см. MineThreatManager, project_death_dungeon_concept) — обычный бой (гир
+    // ДАЁТ бонус, в отличие от Death Dungeon выше) против "порченого" босса территории mineDefenseRace.
+    // НЕ идёт через WorldMapManager.SelectNode/currentNode — своя пара pending/returning флагов на
+    // AccountManager, как у Boss Training/Death Dungeon, без ОП/завершения ноды кампании.
+    [Header("Mine Defense (см. project_death_dungeon_concept piece 5)")]
+    public bool isMineDefense;
+    public Race mineDefenseRace;
+
+    [Header("Debug — тест Death Dungeon без похода через Замок (жать Play прямо в SampleScene)")]
+    public bool debugForceDeathDungeon;
 
     [Header("Boss Training (см. project_boss_training_mechanic_concept) — игрок управляет боссом, ИИ играет доску за тренируемого героя")]
     public bool isBossTraining;
@@ -127,6 +158,26 @@ public class BattleManager : MonoBehaviour
 
         private EnemyData ResolveEnemy()
     {
+        // Mine Defense (кусок 5) — переиспользуем босса территории mineDefenseRace (нода 18, тот же
+        // "Overseer", что и в обычной кампании) вместо авторства нового врага, см. MineThreatManager.
+        if (isMineDefense && MineThreatManager.Instance != null)
+        {
+            var bossEnemy = MineThreatManager.Instance.GetBossEnemyForRace(mineDefenseRace);
+            if (bossEnemy != null) return bossEnemy;
+        }
+
+        // Death Dungeon — случайный уже разблокированный враг на каждый узел (не всегда один и тот же
+        // selectedEnemy) — см. project_death_dungeon_concept ("без уникального контента под каждую
+        // комнату, переиспользуем обычных врагов"). "Corrupted"-перекраска — визуальный полиш, не сделана.
+        if (isDeathDungeon && EnemyCollectionManager.Instance != null && EnemyCollectionManager.Instance.allEnemies != null)
+        {
+            var unlockedEnemies = EnemyCollectionManager.Instance.allEnemies
+                .Where(e => e != null && EnemyCollectionManager.Instance.IsUnlocked(e))
+                .ToList();
+            if (unlockedEnemies.Count > 0)
+                return unlockedEnemies[Random.Range(0, unlockedEnemies.Count)];
+        }
+
         // 1. Конкретный враг, выбранный игроком в коллекции (если не форсируем рандом)
         if (!forceRandomEnemy &&
             EnemyCollectionManager.Instance != null &&
@@ -156,6 +207,22 @@ public class BattleManager : MonoBehaviour
             return; // отдельная инициализация — обычный путь (currentEnemy/EnemyStatCurve/сквод) не нужен
         }
 
+        // В отличие от Boss Training, Death Dungeon НЕ отдельная инициализация — обычный отряд/враг/карта
+        // урона остаются как есть, меняется только то, что бонус экипировки ниже не прибавляется.
+        isDeathDungeon = debugForceDeathDungeon ||
+            (AccountManager.Instance != null && AccountManager.Instance.pendingDeathDungeon);
+        if (AccountManager.Instance != null)
+            AccountManager.Instance.pendingDeathDungeon = false; // одноразовый сигнал, гасим сразу (тот же приём, что и pendingBossTraining)
+
+        // Mine Defense (кусок 5, см. MineThreatManager) — тоже НЕ отдельная инициализация, обычный
+        // отряд/гир остаются как есть (в отличие от Death Dungeon выше — статы тут НЕ уравниваются).
+        isMineDefense = AccountManager.Instance != null && AccountManager.Instance.pendingMineDefense;
+        if (isMineDefense && AccountManager.Instance != null)
+        {
+            mineDefenseRace = AccountManager.Instance.pendingMineDefenseRace;
+            AccountManager.Instance.pendingMineDefense = false; // одноразовый сигнал, гасим сразу
+        }
+
         currentEnemy = ResolveEnemy();
         if (currentEnemy != null)
         {
@@ -164,12 +231,24 @@ public class BattleManager : MonoBehaviour
             enemyMaxAttack = currentEnemy.maxAttack;
         }
 
+        // Mine Defense — герой-босс переиспользован из обычной кампании (см. ResolveEnemy), но должен
+        // ощущаться серьёзнее, чем когда игрок дрался с ним в первый раз — тот же множитель, что у
+        // Elite-узла Death Dungeon (SetupDeathDungeonNode), не новый баланс с нуля.
+        if (isMineDefense)
+        {
+            enemyMaxHP = Mathf.RoundToInt(enemyMaxHP * 1.5f);
+            enemyMinAttack = Mathf.RoundToInt(enemyMinAttack * 1.3f);
+            enemyMaxAttack = Mathf.RoundToInt(enemyMaxAttack * 1.3f);
+        }
+
         // Нода на карте перекрывает числа из EnemyData процедурной кривой (EnemyStatCurve) — EnemyData
         // остаётся архетипом (портрет/скиллы/лут), а HP/атака считаются из (территория, номер ноды).
         // Не трогает FarmNode/повторные бои без node-контекста и debug-тесты без WorldMapManager — тогда
-        // просто остаются сырые значения EnemyData/инспектора, как раньше.
+        // просто остаются сырые значения EnemyData/инспектора, как раньше. Mine Defense тоже пропускает
+        // это — currentNode тут может быть залипшим от последнего ОБЫЧНОГО боя на карте и не имеет
+        // отношения к этому бою (см. MineThreatManager, не идёт через WorldMapManager.SelectNode).
         var node = WorldMapManager.Instance != null ? WorldMapManager.Instance.currentNode : null;
-        if (node != null)
+        if (node != null && !isMineDefense)
         {
             var curveStats = EnemyStatCurve.GetStats(node.territory, node.nodeIndex);
             enemyMaxHP = curveStats.maxHP;
@@ -203,13 +282,28 @@ public class BattleManager : MonoBehaviour
 
             var heroState = new HeroRuntimeState(hero, level, ascensionLevel);
 
-            // Бонусы от экипированных предметов (не меняют сам ассет HeroData, только эту копию на бой)
-            var bonuses = HeroStatUtility.CalculateEquipmentBonuses(ownership);
-            heroState.maxHealth += bonuses.health;
-            heroState.currentHealth += bonuses.health;
-            heroState.maxResource += bonuses.mana;
-            heroState.damageMultiplier += bonuses.damageMultiplier;
-            heroState.armor += bonuses.armor;
+            // Бонусы от экипированных предметов (не меняют сам ассет HeroData, только эту копию на бой) —
+            // в Death Dungeon статы уравниваются на входе, экипировка не даёт ничего (см.
+            // project_death_dungeon_concept: "гир не решает" — единственный режим в игре с этим правилом).
+            if (!isDeathDungeon)
+            {
+                var bonuses = HeroStatUtility.CalculateEquipmentBonuses(ownership);
+                heroState.maxHealth += bonuses.health;
+                heroState.currentHealth += bonuses.health;
+                heroState.maxResource += bonuses.mana;
+                heroState.damageMultiplier += bonuses.damageMultiplier;
+                heroState.armor += bonuses.armor;
+
+                // Последствие недавнего ретрита из Death Dungeon — бьёт по ОБЫЧНЫМ боям (не по самому
+                // данжу, там статы и так уравнены), см. DeathDungeonManager.IsRetreatDebuffActive.
+                if (DeathDungeonManager.Instance != null && DeathDungeonManager.Instance.IsRetreatDebuffActive)
+                {
+                    const float retreatDebuffMultiplier = 0.8f; // -20%
+                    heroState.maxHealth = Mathf.RoundToInt(heroState.maxHealth * retreatDebuffMultiplier);
+                    heroState.currentHealth = heroState.maxHealth;
+                    heroState.damageMultiplier *= retreatDebuffMultiplier;
+                }
+            }
 
             // Пассивный навык "стоит" маны — выбранная пассивка навсегда съедает часть максимума маны героя в этом бою
             if (ownership != null && ownership.passiveSkillIndex >= 0 && hero.skills != null
@@ -227,7 +321,118 @@ public class BattleManager : MonoBehaviour
                 heroState.maxResource = Mathf.Max(1, heroState.maxResource - RacePassiveUtility.ManaCost);
             }
 
+            // Death Dungeon — HP и мана переносятся из предыдущего узла этого забега (см. DeathDungeonManager.
+            // carriedHeroHP/carriedHeroMana), а не всегда полные — иначе урон/потраченная мана никогда бы не
+            // копились между боями гаунтлета. Специально ПОСЛЕ всех правок maxResource выше (пассивки съедают
+            // часть максимума маны) — иначе Mathf.Min ниже сверялся бы со старым, ещё не уменьшенным максимумом,
+            // и currentResource мог бы оказаться больше актуального maxResource. Первый бой забега (нет
+            // сохранённого значения) — герой стартует на полных HP/мане, как обычно.
+            if (isDeathDungeon && DeathDungeonManager.Instance != null)
+            {
+                heroState.currentHealth = Mathf.Min(heroState.maxHealth,
+                    DeathDungeonManager.Instance.GetCarriedHP(hero.heroId, heroState.maxHealth));
+                heroState.currentResource = Mathf.Min(heroState.maxResource,
+                    DeathDungeonManager.Instance.GetCarriedMana(hero.heroId, heroState.maxResource));
+            }
+
             activeHeroes.Add(heroState);
+        }
+
+        if (isDeathDungeon)
+        {
+            EnsureUsableActiveSkills();
+            SetupDeathDungeonNode();
+        }
+    }
+
+    // Экипировка не даёт бонуса в Death Dungeon (см. выше) — если сохранённый игроком активный скилл
+    // (HeroOwnershipData.activeSkillIndex) стоит дороже, чем герой вообще может дотянуть маной без
+    // диковинки, кнопка скилла в бою была бы бесполезно недоступна весь забег. Подменяем на самый дорогой
+    // скилл из кита, который герой реально может себе позволить — только на этот бой (см.
+    // HeroRuntimeState.effectiveActiveSkillOverride), сохранённый выбор игрока не трогаем.
+    private void EnsureUsableActiveSkills()
+    {
+        if (HeroCollectionManager.Instance == null) return;
+
+        foreach (var h in activeHeroes)
+        {
+            if (h.data.skills == null || h.data.skills.Length == 0) continue;
+
+            var ownership = HeroCollectionManager.Instance.ownership.Find(o => o.heroId == h.data.heroId);
+            int chosenIndex = ownership != null ? Mathf.Clamp(ownership.activeSkillIndex, 0, h.data.skills.Length - 1) : 0;
+            var chosenSkill = h.data.skills[chosenIndex];
+
+            if (chosenSkill == null || chosenSkill.cost <= h.maxResource) continue; // уже влезает — трогать нечего
+
+            SkillData bestFit = null;
+            foreach (var skill in h.data.skills)
+            {
+                if (skill == null || skill.cost > h.maxResource) continue;
+                if (bestFit == null || skill.cost > bestFit.cost)
+                    bestFit = skill;
+            }
+
+            h.effectiveActiveSkillOverride = bestFit; // null, если вообще ни один скилл кита не влезает — тогда останется как есть
+        }
+    }
+
+    // Применяет бонус/усложнение текущего узла Death Dungeon (см. DeathDungeonNodeType) и все активные
+    // баффы забега (DeathDungeonManager.activeBuffs) — вызывается один раз в Awake(), после того как
+    // activeHeroes/enemyMaxHP уже настроены обычным путём выше.
+    private void SetupDeathDungeonNode()
+    {
+        if (DeathDungeonManager.Instance == null) return;
+
+        currentDungeonNodeType = DeathDungeonManager.Instance.CurrentNodeType;
+
+        if (currentDungeonNodeType == DeathDungeonNodeType.Elite)
+        {
+            // Усложнённый бой — враг заметно сильнее рядового узла того же забега (без node-контекста
+            // с EnemyStatCurve тут опереться не на что, простой множитель поверх сырых статов EnemyData).
+            enemyMaxHP = Mathf.RoundToInt(enemyMaxHP * 1.5f);
+            enemyMinAttack = Mathf.RoundToInt(enemyMinAttack * 1.3f);
+            enemyMaxAttack = Mathf.RoundToInt(enemyMaxAttack * 1.3f);
+            enemyHP = enemyMaxHP;
+        }
+        else if (currentDungeonNodeType == DeathDungeonNodeType.Gamble)
+        {
+            extraBoardFlipUses += 1;
+        }
+
+        foreach (var buff in DeathDungeonManager.Instance.activeBuffs)
+        {
+            if (buff == null) continue;
+
+            switch (buff.type)
+            {
+                case DeathDungeonBuffType.DamageBoost:
+                    foreach (var h in activeHeroes)
+                        h.damageMultiplier *= 1f + buff.value;
+                    break;
+
+                case DeathDungeonBuffType.ReducedEnemyDamage:
+                    enemyMinAttack = Mathf.RoundToInt(enemyMinAttack * (1f - buff.value));
+                    enemyMaxAttack = Mathf.RoundToInt(enemyMaxAttack * (1f - buff.value));
+                    break;
+
+                case DeathDungeonBuffType.ExtraMana:
+                    foreach (var h in activeHeroes)
+                        h.currentResource = Mathf.Min(h.maxResource, h.currentResource + Mathf.RoundToInt(buff.value));
+                    break;
+
+                case DeathDungeonBuffType.ExtraShield:
+                    AddShield(Mathf.RoundToInt(TotalHeroMaxHealth * buff.value));
+                    break;
+
+                case DeathDungeonBuffType.HealEachBattle:
+                    foreach (var h in activeHeroes)
+                        h.currentHealth = Mathf.Min(h.maxHealth, h.currentHealth + Mathf.RoundToInt(h.maxHealth * buff.value));
+                    break;
+
+                case DeathDungeonBuffType.ExtraGambleUse:
+                    extraBoardFlipUses += Mathf.RoundToInt(buff.value);
+                    break;
+            }
         }
     }
 
@@ -331,6 +536,16 @@ public class BattleManager : MonoBehaviour
         return hasAliveHeroOfColor ? aliveDamagePerGem[type] : baseDamagePerGem[type];
     }
 
+    // Прокачка героя этого цвета (уровень/вознесение/оружие — hero.damageMultiplier, см. HeroStatUtility)
+    // теперь масштабирует и обычный урон по геммам, а не только скиллы — иначе кривая HP врагов растёт,
+    // а базовый урон отряда за ход всегда остаётся плоским (см. project_campaign_difficulty_curve, находка
+    // про "стену" на Orcs/Demons). Живого героя этого цвета нет — множитель 1 (как раньше, без бонуса).
+    private float GetColorPowerMultiplier(int type)
+    {
+        var hero = activeHeroes.FirstOrDefault(h => h.currentHealth > 0 && h.stunnedTurnsRemaining <= 0 && (int)h.data.resourceType == type);
+        return hero != null ? hero.damageMultiplier : 1f;
+    }
+
     public void ResolvePlayerTurn(Dictionary<int, int> matchedTypeCounts)
     {
         lastTurnMatchCount = matchedTypeCounts.Values.Sum();
@@ -354,7 +569,7 @@ public class BattleManager : MonoBehaviour
             else if (type >= 0 && type <= 4) // Red/Blue/Green/Yellow/Violet
             {
                 int baseDamage = count * GetDamagePerGem(type);
-                int finalDamage = Mathf.RoundToInt(baseDamage * damageMultiplier * heroDamageMultiplier);
+                int finalDamage = Mathf.RoundToInt(baseDamage * GetColorPowerMultiplier(type) * damageMultiplier * heroDamageMultiplier);
 
                 // Орки — пассивка: 10% шанс утроить урон этого попадания ("3х удар"), любой цвет.
                 if (HasLivingHeroOfRace(Race.Orcs) && Random.value < 0.10f)
@@ -387,6 +602,19 @@ public class BattleManager : MonoBehaviour
         if (totalEnemyDamageThisTurn > 0)
             OnEnemyDamaged?.Invoke(totalEnemyDamageThisTurn);
 
+        AdvanceTurnTimers();
+
+        OnStateChanged?.Invoke();
+
+        AdvanceToEnemyResponseOrEnd();
+    }
+
+    // Общий "конец хода игрока" учёт — тики баффов/дебаффов/пассивок рас. Раньше жил только здесь
+    // (путь геммов), из-за чего ход, потраченный на скилл вместо матча (TryUseSkill), вообще не тикал эти
+    // таймеры: баффы/дебаффы длились на ход дольше положенного, пассивки рас (щит Фей, чип-урон драконов
+    // и т.п.) не срабатывали в такой ход. Теперь вызывается из обоих путей.
+    private void AdvanceTurnTimers()
+    {
         // Блокировка маны действовала ровно один ход — снимаем её для следующего
         foreach (var hero in activeHeroes)
             hero.blockManaGainThisTurn = false;
@@ -397,7 +625,7 @@ public class BattleManager : MonoBehaviour
             if (damageMultiplierTurnsRemaining <= 0)
                 damageMultiplier = 1f;
         }
-                if (heroDamageMultiplierTurnsRemaining > 0)
+        if (heroDamageMultiplierTurnsRemaining > 0)
         {
             heroDamageMultiplierTurnsRemaining--;
             if (heroDamageMultiplierTurnsRemaining <= 0)
@@ -462,9 +690,13 @@ public class BattleManager : MonoBehaviour
         }
 
         ApplyRacePassivesPerTurn();
+    }
 
-        OnStateChanged?.Invoke();
-
+    // Общая развилка "что дальше после хода игрока" — раньше была отдельно продублирована в ResolvePlayerTurn
+    // (путь геммов) и TryUseSkill (путь скилла); версия из TryUseSkill не учитывала freeExtraTurnsRemaining,
+    // из-за чего скилл сразу после эффекта "бесплатный лишний ход" всё равно отдавал ход врагу.
+    private void AdvanceToEnemyResponseOrEnd()
+    {
         if (isBossTraining)
         {
             // ИИ-гемм-матч — это и есть "атака героя", отдельного хода-ответа врага (=босса-игрока) нет:
@@ -568,6 +800,7 @@ public class BattleManager : MonoBehaviour
     {
         if (!isBossTraining || skill == null) return;
         if (bossTrainingWindowCoroutine == null) return; // не "окно игрока" — ход сейчас не у босса
+        if (gridManager != null && gridManager.isBusy) return; // окно могло открыться до isBusy=false (см. GridManager.CollapseGrid) — сетка ещё анимирует/рероллит
 
         int used = bossTrainingSkillUses.TryGetValue(skill, out int u) ? u : 0;
         if (skill.usesPerTraining > 0 && used >= skill.usesPerTraining)
@@ -999,6 +1232,15 @@ public class BattleManager : MonoBehaviour
         DailyQuestManager.Instance?.ReportBattleWon();
         AchievementManager.Instance?.ReportEnemyDefeated();
 
+        // Mine Defense (кусок 5) — полностью свой хвост, никакой обычной награды (см. project_death_dungeon_concept:
+        // "снятие угрозы — уже достаточная причина драться"), и намеренно НЕ читает WorldMapManager.currentNode
+        // ниже (может быть залипшим от последнего обычного боя, не имеет отношения к этому бою).
+        if (isMineDefense)
+        {
+            EndMineDefenseVictory();
+            return;
+        }
+
         LootReward loot = currentEnemy != null ? currentEnemy.loot : null;
         int accountXp = loot != null ? loot.accountExperience : accountExperienceReward; // ОСТАЁТСЯ плоским — см. "Вариант C"
         int heroXp = loot != null ? loot.heroExperience : 0;
@@ -1080,12 +1322,108 @@ public class BattleManager : MonoBehaviour
 
         WorldMapManager.Instance?.CompleteCurrentNode();
 
+        Transform root = ResolveDialogRoot();
+
+        if (isDeathDungeon)
+        {
+            EndDeathDungeonNodeVictory(rewardLines, root);
+            return;
+        }
+
         string summary = "Victory!\n" + string.Join("\n", rewardLines);
         OnBattleLog?.Invoke(summary.Replace("\n", " | "));
 
-        Transform root = ResolveDialogRoot();
         ConfirmationDialog.ShowInfo(root, summary, 260, () => SceneManager.LoadScene(mainMenuSceneName));
     }
+
+    // Хвост EndBattleVictory специфичный для Death Dungeon — сохраняет перенесённое HP отряда, применяет
+    // бонус узла (Heal/Reward), продвигает забег и либо показывает выбор баффа (узел Buff), либо сразу
+    // ведёт назад на карту (см. DeathDungeonManager, MainMenuUI.Start возврат по returningFromDeathDungeon).
+    private void EndDeathDungeonNodeVictory(List<string> rewardLines, Transform root)
+    {
+        var dungeon = DeathDungeonManager.Instance;
+
+        // HP и мана переносятся в СЛЕДУЮЩИЙ узел такими, какие есть на момент победы — сама суть гаунтлета
+        // (урон и потраченная мана копятся от боя к бою). HP сохраняем ДО применения Heal-бонуса ниже,
+        // чтобы бонус подействовал именно на это сохранённое значение; мана бонуса на победу не получает,
+        // поэтому её порядок сохранения не важен.
+        if (dungeon != null)
+        {
+            foreach (var h in activeHeroes)
+            {
+                dungeon.SetCarriedHP(h.data.heroId, h.currentHealth);
+                dungeon.SetCarriedMana(h.data.heroId, h.currentResource);
+            }
+        }
+
+        if (dungeon != null)
+        {
+            if (currentDungeonNodeType == DeathDungeonNodeType.Heal)
+            {
+                const float healPercent = 0.3f;
+                foreach (var h in activeHeroes)
+                {
+                    int healed = Mathf.RoundToInt(h.maxHealth * healPercent);
+                    int newHP = Mathf.Min(h.maxHealth, h.currentHealth + healed);
+                    dungeon.SetCarriedHP(h.data.heroId, newHP);
+                }
+                rewardLines.Add("Squad healed");
+            }
+            else if (currentDungeonNodeType == DeathDungeonNodeType.Reward)
+            {
+                var catalog = ItemCollectionManager.Instance != null ? ItemCollectionManager.Instance.allItems : null;
+                if (catalog != null && catalog.Length > 0)
+                {
+                    var bonusItem = catalog[Random.Range(0, catalog.Length)];
+                    ItemCollectionManager.Instance.AddItemCopy(bonusItem);
+                    rewardLines.Add($"Bonus: {bonusItem.itemName} +1");
+                }
+            }
+        }
+
+        bool runComplete = dungeon != null && dungeon.AdvanceToNextNode();
+
+        if (AccountManager.Instance != null)
+            AccountManager.Instance.returningFromDeathDungeon = true;
+
+        string summary = "Victory!\n" + string.Join("\n", rewardLines)
+            + (runComplete ? "\n\nThe Death Dungeon has been cleared!" : "");
+        OnBattleLog?.Invoke(summary.Replace("\n", " | "));
+
+        bool offerBuffChoice = !runComplete && currentDungeonNodeType == DeathDungeonNodeType.Buff;
+
+        ConfirmationDialog.ShowInfo(root, summary, 260, () =>
+        {
+            if (offerBuffChoice)
+            {
+                var buffUI = gameObject.AddComponent<DeathDungeonBuffChoiceUI>();
+                buffUI.Open(root, () => SceneManager.LoadScene(mainMenuSceneName));
+            }
+            else
+            {
+                SceneManager.LoadScene(mainMenuSceneName);
+            }
+        });
+    }
+
+    // Хвост EndBattleVictory для Mine Defense (кусок 5) — снимает угрозу расы, никакой добычи (см.
+    // project_death_dungeon_concept: "снятие угрозы — уже достаточная причина драться"). Возврат идёт на
+    // карту мира в ту же городскую панель, откуда кликнули хотспот (см. MainMenuUI.Start
+    // returningFromMineDefense, lastActiveMapPanelName выставляется самим хотспотом при клике).
+    private void EndMineDefenseVictory()
+    {
+        MineThreatManager.Instance?.ResolveThreat(mineDefenseRace);
+
+        if (AccountManager.Instance != null)
+            AccountManager.Instance.returningFromMineDefense = true;
+
+        string summary = $"The corrupted {mineDefenseRace} threat has been defeated!\nYour {mineDefenseRace} mines are safe again.";
+        OnBattleLog?.Invoke(summary);
+
+        Transform root = ResolveDialogRoot();
+        ConfirmationDialog.ShowInfo(root, summary, 170, () => SceneManager.LoadScene(mainMenuSceneName));
+    }
+
     private void OnPlayerDefeated()
     {
         Debug.Log("Игрок проиграл бой.");
@@ -1099,7 +1437,24 @@ public class BattleManager : MonoBehaviour
         if (battleEnded) return;
         battleEnded = true;
 
-        const string summary = "Defeat...";
+        string summary = "Defeat...";
+
+        // Death Dungeon — поражение здесь ВСЕГДА значит реальный вайп в бою (ретрит — отдельное действие
+        // на карте забега между боями, через EndBattleDefeat вообще не проходит) — значит permadeath
+        // применяется безусловно, см. project_death_dungeon_concept/HeroCollectionManager.PermadeleteSquad.
+        if (isDeathDungeon)
+        {
+            HeroCollectionManager.Instance?.PermadeleteSquad();
+            DeathDungeonManager.Instance?.AbandonRun();
+            summary = "Your squad has fallen...\nThose heroes are gone forever.";
+        }
+
+        // Mine Defense — поражение здесь НЕ штрафуется (см. project_death_dungeon_concept piece 5), угроза
+        // просто остаётся активной, пробовать можно в любой момент — только возврат в ту же городскую
+        // панель, откуда начали (тот же приём, что и у победы выше).
+        if (isMineDefense && AccountManager.Instance != null)
+            AccountManager.Instance.returningFromMineDefense = true;
+
         OnBattleLog?.Invoke(summary);
 
         Transform root = ResolveDialogRoot();
@@ -1109,6 +1464,10 @@ public class BattleManager : MonoBehaviour
     // Теперь привязано к конкретному герою, а не к глобальному ресурсу
     public bool TryUseSkill(HeroRuntimeState hero, SkillData skill)
     {
+        if (gridManager != null && gridManager.isBusy)
+            return false; // поле ещё анимирует каскад/своп — тот же гейт, что и у обычного клика по фишке (Item.OnMouseDown/Up),
+                           // иначе скилл, меняющий сетку, может запуститься параллельно с ещё идущей корутиной каскада
+
         if (hero.currentHealth <= 0)
             return false;
 
@@ -1124,6 +1483,7 @@ public class BattleManager : MonoBehaviour
         hero.currentResource -= actualCost;
         hero.blockManaGainThisTurn = true; // этому герою нельзя пополнить ману в этот ход
         hero.lastUsedSkill = skill; // для CopyAllyLastSkill
+        lastSkillCaster = hero; // команда в целом — кто реально кастовал последним (см. CopyAllyLastSkill)
 
         ApplySkillEffect(hero, skill);
 
@@ -1136,6 +1496,13 @@ public class BattleManager : MonoBehaviour
             humanAlly.currentResource = Mathf.Min(humanAlly.maxResource, humanAlly.currentResource + manaRefund);
             Debug.Log($"[RacePassive] {humanAlly.data.heroName} (Humans): mana refund +{manaRefund} (from {hero.data.heroName}'s skill)");
         }
+
+        // Этот ход потрачен на скилл, а не на матч — 0 подходящих гемм за ход (читается, например,
+        // Beastfolk-скиллом DamageScalingWithMatches на СЛЕДУЮЩЕМ вызове; иначе он мог бы раз за разом
+        // отталкиваться от протухшего большого значения с давнего матч-хода). Ставим ПОСЛЕ ApplySkillEffect —
+        // если кастуемый скилл сам и есть DamageScalingWithMatches, он должен успеть прочитать значение
+        // предыдущего хода, а не уже обнулённое текущим.
+        lastTurnMatchCount = 0;
 
         OnStateChanged?.Invoke();
 
@@ -1152,23 +1519,10 @@ public class BattleManager : MonoBehaviour
         {
             // В Boss Training нет обычного врага (currentEnemy == null) — EnemyTurnRoutine там бессмысленна
             // (PickEnemySkill вернёт null и отработает BasicEnemyAttack по playerHP, чего быть не должно).
-            // Вместо этого — та же ветка, что и после гемм-матча в ResolvePlayerTurn.
-            if (isBossTraining)
-            {
-                bossTrainingTurnsRemaining--;
-                if (enemyHP <= 0 || bossTrainingTurnsRemaining <= 0)
-                    EndBossTraining();
-                else
-                    OpenBossTrainingPlayerWindow();
-            }
-            else if (enemyHP <= 0)
-            {
-                OnEnemyDefeated();
-            }
-            else
-            {
-                StartCoroutine(EnemyTurnRoutine());
-            }
+            // AdvanceTurnTimers() — тот же тик баффов/дебаффов/пассивок рас, что и после гемм-матча
+            // (см. ResolvePlayerTurn), раньше здесь пропускался целиком.
+            AdvanceTurnTimers();
+            AdvanceToEnemyResponseOrEnd();
         }
 
         return true;
@@ -1375,7 +1729,9 @@ public class BattleManager : MonoBehaviour
                 break;
 
             case SkillEffectType.CopyAllyLastSkill:
-                var copyTarget = activeHeroes.FirstOrDefault(h => h != hero && h.currentHealth > 0 && h.lastUsedSkill != null);
+                var copyTarget = (lastSkillCaster != null && lastSkillCaster != hero && lastSkillCaster.currentHealth > 0)
+                    ? lastSkillCaster
+                    : null;
                 if (copyTarget != null && copyTarget.lastUsedSkill.effectType != SkillEffectType.CopyAllyLastSkill)
                     ApplySkillEffect(hero, copyTarget.lastUsedSkill);
                 break;

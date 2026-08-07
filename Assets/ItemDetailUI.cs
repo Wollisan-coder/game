@@ -29,6 +29,7 @@ public class ItemDetailUI : MonoBehaviour
 
     private ItemSacrificeUI sacrificeUI;
     private HeroExperienceUseUI heroExperienceUseUI;
+    private HeroVoucherRedeemUI heroVoucherRedeemUI;
 
     // Вызывается при закрытии этого попапа — чтобы экран-каталог позади мог перестроить сетку
     // (например, если апгрейд/использование предмета создало/изменило стек, пока попап был открыт)
@@ -67,6 +68,7 @@ public class ItemDetailUI : MonoBehaviour
         var ownership = currentStack;
         bool owned = ownership != null;
         bool isHeroXpItem = item.category == ItemCategory.HeroExperience;
+        bool isHeroVoucherItem = item.category == ItemCategory.HeroVoucher;
 
         if (icon != null) icon.sprite = item.icon;
         if (nameText != null)
@@ -74,7 +76,7 @@ public class ItemDetailUI : MonoBehaviour
             nameText.text = item.itemName;
             nameText.color = item.GetRarityColor();
         }
-        if (slotTypeText != null) slotTypeText.text = isHeroXpItem ? "Consumable" : item.slotType.ToString();
+        if (slotTypeText != null) slotTypeText.text = isHeroXpItem ? "Consumable" : isHeroVoucherItem ? "Voucher" : item.slotType.ToString();
         if (descriptionText != null) descriptionText.text = item.description;
 
         if (statsText != null)
@@ -82,6 +84,11 @@ public class ItemDetailUI : MonoBehaviour
             if (isHeroXpItem)
             {
                 statsText.text = $"Hero XP: +{item.heroExperienceValue}";
+            }
+            else if (isHeroVoucherItem)
+            {
+                int voucherCount = ItemCollectionManager.Instance != null ? ItemCollectionManager.Instance.GetTotalQuantity(item.itemId) : 0;
+                statsText.text = $"Owned: {voucherCount} / {HeroCollectionManager.HeroVouchersPerGem} needed to grant a hero an Ascension Gem";
             }
             else
             {
@@ -134,6 +141,13 @@ public class ItemDetailUI : MonoBehaviour
                 actionButton.gameObject.SetActive(canUse);
                 if (actionText != null) actionText.text = "Use";
                 actionButton.onClick.AddListener(OnUseClicked);
+            }
+            else if (isHeroVoucherItem)
+            {
+                bool canRedeem = owned && manager != null && manager.GetTotalQuantity(item.itemId) >= HeroCollectionManager.HeroVouchersPerGem;
+                actionButton.gameObject.SetActive(canRedeem);
+                if (actionText != null) actionText.text = "Grant Gem";
+                actionButton.onClick.AddListener(OnRedeemClicked);
             }
             else
             {
@@ -200,6 +214,7 @@ public class ItemDetailUI : MonoBehaviour
 
         sacrificeUI = gameObject.AddComponent<ItemSacrificeUI>();
         heroExperienceUseUI = gameObject.AddComponent<HeroExperienceUseUI>();
+        heroVoucherRedeemUI = gameObject.AddComponent<HeroVoucherRedeemUI>();
     }
 
     private void OnSacrificeClicked()
@@ -240,6 +255,24 @@ public class ItemDetailUI : MonoBehaviour
                 Open(refreshedData, refreshedStack);
             else
                 Close(); // последняя копия потрачена
+        });
+    }
+
+    private void OnRedeemClicked()
+    {
+        if (heroVoucherRedeemUI == null || currentItem == null) return;
+
+        Rarity rarity = currentItem.rarity;
+        string itemId = currentItem.itemId;
+        heroVoucherRedeemUI.Open(rarity, () =>
+        {
+            var refreshedData = ItemCollectionManager.Instance?.GetItemById(itemId);
+            var refreshedStack = ItemCollectionManager.Instance?.GetStacks(itemId).FirstOrDefault();
+
+            if (refreshedData != null && refreshedStack != null)
+                Open(refreshedData, refreshedStack);
+            else
+                Close(); // последний ваучер потрачен
         });
     }
 

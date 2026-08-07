@@ -169,15 +169,13 @@ public static class BattlePrepPopup
             CreateItemIcon(gridRect, item);
     }
 
-    // Не использует ItemBadgeUtility.ApplyRarityFrame — та рамка спавнится сиблингом иконки в её
-    // родителе, что ломает GridLayoutGroup (родитель здесь — сама сетка, лишний сиблинг = лишняя ячейка).
-    // Вместо этого сама ячейка сетки — это цветной фон редкости, а иконка предмета лежит внутри неё с отступом.
+    // cellObj — прямой ребёнок GridLayoutGroup (сетка сама принудительно задаёт его размер под cellSize),
+    // иконка вложена ещё на уровень глубже — поэтому ApplyRarityFrame (спавнит рамку сиблингом иконки в её
+    // родителе, т.е. внутри cellObj, а не в самой сетке) сюда прекрасно ложится и не ломает GridLayoutGroup.
     private static void CreateItemIcon(Transform parent, ItemData item)
     {
         var cellObj = new GameObject(item.itemName, typeof(RectTransform));
         cellObj.transform.SetParent(parent, false);
-        var frameBg = cellObj.AddComponent<Image>();
-        frameBg.color = RarityUtility.GetColor(item.rarity);
 
         var iconObj = new GameObject("Icon", typeof(RectTransform));
         var iconRect = (RectTransform)iconObj.transform;
@@ -189,5 +187,8 @@ public static class BattlePrepPopup
         var icon = iconObj.AddComponent<Image>();
         icon.sprite = item.icon;
         icon.preserveAspect = true;
+
+        Image rarityFrame = null;
+        ItemBadgeUtility.ApplyRarityFrame(icon, RarityUtility.GetColor(item.rarity), ref rarityFrame);
     }
 }

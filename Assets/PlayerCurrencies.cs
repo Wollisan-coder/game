@@ -23,12 +23,6 @@ public class PlayerCurrencies : MonoBehaviour
         DontDestroyOnLoad(gameObject);
 
         Load();
-
-        // ВРЕМЕННО для теста — фиксированные балансы для проверки зданий и призыва
-        SetBalance(CurrencyType.Wood, 5000);
-        SetBalance(CurrencyType.Stone, 5000);
-        SetBalance(CurrencyType.SummonShards, 2000);
-        SetBalance(CurrencyType.PremiumGems, 500);
     }
 
     public int GetBalance(CurrencyType type)

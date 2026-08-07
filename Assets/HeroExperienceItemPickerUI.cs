@@ -168,6 +168,7 @@ public class HeroExperienceItemPickerUI : MonoBehaviour
         closeBtnRect.sizeDelta = new Vector2(160, 36);
         closeBtnRect.anchoredPosition = new Vector2(0, 12);
         closeBg = closeBtnObj.AddComponent<Image>();
+        ConfirmationDialog.StyleAsButton(closeBg);
         var closeBtn = closeBtnObj.AddComponent<Button>();
         closeBtn.onClick.AddListener(Close);
 
@@ -181,6 +182,7 @@ public class HeroExperienceItemPickerUI : MonoBehaviour
         closeButtonText = closeTextObj.AddComponent<TextMeshProUGUI>();
         closeButtonText.text = "Close";
         closeButtonText.alignment = TextAlignmentOptions.Center;
+        closeButtonText.color = ConfirmationDialog.ButtonTextColor;
 
         overlayRoot.SetActive(false);
     }
@@ -204,40 +206,20 @@ public class HeroExperienceItemPickerUI : MonoBehaviour
 
     private void CreateItemEntry(ItemData itemData, ItemOwnershipData ownership)
     {
-        var entryObj = new GameObject(itemData.itemId, typeof(RectTransform));
-        var entryRect = (RectTransform)entryObj.transform;
-        entryRect.SetParent(listContainer, false);
+        PickerTileUtility.BuildTile(listContainer, itemData.itemId, new Color(1, 1, 1, 0.06f),
+            out Image bg, out Image icon, out TMP_Text label, out Button btn);
 
-        var bg = entryObj.AddComponent<Image>();
-        bg.color = new Color(1, 1, 1, 0.06f);
-        var btn = entryObj.AddComponent<Button>();
-
-        var iconObj = new GameObject("Icon", typeof(RectTransform));
-        var iconRect = (RectTransform)iconObj.transform;
-        iconRect.SetParent(entryRect, false);
-        iconRect.anchorMin = new Vector2(0, 0.35f);
-        iconRect.anchorMax = new Vector2(1, 1);
-        iconRect.offsetMin = new Vector2(6, 0);
-        iconRect.offsetMax = new Vector2(-6, -6);
-        var icon = iconObj.AddComponent<Image>();
         icon.sprite = itemData.icon;
-        icon.preserveAspect = true;
 
-        var labelObj = new GameObject("Label", typeof(RectTransform));
-        var labelRect = (RectTransform)labelObj.transform;
-        labelRect.SetParent(entryRect, false);
-        labelRect.anchorMin = new Vector2(0, 0);
-        labelRect.anchorMax = new Vector2(1, 0.35f);
-        labelRect.offsetMin = new Vector2(4, 2);
-        labelRect.offsetMax = new Vector2(-4, 0);
-        var label = labelObj.AddComponent<TextMeshProUGUI>();
         label.text = $"{itemData.itemName}\n+{itemData.heroExperienceValue} Exp.";
         label.fontSize = 12;
-        label.alignment = TextAlignmentOptions.Center;
         label.color = itemData.GetRarityColor();
 
+        Image rarityFrame = null;
+        ItemBadgeUtility.ApplyRarityFrame(icon, itemData.GetRarityColor(), ref rarityFrame);
+
         TMP_Text quantityBadge = null;
-        ItemBadgeUtility.ApplyQuantityBadge(iconRect, ownership.quantity, ref quantityBadge);
+        ItemBadgeUtility.ApplyQuantityBadge(icon.rectTransform, ownership.quantity, ref quantityBadge);
 
         string instanceId = ownership.instanceId;
         btn.onClick.AddListener(() => OnItemSelected(itemData, instanceId));
@@ -256,6 +238,12 @@ public class HeroExperienceItemPickerUI : MonoBehaviour
 
     private void Apply(string instanceId, int amount)
     {
+        // Стек уже мог быть списан предыдущим вызовом этого же подтверждения (двойной тап по одной и той
+        // же плитке до закрытия первого попапа) — тогда выходим без повторного начисления опыта. Порядок
+        // GrantExperience -> ConsumeItem сохранён: если герой уже на максимуме уровня, GrantExperience
+        // провалится ДО списания предмета, а не после.
+        if (itemCollectionManager.GetStackByInstanceId(instanceId) == null) return;
+
         if (!heroCollectionManager.GrantExperience(heroId, amount)) return;
         if (!itemCollectionManager.ConsumeItem(instanceId)) return;
 

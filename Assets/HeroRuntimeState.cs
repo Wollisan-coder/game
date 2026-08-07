@@ -29,6 +29,12 @@ public class HeroRuntimeState
     public int stunnedTurnsRemaining;      // герой полностью "пропускает" ходы — его цвет не даёт урон/ману (StunRandomHero)
     public int skillBlockedTurnsRemaining; // герой не может использовать скилл, но матчи всё ещё работают (BlockHeroSkill)
 
+    // Death Dungeon уравнивает статы — сохранённый игроком активный скилл (HeroOwnershipData.activeSkillIndex)
+    // мог стать недоступен без маны-бонуса от диковинки (Trinket). Если да, BattleManager.SetupDeathDungeonNode
+    // кладёт сюда замену НА ЭТОТ КОНКРЕТНЫЙ БОЙ — ownership.activeSkillIndex (сохранённый выбор игрока для
+    // обычных боёв) не трогается. null = нет переопределения, брать обычным путём (HeroCardUI.ResolveActiveSkill).
+    public SkillData effectiveActiveSkillOverride;
+
     public HeroRuntimeState(HeroData heroData, int heroLevel = 1, int ascensionLevel = 0)
     {
         data = heroData;

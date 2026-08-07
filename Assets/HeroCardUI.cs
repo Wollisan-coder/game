@@ -157,6 +157,11 @@ public class HeroCardUI : MonoBehaviour
     {
         if (heroData.skills == null || heroData.skills.Length == 0) return null;
 
+        // Death Dungeon могла переопределить выбор игрока НА ЭТОТ БОЙ (см. BattleManager.
+        // EnsureUsableActiveSkills) — сохранённый ownership.activeSkillIndex ниже тут не трогаем.
+        if (heroState != null && heroState.effectiveActiveSkillOverride != null)
+            return heroState.effectiveActiveSkillOverride;
+
         int activeIndex = 0;
         if (HeroCollectionManager.Instance != null)
         {
@@ -218,7 +223,12 @@ public class HeroCardUI : MonoBehaviour
                 : 0f;
 
         if (activateButton != null && primarySkill != null)
-            activateButton.interactable = !isDead && heroState.currentResource >= primarySkill.cost;
+        {
+            // Реальная стоимость (со скидкой от ReduceAllyNextSkillCost), а не полная — иначе кнопка
+            // может остаться недоступной, хотя BattleManager.TryUseSkill уже разрешил бы каст по скидке.
+            int actualCost = Mathf.RoundToInt(primarySkill.cost * (1f - heroState.costReductionPercent));
+            activateButton.interactable = !isDead && heroState.currentResource >= actualCost;
+        }
 
         if (portraitImage != null)
             portraitImage.color = isDead ? deadTintColor : Color.white;

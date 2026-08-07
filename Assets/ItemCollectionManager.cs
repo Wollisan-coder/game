@@ -19,9 +19,6 @@ public class ItemCollectionManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
 
         LoadOwnedItems();
-
-        foreach (var item in allItems)
-            UnlockItem(item); // ВРЕМЕННО для теста, как и герои/враги
     }
 
     public bool IsOwned(ItemData item) => item != null && ownership.Any(o => o.itemId == item.itemId);
@@ -218,8 +215,7 @@ public class ItemCollectionManager : MonoBehaviour
         if (leveledStack.level > levelBefore)
             DailyQuestManager.Instance?.ReportItemLeveledUp();
 
-        MergeIdenticalStacks(leveledStack);
-        resultingTargetInstanceId = leveledStack.instanceId;
+        resultingTargetInstanceId = MergeIdenticalStacks(leveledStack);
 
         SaveOwnedItems();
         return true;
@@ -227,14 +223,19 @@ public class ItemCollectionManager : MonoBehaviour
 
     // Если после разделения/апгрейда в системе уже есть ДРУГОЙ стек с таким же itemId+уровнем+опытом —
     // объединяем их (суммируем quantity), чтобы фактически одинаковые предметы не плодили лишние ячейки.
-    private void MergeIdenticalStacks(ItemOwnershipData stack)
+    // Возвращает instanceId стека, который реально пережил слияние (twin, если слияние произошло, иначе
+    // сам stack) — вызывающая сторона (SacrificeItem) использует его как resultingTargetInstanceId для
+    // следующего шага пакетного пожертвования; раньше всегда возвращался instanceId только что удалённого
+    // stack, и следующий вызов SacrificeItem бил в несуществующий стек.
+    private string MergeIdenticalStacks(ItemOwnershipData stack)
     {
         var twin = ownership.FirstOrDefault(o => o != stack && o.itemId == stack.itemId
             && o.level == stack.level && o.experience == stack.experience);
-        if (twin == null) return;
+        if (twin == null) return stack.instanceId;
 
         twin.quantity += stack.quantity;
         ownership.Remove(stack);
+        return twin.instanceId;
     }
 
     // Прогноз результата (без применения): каким будет уровень/опыт/потерянный опыт, если добавить totalGainedXp к указанному предмету

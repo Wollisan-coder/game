@@ -18,6 +18,7 @@ public class MainMenuUI : MonoBehaviour
     public int battleEnergyCost = 1;
 
     private CastleUI castleUI; // строится программно — см. EnsureCastleUI()
+    private MineThreatMapHotspots mineThreatHotspots; // строится программно — см. EnsureMineThreatHotspots()
 
     private void Start()
     {
@@ -42,9 +43,32 @@ public class MainMenuUI : MonoBehaviour
         if (AccountManager.Instance != null)
             AccountManager.Instance.returningFromBossTraining = false;
 
-        if (returningFromBossTraining)
+        // Тот же приём — после узла гаунтлета Death Dungeon возвращаемся в Замок и сразу переоткрываем
+        // карту данжа (если забег ещё активен), а не сбрасываем на Collection по умолчанию.
+        bool returningFromDeathDungeon = AccountManager.Instance != null && AccountManager.Instance.returningFromDeathDungeon;
+        if (AccountManager.Instance != null)
+            AccountManager.Instance.returningFromDeathDungeon = false;
+
+        // Тот же приём — после боя за шахты (см. MineThreatManager) возвращаемся именно в ту городскую
+        // панель, откуда кликнули хотспот угрозы (lastPanelName выставляется хотспотом вручную — этот бой
+        // НЕ идёт через WorldMapManager.SelectNode/currentNodeId, поэтому returningFromMapBattle его не ловит).
+        bool returningFromMineDefense = AccountManager.Instance != null && AccountManager.Instance.returningFromMineDefense;
+        if (AccountManager.Instance != null)
+            AccountManager.Instance.returningFromMineDefense = false;
+
+        if (returningFromDeathDungeon)
         {
             ShowCastle();
+            castleUI.ReopenDeathDungeonMapIfActive();
+        }
+        else if (returningFromBossTraining)
+        {
+            ShowCastle();
+        }
+        else if (returningFromMineDefense)
+        {
+            ShowWorldMap();
+            OpenCityPanelByName(lastPanelName);
         }
         else if (returningFromMapBattle)
         {
@@ -85,6 +109,18 @@ public class MainMenuUI : MonoBehaviour
             if (cityPanel != null) cityPanel.SetActive(false);
     }
 
+    // Отмена "режима выбора" Коллекции (пустой слот отряда / Boss Training), если игрок ушёл с экрана
+    // через нав-бар вместо того, чтобы выбрать героя — иначе флаг остаётся "залипшим" и угоняет следующий
+    // обычный клик по карточке героя (ошибочный запуск боя или подстановка не в тот слот отряда).
+    // Не вызывается из ShowCollection() — туда всегда переходят С УЖЕ выставленным флагом (клик по пустому
+    // слоту/Boss Training сначала ставит флаг, потом сам вызывает ShowCollection), это легитимный кейс.
+    private void CancelHeroPickingIfActive()
+    {
+        if (HeroCollectionManager.Instance == null) return;
+        HeroCollectionManager.Instance.slotBeingEdited = -1;
+        HeroCollectionManager.Instance.pickingForBossTraining = false;
+    }
+
     public void ShowCollection()
     {
         collectionPanel.SetActive(true);
@@ -97,6 +133,7 @@ public class MainMenuUI : MonoBehaviour
 
     public void ShowSquad()
     {
+        CancelHeroPickingIfActive();
         collectionPanel.SetActive(false);
         squadPanel.SetActive(true);
         if (enemyCollectionPanel != null) enemyCollectionPanel.SetActive(false);
@@ -110,6 +147,7 @@ public class MainMenuUI : MonoBehaviour
 
     public void ShowEnemyCollection()
     {
+        CancelHeroPickingIfActive();
         collectionPanel.SetActive(false);
         squadPanel.SetActive(false);
         if (enemyCollectionPanel != null) enemyCollectionPanel.SetActive(true);
@@ -120,6 +158,7 @@ public class MainMenuUI : MonoBehaviour
 
     public void ShowItemCollection()
     {
+        CancelHeroPickingIfActive();
         collectionPanel.SetActive(false);
         squadPanel.SetActive(false);
         if (enemyCollectionPanel != null) enemyCollectionPanel.SetActive(false);
@@ -130,6 +169,7 @@ public class MainMenuUI : MonoBehaviour
 
     public void ShowCastle()
     {
+        CancelHeroPickingIfActive();
         collectionPanel.SetActive(false);
         squadPanel.SetActive(false);
         if (enemyCollectionPanel != null) enemyCollectionPanel.SetActive(false);
@@ -142,6 +182,7 @@ public class MainMenuUI : MonoBehaviour
 
     public void ShowWorldMap()
     {
+        CancelHeroPickingIfActive();
         collectionPanel.SetActive(false);
         squadPanel.SetActive(false);
         if (enemyCollectionPanel != null) enemyCollectionPanel.SetActive(false);
@@ -149,12 +190,21 @@ public class MainMenuUI : MonoBehaviour
         HideAllMapPanels();
         if (worldMapPanel != null) worldMapPanel.SetActive(true);
         castleUI?.Hide();
+
+        EnsureMineThreatHotspots();
+        mineThreatHotspots.RefreshAll(this);
     }
 
     private void EnsureCastleUI()
     {
         if (castleUI != null) return;
         castleUI = gameObject.AddComponent<CastleUI>();
+    }
+
+    private void EnsureMineThreatHotspots()
+    {
+        if (mineThreatHotspots != null) return;
+        mineThreatHotspots = gameObject.AddComponent<MineThreatMapHotspots>();
     }
 
     public void StartBattle()

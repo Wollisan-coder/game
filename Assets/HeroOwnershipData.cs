@@ -17,9 +17,25 @@ public class HeroOwnershipData
     public int level = 1;
     public int experience = 0; // накопленный опыт в пределах текущего уровня (от предметов-источников опыта)
 
+    // Гемы этого героя, копятся от дублей при призыве (см. HeroCollectionManager.HandleDuplicatePull).
+    // Тройного назначения: тратятся на вознесение (AscendHero), на конвертацию в опыт/Hero Voucher
+    // (ConvertGemToExperience/ConvertGemToVoucher), либо выбираются как "монета" жертвы для ретрита из
+    // Death Dungeon наравне с целиком принесёнными героями-картами (см.
+    // HeroCollectionManager.ExecuteRetreatSacrifice, project_death_dungeon_concept) — сознательно ОДИН и
+    // тот же ресурс, а не отдельная "бесплатная" валюта, чтобы ретрит реально стоил игроку прогресса
+    // героя. Отображаются на экране "Ascension Gems" (см. DeathDungeonEntryUI). НЕ сбрасывается при
+    // PermadeleteSquad/SacrificeHeroForRetreat (см. HeroCollectionManager.ResetHeroToNeverUnlocked) —
+    // получены игроком через уже состоявшиеся гача-пуллы, терять их вместе с ушедшим героем неправильно.
     [Header("Вознесение (только Purple/Orange — см. HeroAscensionUtility)")]
-    public int ascensionGems;  // "гемы" именно этого героя — копятся от дублей при призыве
+    public int ascensionGems;
     public int ascensionLevel; // сколько раз уже вознесён (0 = база)
+
+    // Разблокирует кнопку "гем -> Hero Voucher" (см. HeroCollectionManager.ConvertGemToVoucher) — навсегда
+    // true, как только герой хоть раз дошёл до 3-го вознесения (де-факто только Orange, у Purple потолок 2).
+    // Как и ascensionGems выше, НЕ сбрасывается ни при PermadeleteSquad, ни при жертве героя на ретрит
+    // (см. ResetHeroToNeverUnlocked) — раз разблокировано, остаётся разблокированным навсегда, даже если
+    // этот конкретный герой потом погибнет/будет принесён в жертву и открыт заново с нуля.
+    public bool voucherConversionUnlocked;
 
     [Header("Выбранные навыки")]
     public int activeSkillIndex = 0;   // навык, используемый кнопкой в бою

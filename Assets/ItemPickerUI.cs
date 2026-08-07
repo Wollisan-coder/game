@@ -109,7 +109,17 @@ public class ItemPickerUI : MonoBehaviour
         if (sacrificeUI == null)
             sacrificeUI = gameObject.AddComponent<ItemSacrificeUI>();
 
-        sacrificeUI.Open(equippedInstanceId, Populate);
+        var slot = currentSlot;
+        sacrificeUI.Open(equippedInstanceId, () =>
+        {
+            // Апгрейд надетого предмета мог отделить его в новый стек, если на слоте лежало больше 1 копии
+            // (см. ItemCollectionManager.SacrificeItem — targetStack.quantity>1 создаёт НОВЫЙ instanceId для
+            // прокачанной единицы) — перепривязываем слот героя к актуальному стеку, иначе бонус экипировки
+            // так и останется висеть на старом, неапгреженном instanceId.
+            if (sacrificeUI.CurrentTargetInstanceId != equippedInstanceId)
+                owner.EquipItem(slot, sacrificeUI.CurrentTargetInstanceId);
+            Populate();
+        });
     }
 
     // Кнопку "Upgrade" строим программно рядом с Unequip/Close (копируя их трансформ),

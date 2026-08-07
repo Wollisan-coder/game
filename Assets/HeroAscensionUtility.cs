@@ -77,6 +77,15 @@ public static class HeroAscensionUtility
         return hero.portrait;
     }
 
+    // Крупный портрет для окна инвентаря — свой отдельный арт (hero.inventoryPortrait), если назначен,
+    // иначе тот же результат, что и на маленькой карточке (см. GetDisplayPortrait).
+    public static Sprite GetInventoryPortrait(HeroData hero, HeroOwnershipData ownership)
+    {
+        if (hero == null) return null;
+        if (hero.inventoryPortrait != null) return hero.inventoryPortrait;
+        return GetDisplayPortrait(hero, ownership);
+    }
+
     // Общая подстановка картинки вознесения (трикветра медальонов) — используется в карточке коллекции,
     // инвентаре героя и слоте отряда. Если у редкости нет вознесения (Green/Blue/White) или спрайта для
     // текущего уровня нет в наборе — просто скрывает Image, как и RarityUtility.ApplyFrame.

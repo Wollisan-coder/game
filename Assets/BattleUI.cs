@@ -324,9 +324,9 @@ if (enemyPortrait != null && battleManager.currentEnemy != null && battleManager
 
     private void RefreshUI()
     {
-        playerHPSlider.maxValue = battleManager.playerMaxHP;
-        playerHPSlider.value = battleManager.playerHP;
-        playerHPText.text = $"{battleManager.playerHP} / {battleManager.playerMaxHP}";
+        playerHPSlider.maxValue = battleManager.TotalHeroMaxHealth;
+        playerHPSlider.value = battleManager.TotalHeroHealth;
+        playerHPText.text = $"{battleManager.TotalHeroHealth} / {battleManager.TotalHeroMaxHealth}";
         playerShieldText.text = battleManager.playerShield > 0 ? $"Shield: {battleManager.playerShield}" : "";
 
         enemyHPSlider.maxValue = battleManager.enemyMaxHP;

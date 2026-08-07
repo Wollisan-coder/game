@@ -26,6 +26,13 @@ public class HeroSummonPoolData : ScriptableObject
     public int pityThreshold = 50;               // после стольких призывов подряд без топ-редкости — гарантия
     public Rarity pityGuaranteedRarity = Rarity.Orange;
 
+    [Header("Джекпот на x10 (см. project_game_design_concept — \"shareable moment\")")]
+    // Шанс проверяется один раз на весь x10-пул (не на каждый отдельный призыв). При срабатывании 2 из 10
+    // результатов гарантированно — РАЗНЫЕ герои редкости Orange одной случайно выбранной расы; остальные 8 —
+    // обычный ролл. Нужно минимум 2 разных Orange-героя одной расы в пуле, иначе джекпот невозможен (SummonService
+    // тихо откатывается на обычные пуллы). 0 — джекпот выключен для этого пула.
+    public float jackpotChance = 0.0005f;
+
     private void OnValidate()
     {
         if (string.IsNullOrEmpty(poolId))

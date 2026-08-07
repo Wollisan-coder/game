@@ -24,6 +24,10 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     [Header("Вознесение — общий ассет AscensionOverlaySet на всю игру")]
     public Image ascensionOverlay;
     public AscensionOverlaySet ascensionOverlaySet;
+    public Button ascendButton;  // клик по самому значку — тратит гемы, поднимает потолок уровня
+    public Image ascendOutline;  // тонкое кольцо вокруг значка, видно пока вознесение вообще доступно (relevant)
+    public Image ascendGlow;     // мягкое пятно позади значка — маленькое и статичное, пока просто "доступно";
+                                  // крупнее и мерцает, когда гемов хватает прямо сейчас (см. RefreshAscendButton)
 
     [Header("Пассивка расы — вкл/выкл за RacePassiveUtility.ManaCost маны, см. BattleManager")]
     public TMP_Text racePassiveInfoText;
@@ -75,9 +79,12 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     private TMP_Text heroUpgradeText;
     private HeroExperienceItemPickerUI experienceItemPickerUI;
 
-    private Button heroAscendButton; // строится программно — потратить гемы вознесения, поднять потолок уровня
-    private Image heroAscendBg;
-    private TMP_Text heroAscendText;
+    // Конвертация банка ascensionGems — 2 кнопки над Upgrade (см. CreateGemConversionUIIfNeeded).
+    private TMP_Text gemCountText;
+    private Button convertToExpButton;
+    private TMP_Text convertToExpText;
+    private Button convertToVoucherButton;
+    private TMP_Text convertToVoucherText;
 
     private const float SwipeThreshold = 80f; // минимальная длина свайпа по X (пиксели), чтобы засчитать переключение героя
     private const float SkillButtonTextPadding = 24f; // запас по ширине сверх самого текста названия навыка
@@ -97,13 +104,29 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         if (racePassiveToggleButton != null)
             racePassiveToggleButton.onClick.AddListener(OnRacePassiveToggleClicked);
 
+        if (ascendButton != null)
+            ascendButton.onClick.AddListener(OnAscendClicked);
+
+        if (ascendGlow != null)
+        {
+            ascendGlow.sprite = GetRadialGlowSprite();
+            ascendGlow.raycastTarget = false;
+        }
+
+        if (ascendOutline != null)
+        {
+            ascendOutline.sprite = GetRingOutlineSprite();
+            ascendOutline.color = new Color(1f, 0.9f, 0.55f, 1f);
+            ascendOutline.raycastTarget = false;
+        }
+
         if (activeSkillInfoBg != null) ConfirmationDialog.StyleAsDescriptionPanel(activeSkillInfoBg);
         if (passiveSkillInfoBg != null) ConfirmationDialog.StyleAsDescriptionPanel(passiveSkillInfoBg);
         if (racePassiveInfoBg != null) ConfirmationDialog.StyleAsDescriptionPanel(racePassiveInfoBg);
 
         CacheSkillButtonBaseWidths();
         CreateUpgradeButtonIfNeeded();
-        CreateAscendButtonIfNeeded();
+        CreateGemConversionUIIfNeeded();
 
         // Панель уже сохранена выключенной в сцене (m_IsActive: 0) — не гасим её здесь ещё раз:
         // если вызвать SetActive(false) из Awake(), а Awake() впервые запускается ИМЕННО во время
@@ -161,7 +184,7 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     {
         if (currentHero == null) return;
 
-        if (portraitImage != null) portraitImage.sprite = HeroAscensionUtility.GetDisplayPortrait(currentHero, currentOwnership);
+        if (portraitImage != null) portraitImage.sprite = HeroAscensionUtility.GetInventoryPortrait(currentHero, currentOwnership);
         if (heroNameText != null) heroNameText.text = currentHero.heroName;
         if (healthText != null) healthText.text = $"HP: {currentHero.maxHealth}";
         if (descriptionText != null) descriptionText.text = currentHero.description;
@@ -198,6 +221,7 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         RefreshUpgradeButtonTheme();
         RefreshUpgradeButtonVisibility();
         RefreshAscendButton();
+        RefreshGemConversionUI();
     }
 
     private void PopulateSkillSelectors()
@@ -593,6 +617,105 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         experienceItemPickerUI = gameObject.AddComponent<HeroExperienceItemPickerUI>();
     }
 
+    // Счётчик + 2 кнопки, ещё на 1 шаг выше Upgrade — потратить банк ascensionGems этого героя на опыт
+    // или на Hero Voucher (см. HeroCollectionManager.ConvertGemToExperience/ConvertGemToVoucher). Только для
+    // Purple/Orange — у остальных редкостей ascensionGems не копится вообще (см. HandleDuplicatePull).
+    private void CreateGemConversionUIIfNeeded()
+    {
+        if (convertToExpButton != null) return;
+
+        RectTransform referenceRect = closeButton != null ? closeButton.GetComponent<RectTransform>() : null;
+        if (referenceRect == null) return;
+
+        float stepY = referenceRect.sizeDelta.y + 12f;
+        Vector2 rowBase = referenceRect.anchoredPosition + new Vector2(0, stepY * 2.3f);
+
+        var countObj = new GameObject("AscensionGemCount", typeof(RectTransform));
+        var countRect = (RectTransform)countObj.transform;
+        countRect.SetParent(referenceRect.parent, false);
+        countRect.anchorMin = referenceRect.anchorMin;
+        countRect.anchorMax = referenceRect.anchorMax;
+        countRect.pivot = referenceRect.pivot;
+        countRect.sizeDelta = new Vector2(referenceRect.sizeDelta.x * 2.2f, referenceRect.sizeDelta.y * 0.6f);
+        countRect.anchoredPosition = rowBase + new Vector2(0, stepY * 0.75f);
+        gemCountText = countObj.AddComponent<TextMeshProUGUI>();
+        gemCountText.alignment = TextAlignmentOptions.Center;
+        gemCountText.fontSize = 18;
+        gemCountText.color = Color.white;
+
+        float halfGap = referenceRect.sizeDelta.x * 0.55f;
+        convertToExpButton = BuildGemConversionButton(referenceRect, rowBase - new Vector2(halfGap, 0), "+1 Exp", OnConvertGemToExperienceClicked, out convertToExpText);
+        convertToVoucherButton = BuildGemConversionButton(referenceRect, rowBase + new Vector2(halfGap, 0), "+1 Voucher", OnConvertGemToVoucherClicked, out convertToVoucherText);
+    }
+
+    private Button BuildGemConversionButton(RectTransform referenceRect, Vector2 anchoredPos, string label, UnityEngine.Events.UnityAction onClick, out TMP_Text text)
+    {
+        var obj = new GameObject(label.Replace(" ", "").Replace("+", "") + "Button", typeof(RectTransform));
+        var rect = (RectTransform)obj.transform;
+        rect.SetParent(referenceRect.parent, false);
+        rect.anchorMin = referenceRect.anchorMin;
+        rect.anchorMax = referenceRect.anchorMax;
+        rect.pivot = referenceRect.pivot;
+        rect.sizeDelta = new Vector2(referenceRect.sizeDelta.x * 0.95f, referenceRect.sizeDelta.y);
+        rect.anchoredPosition = anchoredPos;
+
+        var bg = obj.AddComponent<Image>();
+        ConfirmationDialog.StyleAsButton(bg);
+        var btn = obj.AddComponent<Button>();
+        btn.onClick.AddListener(onClick);
+
+        var textObj = new GameObject("Text", typeof(RectTransform));
+        var textRect = (RectTransform)textObj.transform;
+        textRect.SetParent(rect, false);
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+        text = textObj.AddComponent<TextMeshProUGUI>();
+        text.text = label;
+        text.alignment = TextAlignmentOptions.Center;
+        text.color = ConfirmationDialog.ButtonTextColor;
+        text.enableAutoSizing = true;
+        text.fontSizeMin = 12;
+        text.fontSizeMax = 22;
+
+        return btn;
+    }
+
+    private void OnConvertGemToExperienceClicked()
+    {
+        if (currentHero == null || HeroCollectionManager.Instance == null) return;
+
+        HeroCollectionManager.Instance.ConvertGemToExperience(currentHero.heroId);
+        Refresh();
+    }
+
+    private void OnConvertGemToVoucherClicked()
+    {
+        if (currentHero == null || HeroCollectionManager.Instance == null) return;
+
+        HeroCollectionManager.Instance.ConvertGemToVoucher(currentHero.heroId);
+        Refresh();
+    }
+
+    private void RefreshGemConversionUI()
+    {
+        if (gemCountText == null || currentHero == null || currentOwnership == null) return;
+
+        bool relevant = HeroAscensionUtility.GetMaxAscension(currentHero.rarity) > 0;
+        gemCountText.gameObject.SetActive(relevant);
+        convertToExpButton?.gameObject.SetActive(relevant);
+        convertToVoucherButton?.gameObject.SetActive(relevant && currentOwnership.voucherConversionUnlocked);
+        if (!relevant) return;
+
+        gemCountText.text = $"Ascension Gems: {currentOwnership.ascensionGems}";
+
+        if (convertToExpButton != null)
+            convertToExpButton.interactable = currentOwnership.ascensionGems >= 1;
+        if (convertToVoucherButton != null)
+            convertToVoucherButton.interactable = currentOwnership.ascensionGems >= 1;
+    }
+
     private void OnAscendClicked()
     {
         if (currentHero == null || HeroCollectionManager.Instance == null) return;
@@ -611,64 +734,125 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         Refresh();
     }
 
-    // Кнопку "Ascend" строим программно над Upgrade (та уже стоит над Close), той же техникой копирования трансформа.
-    private void CreateAscendButtonIfNeeded()
-    {
-        if (heroAscendButton != null) return;
+    // Клик по самому значку вознесения (не отдельная кнопка — см. project_hero_card_unification_plan).
+    // Значок остаётся видимым всегда (см. HeroAscensionUtility.ApplyOverlay). Три состояния подсказки:
+    // недоступно вообще (макс. вознесение/раса без него) — обводка и свечение скрыты;
+    // доступно, но гемов не хватает — тонкая обводка + маленькое статичное свечение;
+    // хватает гемов прямо сейчас — свечение крупнее и мерцает (см. Update/UpdateAscendGlowPulse).
+    // Числового счётчика гемов на карточке больше нет — подсказка полностью визуальная.
+    private bool ascendReadyNow;
 
-        RectTransform referenceRect = heroUpgradeButton != null ? heroUpgradeButton.GetComponent<RectTransform>()
-            : closeButton != null ? closeButton.GetComponent<RectTransform>() : null;
-        if (referenceRect == null) return;
-
-        var ascendObj = new GameObject("HeroAscendButton", typeof(RectTransform));
-        var ascendRect = (RectTransform)ascendObj.transform;
-        ascendRect.SetParent(referenceRect.parent, false);
-        ascendRect.anchorMin = referenceRect.anchorMin;
-        ascendRect.anchorMax = referenceRect.anchorMax;
-        ascendRect.pivot = referenceRect.pivot;
-        ascendRect.sizeDelta = referenceRect.sizeDelta;
-        ascendRect.anchoredPosition = referenceRect.anchoredPosition + new Vector2(0, referenceRect.sizeDelta.y + 12f);
-
-        heroAscendBg = ascendObj.AddComponent<Image>();
-        ConfirmationDialog.StyleAsButton(heroAscendBg);
-        heroAscendButton = ascendObj.AddComponent<Button>();
-        heroAscendButton.onClick.AddListener(OnAscendClicked);
-
-        var textObj = new GameObject("Text", typeof(RectTransform));
-        var textRect = (RectTransform)textObj.transform;
-        textRect.SetParent(ascendRect, false);
-        textRect.anchorMin = Vector2.zero;
-        textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = Vector2.zero;
-        textRect.offsetMax = Vector2.zero;
-        heroAscendText = textObj.AddComponent<TextMeshProUGUI>();
-        heroAscendText.alignment = TextAlignmentOptions.Center;
-        heroAscendText.color = ConfirmationDialog.ButtonTextColor;
-        heroAscendText.enableAutoSizing = true; // "Ascend\nX/Y gems (Z/W)" — длина плавает от чисел
-        heroAscendText.fontSizeMin = 14;
-        heroAscendText.fontSizeMax = 22;
-
-        heroAscendButton.gameObject.SetActive(false);
-    }
-
-    // Видна только для Purple/Orange (Green/Blue вознесение не требуют — см. HeroAscensionUtility) и только
-    // пока не достигнут максимум. Подпись показывает гемы этого героя и сколько нужно для следующей ступени.
     private void RefreshAscendButton()
     {
-        if (heroAscendButton == null || currentHero == null || currentOwnership == null) return;
+        if (currentHero == null || currentOwnership == null) return;
 
         int maxAscension = HeroAscensionUtility.GetMaxAscension(currentHero.rarity);
         bool relevant = maxAscension > 0 && currentOwnership.ascensionLevel < maxAscension;
+        bool canAscendNow = relevant && currentOwnership.ascensionGems >= HeroAscensionUtility.GemsPerAscension;
 
-        heroAscendButton.gameObject.SetActive(relevant);
-        if (!relevant) return;
+        if (ascendButton != null)
+            ascendButton.interactable = canAscendNow;
 
-        heroAscendButton.interactable = currentOwnership.ascensionGems >= HeroAscensionUtility.GemsPerAscension;
-        if (heroAscendText != null)
+        if (ascendOutline != null)
+            ascendOutline.gameObject.SetActive(relevant);
+
+        if (ascendGlow != null)
         {
-            heroAscendText.text = $"Ascend\n{currentOwnership.ascensionGems}/{HeroAscensionUtility.GemsPerAscension} gems " +
-                $"({currentOwnership.ascensionLevel}/{maxAscension})";
+            ascendGlow.gameObject.SetActive(relevant);
+            if (relevant && !canAscendNow)
+            {
+                // Просто доступно, гемов ещё не хватает — маленькое, статичное, без мерцания
+                ascendGlow.rectTransform.localScale = Vector3.one;
+                Color c = ascendGlow.color;
+                c.a = AscendGlowIdleAlpha;
+                ascendGlow.color = c;
+            }
         }
+
+        ascendReadyNow = canAscendNow; // дальше подхватывает Update() для мерцания/крупного размера
+    }
+
+    private const float AscendGlowIdleAlpha = 0.35f;    // "свечение 1" — просто доступно
+    private const float AscendGlowReadyMinAlpha = 0.45f; // "свечение 3" — гемов хватает, мерцает между этими двумя
+    private const float AscendGlowReadyMaxAlpha = 0.95f;
+    private const float AscendGlowReadyScale = 1.7f;     // крупнее, чем статичное состояние
+    private const float AscendGlowPulseSpeed = 2.5f;
+
+    private void Update()
+    {
+        UpdateAscendGlowPulse();
+    }
+
+    private void UpdateAscendGlowPulse()
+    {
+        if (ascendGlow == null || !ascendReadyNow) return;
+
+        ascendGlow.rectTransform.localScale = new Vector3(AscendGlowReadyScale, AscendGlowReadyScale, 1f);
+
+        float t = (Mathf.Sin(Time.time * AscendGlowPulseSpeed) + 1f) / 2f;
+        Color c = ascendGlow.color;
+        c.a = Mathf.Lerp(AscendGlowReadyMinAlpha, AscendGlowReadyMaxAlpha, t);
+        ascendGlow.color = c;
+    }
+
+    private static Sprite radialGlowSprite;
+
+    // Мягкое радиальное пятно (белое, непрозрачное в центре → прозрачное к краю, квадратичный спад) —
+    // тонируется цветом снаружи через Image.color. Тот же приём, что и CastleUI.GetRadialGlowSprite,
+    // сгенерировано один раз и закэшировано (см. feedback_unity6_no_builtin_ui_sprites — почему не builtin).
+    private static Sprite GetRadialGlowSprite()
+    {
+        if (radialGlowSprite != null) return radialGlowSprite;
+
+        const int size = 128;
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        var center = new Vector2(size / 2f, size / 2f);
+        float radius = size / 2f;
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float dist = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), center);
+                float a = Mathf.Clamp01(1f - dist / radius);
+                a *= a; // квадратичный спад — плотный центр, мягкий длинный хвост к краю
+                tex.SetPixel(x, y, new Color(1f, 1f, 1f, a));
+            }
+        }
+        tex.Apply();
+
+        radialGlowSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
+        return radialGlowSprite;
+    }
+
+    private static Sprite ringOutlineSprite;
+
+    // Тонкое кольцо (белое на прозрачном) — обводка вокруг значка, отдельная от свечения. Не используем
+    // штатный компонент Outline — он дублирует спрайт со сдвигом, а не обводит по силуэту (см. CastleUI).
+    private static Sprite GetRingOutlineSprite()
+    {
+        if (ringOutlineSprite != null) return ringOutlineSprite;
+
+        const int size = 128;
+        const float thickness = 8f;
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        var center = new Vector2(size / 2f, size / 2f);
+        float outerRadius = size / 2f - 2f;
+        float innerRadius = outerRadius - thickness;
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float dist = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), center);
+                bool onRing = dist <= outerRadius && dist >= innerRadius;
+                tex.SetPixel(x, y, onRing ? Color.white : new Color(1f, 1f, 1f, 0f));
+            }
+        }
+        tex.Apply();
+
+        ringOutlineSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
+        return ringOutlineSprite;
     }
 
     private void RefreshUpgradeButtonTheme()

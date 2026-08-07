@@ -23,9 +23,6 @@ public class EnemyCollectionManager : MonoBehaviour
 
         InitializeOwnershipIfMissing();
         LoadSelectedEnemy();
-
-        foreach (var enemy in allEnemies)
-            UnlockEnemy(enemy); // ВРЕМЕННО для теста, как и у героев
     }
 
     private void InitializeOwnershipIfMissing()

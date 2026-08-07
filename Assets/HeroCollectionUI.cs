@@ -39,6 +39,12 @@ public class HeroCollectionUI : MonoBehaviour
         PopulateGrid();
     }
 
+    // Карточка — общий 450x600 префаб (HeroMiniCard, тот же, что и в Squad), масштабированный тут
+    // вниз до 150x200 (×1/3 — ровно, т.к. 450:600 совпадает по пропорциям с 150:200). Обёртка нужна
+    // потому, что GridLayoutGroup сам выставляет sizeDelta прямому потомку под cellSize — если
+    // масштабировать сам инстанс карточки напрямую, грид тут же вернёт его к 150x200 до масштаба.
+    private const float CardScale = 150f / 450f;
+
     private void PopulateGrid()
     {
         var collectionManager = HeroCollectionManager.Instance;
@@ -49,10 +55,122 @@ public class HeroCollectionUI : MonoBehaviour
 
         foreach (var hero in GetFilteredSortedHeroes(collectionManager))
         {
-            GameObject cardObj = Instantiate(heroCardUIPrefab, gridContainer);
-            var card = cardObj.GetComponent<HeroCollectionCardUI>();
-            card.Setup(hero, collectionManager, inventoryUI);
+            var wrapper = new GameObject(hero.heroName + "_Slot", typeof(RectTransform));
+            wrapper.transform.SetParent(gridContainer, false);
+
+            GameObject cardObj = Instantiate(heroCardUIPrefab, wrapper.transform);
+            var cardRect = (RectTransform)cardObj.transform;
+            cardRect.anchorMin = cardRect.anchorMax = new Vector2(0.5f, 0.5f);
+            cardRect.anchoredPosition = Vector2.zero;
+            cardRect.localScale = new Vector3(CardScale, CardScale, 1f);
+
+            var card = cardObj.GetComponent<HeroMiniCardUI>();
+            var ownership = collectionManager.ownership.Find(o => o.heroId == hero.heroId);
+            card.Setup(hero, ownership);
+
+            bool unlocked = collectionManager.IsUnlocked(hero);
+            card.SetLocked(!unlocked);
+
+            if (card.selectButton != null)
+            {
+                card.selectButton.onClick.RemoveAllListeners();
+                card.selectButton.onClick.AddListener(() => OnCardSelected(hero, collectionManager));
+            }
+
+            // Заперт, но уже накоплен гем через Hero Voucher (см. HeroCollectionManager.GrantGemToHero) —
+            // поверх замка появляется кнопка призыва. selectButton у запертых карточек выключен (см.
+            // SetLocked), поэтому это отдельная кнопка, не завязанная на обычный клик по карточке.
+            if (!unlocked && ownership != null && ownership.ascensionGems >= 1)
+                BuildSummonButton(wrapper.transform, hero);
         }
+    }
+
+    private void BuildSummonButton(Transform wrapper, HeroData hero)
+    {
+        var btnObj = new GameObject("SummonButton", typeof(RectTransform));
+        var btnRect = (RectTransform)btnObj.transform;
+        btnRect.SetParent(wrapper, false);
+        btnRect.anchorMin = new Vector2(0.5f, 0);
+        btnRect.anchorMax = new Vector2(0.5f, 0);
+        btnRect.pivot = new Vector2(0.5f, 0);
+        btnRect.sizeDelta = new Vector2(130, 34);
+        btnRect.anchoredPosition = new Vector2(0, 8);
+
+        var bg = btnObj.AddComponent<Image>();
+        ConfirmationDialog.StyleAsButton(bg);
+        var btn = btnObj.AddComponent<Button>();
+        btn.onClick.AddListener(() => OnSummonClicked(hero));
+
+        var textObj = new GameObject("Text", typeof(RectTransform));
+        var textRect = (RectTransform)textObj.transform;
+        textRect.SetParent(btnRect, false);
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+        var text = textObj.AddComponent<TextMeshProUGUI>();
+        text.text = "Summon";
+        text.fontSize = 16;
+        text.fontStyle = FontStyles.Bold;
+        text.alignment = TextAlignmentOptions.Center;
+        text.color = ConfirmationDialog.ButtonTextColor;
+    }
+
+    private void OnSummonClicked(HeroData hero)
+    {
+        var collectionManager = HeroCollectionManager.Instance;
+        if (collectionManager == null) return;
+
+        if (collectionManager.UnlockHeroWithGem(hero.heroId))
+            PopulateGrid();
+    }
+
+    // Логика клика по карточке — раньше жила в HeroCollectionCardUI.OnSelected, перенесена сюда
+    // вместе с уходом от отдельного скрипта на карточку коллекции (см. project_hero_card_unification_plan)
+    private void OnCardSelected(HeroData heroData, HeroCollectionManager collectionManager)
+    {
+        // Collection используется как пикер героя для Boss Training — забираем клик раньше обычной логики
+        // выбора отряда/открытия инвентаря, запускаем боевую сцену в training-режиме (см. BattleManager.Awake)
+        if (collectionManager.pickingForBossTraining)
+        {
+            if (!collectionManager.IsUnlocked(heroData)) return; // нельзя тренировать ещё не открытого героя
+
+            collectionManager.pickingForBossTraining = false;
+
+            if (AccountManager.Instance != null)
+            {
+                AccountManager.Instance.pendingBossTraining = true;
+                AccountManager.Instance.pendingBossTrainingHeroId = heroData.heroId;
+            }
+
+            UnityEngine.SceneManagement.SceneManager.LoadScene("SampleScene");
+            return;
+        }
+
+        // Если сейчас активен режим выбора героя для конкретного слота — назначаем туда
+        if (collectionManager.slotBeingEdited >= 0)
+        {
+            bool assigned = collectionManager.AssignToSlot(heroData);
+            if (assigned)
+            {
+                // Возвращаемся к экрану отряда после выбора
+                var mainMenu = FindAnyObjectByType<MainMenuUI>();
+                if (mainMenu != null) mainMenu.ShowSquad();
+            }
+            else
+            {
+                int projected = collectionManager.GetProjectedSquadWeight(heroData);
+                var canvas = FindAnyObjectByType<Canvas>();
+                if (canvas != null)
+                    ConfirmationDialog.ShowInfo(canvas.transform,
+                        $"Not enough squad weight capacity ({projected}/{collectionManager.MaxSquadWeight}).\nUpgrade Barracks to fit this hero.");
+            }
+            return;
+        }
+
+        // Обычный просмотр коллекции — открываем окно инвентаря героя
+        if (inventoryUI != null)
+            inventoryUI.Open(heroData);
     }
 
     private List<HeroData> GetFilteredSortedHeroes(HeroCollectionManager collectionManager)

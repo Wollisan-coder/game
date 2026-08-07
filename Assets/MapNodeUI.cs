@@ -61,6 +61,18 @@ public class MapNodeUI : MonoBehaviour
         if (!WorldMapManager.Instance.IsUnlocked(node)) return;
 
         var canvas = GetComponentInParent<Canvas>();
+
+        // Нода без назначенного врага (контент территории ещё не готов, напр. Angels/Humans) — раньше
+        // отсюда всё равно открывался BattlePrepPopup, и клик "В бой" тратил энергию впустую, потому что
+        // SelectNode проваливался ПОСЛЕ списания (см. LaunchBattle). Отсекаем сразу, с тем же сообщением-паттерном,
+        // что и у проверки энергии ниже.
+        if (node.enemy == null)
+        {
+            if (canvas != null)
+                ConfirmationDialog.ShowInfo(canvas.transform, "This area is not available yet.");
+            return;
+        }
+
         var mainMenuUI = FindAnyObjectByType<MainMenuUI>();
         int energyCost = mainMenuUI != null ? mainMenuUI.battleEnergyCost : 1;
 

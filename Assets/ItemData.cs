@@ -8,11 +8,15 @@ public enum EquipmentSlotType
     Trinket
 }
 
-// Категория предмета: обычная экипировка или расходный предмет для прокачки героя
+// Категория предмета: обычная экипировка, расходный предмет для прокачки героя, или ваучер разблокировки
+// героя (см. HeroCollectionManager.RedeemHeroVoucher/heroVoucherItems, project_death_dungeon_concept) —
+// добавлен ПОСЛЕ существующих значений намеренно: enum сериализуется как int, вставка в середину сдвинула
+// бы значения у уже сохранённых ассетов.
 public enum ItemCategory
 {
     Equipment,
-    HeroExperience
+    HeroExperience,
+    HeroVoucher
 }
 
 [CreateAssetMenu(fileName = "NewItem", menuName = "Battle/Item")]

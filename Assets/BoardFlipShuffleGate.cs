@@ -90,11 +90,24 @@ public class BoardFlipShuffleGate : MonoBehaviour
             if (flippableModel != null)
                 flippableModel.Flip(); // назад к 3-в-ряд
 
-            if (battleManager != null)
-                battleManager.boardFlipUsedThisBattle = true;
+            // Death Dungeon узел Gamble / бафф FortunesGambit дают доп. использования сверх обычного лимита
+            // раз-в-бой (см. BattleManager.extraBoardFlipUses) — тратим кредит вместо постоянной блокировки,
+            // разрешая ещё один полный цикл переворота.
+            if (battleManager != null && battleManager.extraBoardFlipUses > 0)
+            {
+                battleManager.extraBoardFlipUses--;
+                hasFlippedOnce = false;
+                if (flipButton != null)
+                    flipButton.interactable = true;
+            }
+            else
+            {
+                if (battleManager != null)
+                    battleManager.boardFlipUsedThisBattle = true;
 
-            if (flipButton != null)
-                flipButton.interactable = false; // навсегда до конца боя
+                if (flipButton != null)
+                    flipButton.interactable = false; // навсегда до конца боя
+            }
         }
     }
 

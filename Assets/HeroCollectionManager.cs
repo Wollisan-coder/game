@@ -12,10 +12,19 @@ public class HeroCollectionManager : MonoBehaviour
     [Header("Состояние владения (заполняется при загрузке сохранения)")]
     public List<HeroOwnershipData> ownership = new List<HeroOwnershipData>();
 
-    // Индекс = (int)Rarity. Гем опыта героя ИМЕННО этого цвета — выдаётся вместо гема вознесения,
-    // когда дубликат выпадает на герое, уже стоящем на максимуме вознесения своей редкости.
-    [Header("Гемы опыта героя по редкости — награда за дубликат на максимуме вознесения")]
+    // Индекс = (int)Rarity. Гем опыта героя ИМЕННО этого цвета — для White/Green/Blue (вознесения не имеют)
+    // выдаётся АВТОМАТОМ за каждый дубликат. Для Purple/Orange больше не выдаётся автоматом (см.
+    // HandleDuplicatePull) — доступен только через ручную кнопку "-> Experience" на банке ascensionGems.
+    [Header("Гемы опыта героя по редкости")]
     public ItemData[] rarityExperienceGems;
+
+    // Индекс = (int)Rarity, заполнено только для Purple/Orange (у остальных вознесения нет вообще).
+    // Ваучер этой редкости — получается конвертацией ascensionGems (см. ConvertGemToVoucher), доступно
+    // только если у героя-источника гема voucherConversionUnlocked (см. project_death_dungeon_concept).
+    // 3 ваучера тратятся на начисление 1 ascensionGems ЛЮБОМУ герою этой редкости по выбору игрока — если
+    // герой заперт, этот гем открывает ему кнопку призыва (см. HeroVoucherRedeemUI/GrantGemToHero/UnlockHeroWithGem).
+    [Header("Ваучеры разблокировки героя по редкости (только Purple/Orange)")]
+    public ItemData[] heroVoucherItems;
 
     [Header("Выбранный отряд")]
     public List<HeroData> squad = new List<HeroData>();
@@ -51,7 +60,7 @@ public class HeroCollectionManager : MonoBehaviour
     public int slotBeingEdited = -1;
 
     // Collection-экран как пикер героя для Boss Training (тот же приём, что и slotBeingEdited для отряда) —
-    // см. CastleUI.OnBossTrainingClicked / HeroCollectionCardUI.OnSelected.
+    // см. CastleUI.OnBossTrainingClicked / HeroCollectionUI.OnCardSelected.
     public bool pickingForBossTraining;
 
     private void Awake()
@@ -63,9 +72,6 @@ public class HeroCollectionManager : MonoBehaviour
         LoadOwnership();
         InitializeOwnershipIfMissing();
         LoadSquad();
-
-        foreach (var hero in allHeroes)
-            UnlockHero(hero); // ВРЕМЕННО для теста
     }
 
     private void InitializeOwnershipIfMissing()
@@ -100,8 +106,13 @@ public class HeroCollectionManager : MonoBehaviour
     }
 
     // Вызывается SummonService, когда призыв выпал на УЖЕ разблокированного героя (дубликат).
-    // Даёт "гем" вознесения этому герою — либо, если герой уже на максимуме вознесения своей редкости
-    // (гему больше некуда деваться), выдаёт N гемов опыта героя того же цвета редкости (см. rarityExperienceGems).
+    // White/Green/Blue вознесения не имеют вообще (GetMaxAscension=0) — для них НИЧЕГО не меняется,
+    // дубликат как и раньше автоматом даёт N гемов опыта героя того же цвета редкости (rarityExperienceGems).
+    // Purple/Orange — гем вознесения (см. HeroOwnershipData.ascensionGems) теперь копится ВСЕГДА, даже
+    // после того как герой дошёл до максимума вознесения своей редкости — никакой автоконвертации на
+    // потолке больше нет для этих редкостей. Что делать с накопленным гемом (потратить на вознесение,
+    // конвертировать в опыт, конвертировать в Hero Voucher), игрок решает сам отдельной кнопкой позже —
+    // см. AscendHero/ConvertGemToExperience/ConvertGemToVoucher, project_death_dungeon_concept.
     public void HandleDuplicatePull(HeroData hero)
     {
         if (hero == null) return;
@@ -110,7 +121,7 @@ public class HeroCollectionManager : MonoBehaviour
         if (data == null) return;
 
         int maxAscension = HeroAscensionUtility.GetMaxAscension(hero.rarity);
-        if (data.ascensionLevel >= maxAscension)
+        if (maxAscension <= 0)
         {
             ItemData gem = GetRarityExperienceGem(hero.rarity);
             int count = HeroAscensionUtility.GetOverflowGemCount(hero.rarity);
@@ -125,11 +136,166 @@ public class HeroCollectionManager : MonoBehaviour
         SaveOwnership();
     }
 
+    // Тратит 1 гем вознесения этого героя за 1 предмет опыта той же редкости (rarityExperienceGems) —
+    // ручная версия того, что раньше выдавалось автоматом на потолке вознесения. Доступна всегда
+    // (не требует voucherConversionUnlocked, в отличие от ConvertGemToVoucher ниже).
+    public bool ConvertGemToExperience(string heroId)
+    {
+        var hero = allHeroes.FirstOrDefault(h => h.heroId == heroId);
+        var data = ownership.FirstOrDefault(o => o.heroId == heroId);
+        if (hero == null || data == null || data.ascensionGems < 1) return false;
+
+        ItemData gem = GetRarityExperienceGem(hero.rarity);
+        if (gem == null) return false;
+
+        data.ascensionGems--;
+        ItemCollectionManager.Instance?.AddItemCopy(gem, 1);
+
+        SaveOwnership();
+        return true;
+    }
+
+    // Тратит 1 гем вознесения этого героя за 1 Hero Voucher той же редкости (heroVoucherItems) — доступно
+    // ТОЛЬКО если герой хоть раз дошёл до 3-го вознесения (см. HeroOwnershipData.voucherConversionUnlocked,
+    // де-факто только Orange). Ваучер уже не привязан к личности героя-источника — см. GrantGemToHero.
+    public bool ConvertGemToVoucher(string heroId)
+    {
+        var hero = allHeroes.FirstOrDefault(h => h.heroId == heroId);
+        var data = ownership.FirstOrDefault(o => o.heroId == heroId);
+        if (hero == null || data == null || !data.voucherConversionUnlocked || data.ascensionGems < 1) return false;
+
+        ItemData voucher = GetHeroVoucherItem(hero.rarity);
+        if (voucher == null) return false;
+
+        data.ascensionGems--;
+        ItemCollectionManager.Instance?.AddItemCopy(voucher, 1);
+
+        SaveOwnership();
+        return true;
+    }
+
+    public const int HeroVouchersPerGem = 3;
+
+    // Тратит HeroVouchersPerGem ваучеров редкости targetHeroId и начисляет ЕМУ 1 ascensionGems — targetHeroId
+    // может быть ЛЮБЫМ героем этой редкости, разблокированным или нет (см. HeroVoucherRedeemUI — экран
+    // выбора цели). Если герой уже разблокирован, гем просто пополняет его обычный банк (годится и на
+    // AscendHero, и на дальнейшую конвертацию). Если ещё заперт — этого гема достаточно, чтобы для него
+    // появилась кнопка призыва (см. UnlockHeroWithGem) — и на карточке в коллекции, и на его же плитке на
+    // экране Ascension Gems.
+    public bool GrantGemToHero(string targetHeroId)
+    {
+        var hero = allHeroes.FirstOrDefault(h => h.heroId == targetHeroId);
+        var data = ownership.FirstOrDefault(o => o.heroId == targetHeroId);
+        if (hero == null || data == null) return false;
+
+        ItemData voucher = GetHeroVoucherItem(hero.rarity);
+        var manager = ItemCollectionManager.Instance;
+        if (voucher == null || manager == null || manager.GetTotalQuantity(voucher.itemId) < HeroVouchersPerGem) return false;
+
+        var stack = manager.GetStacks(voucher.itemId).FirstOrDefault();
+        if (stack == null) return false;
+        string instanceId = stack.instanceId;
+        for (int i = 0; i < HeroVouchersPerGem; i++)
+            manager.ConsumeItem(instanceId);
+
+        data.ascensionGems++;
+        SaveOwnership();
+        return true;
+    }
+
+    // Призыв запертого героя за 1 ascensionGems, начисленный через GrantGemToHero (или накопленный любым
+    // другим путём, если он вдруг оказался заперт с гемом на руках). Тратит РОВНО 1 гем — остаток (если
+    // конвертировали несколько раз подряд) остаётся банком героя на будущее, уже после разблокировки.
+    public bool UnlockHeroWithGem(string heroId)
+    {
+        var data = ownership.FirstOrDefault(o => o.heroId == heroId);
+        if (data == null || data.isUnlocked || data.ascensionGems < 1) return false;
+
+        data.ascensionGems--;
+        data.isUnlocked = true;
+        AchievementManager.Instance?.ReportHeroCollected();
+        SaveOwnership();
+        return true;
+    }
+
+    public const int RetreatGemCost = 4;
+
+    public int GetTotalAscensionGemCount() => ownership.Sum(o => o.ascensionGems);
+
+    // Сколько героев вне переданного текущего отряда доступны как "карта" для жертвы на ретрит
+    // (разблокированы, не в отряде) — используется для gate-проверки "есть ли вообще из чего выбирать"
+    // до открытия DeathDungeonRetreatSelectionUI.
+    public int GetAvailableSacrificeHeroCount(IEnumerable<string> currentSquadHeroIds)
+    {
+        var squadSet = currentSquadHeroIds != null ? new HashSet<string>(currentSquadHeroIds) : new HashSet<string>();
+        return ownership.Count(o => o.isUnlocked && !squadSet.Contains(o.heroId));
+    }
+
+    // Исполняет РУЧНОЙ выбор игрока для жертвы на ретрит из Death Dungeon (см.
+    // DeathDungeonRetreatSelectionUI, project_death_dungeon_concept) — смесь гемов вознесения (могут быть
+    // с разных героев, gemSpendByHero[heroId] = сколько гемов ИМЕННО с него) и целиком принесённых в жертву
+    // героев (heroCardSacrifices, каждый должен быть вне currentSquadHeroIds). Сумма ВСЕХ очков (гемы +
+    // карты) должна ровно совпасть с RetreatGemCost — иначе (или если что-то из выбора уже невалидно:
+    // герой перестал быть открыт, гемов не хватает и т.п.) ничего не тратит и возвращает null (без
+    // частичного списания). При успехе возвращает список ВСЕХ причастных heroId (гемы + карты, с повторами
+    // для гемов) — кусок 5 позже читает это, чтобы поднять именно ИХ как боссов-нежить.
+    public List<string> ExecuteRetreatSacrifice(Dictionary<string, int> gemSpendByHero, List<string> heroCardSacrifices, IEnumerable<string> currentSquadHeroIds)
+    {
+        gemSpendByHero ??= new Dictionary<string, int>();
+        heroCardSacrifices ??= new List<string>();
+
+        int totalPoints = gemSpendByHero.Values.Sum() + heroCardSacrifices.Count;
+        if (totalPoints != RetreatGemCost) return null;
+
+        var squadSet = currentSquadHeroIds != null ? new HashSet<string>(currentSquadHeroIds) : new HashSet<string>();
+
+        // Проверяем ВСЁ до того, как начать тратить — частичное списание при невалидном выборе недопустимо.
+        foreach (var entry in gemSpendByHero)
+        {
+            if (entry.Value <= 0) continue;
+            var data = ownership.FirstOrDefault(o => o.heroId == entry.Key);
+            if (data == null || data.ascensionGems < entry.Value) return null;
+        }
+        foreach (var heroId in heroCardSacrifices)
+        {
+            var data = ownership.FirstOrDefault(o => o.heroId == heroId);
+            if (data == null || !data.isUnlocked || squadSet.Contains(heroId)) return null;
+        }
+
+        var consumed = new List<string>();
+
+        foreach (var entry in gemSpendByHero)
+        {
+            if (entry.Value <= 0) continue;
+            var data = ownership.First(o => o.heroId == entry.Key);
+            data.ascensionGems -= entry.Value;
+            for (int i = 0; i < entry.Value; i++)
+                consumed.Add(entry.Key);
+        }
+
+        foreach (var heroId in heroCardSacrifices)
+        {
+            var data = ownership.First(o => o.heroId == heroId);
+            ResetHeroToNeverUnlocked(data);
+            consumed.Add(heroId);
+        }
+
+        SaveOwnership();
+        return consumed;
+    }
+
     private ItemData GetRarityExperienceGem(Rarity rarity)
     {
         int index = (int)rarity;
         return rarityExperienceGems != null && index >= 0 && index < rarityExperienceGems.Length
             ? rarityExperienceGems[index] : null;
+    }
+
+    private ItemData GetHeroVoucherItem(Rarity rarity)
+    {
+        int index = (int)rarity;
+        return heroVoucherItems != null && index >= 0 && index < heroVoucherItems.Length
+            ? heroVoucherItems[index] : null;
     }
 
     // Тратит гемы этого героя, чтобы поднять ступень вознесения на 1 (и вместе с ней — потолок уровня).
@@ -146,6 +312,7 @@ public class HeroCollectionManager : MonoBehaviour
 
         data.ascensionGems -= HeroAscensionUtility.GemsPerAscension;
         data.ascensionLevel++;
+        if (data.ascensionLevel >= 3) data.voucherConversionUnlocked = true;
         AchievementManager.Instance?.ReportAscension();
 
         SaveOwnership();
@@ -259,6 +426,65 @@ public class HeroCollectionManager : MonoBehaviour
         return true;
     }
 
+    // Сбрасывает героя в состояние "никогда не открывался" — общее ядро и для полного поражения без
+    // ретрита (PermadeleteSquad), и для добровольной жертвы одним героем на ретрит (SacrificeHeroForRetreat).
+    // НЕ трогает voucherConversionUnlocked (см. HeroOwnershipData) — это единственное поле героя,
+    // рассчитанное пережить его "смерть" в любой форме.
+    // ascensionGems и voucherConversionUnlocked НЕ трогаем — гемы получены игроком через уже состоявшиеся
+    // гача-пуллы (а не "прогресс этой конкретной карточки"), терять их вместе с героем неправильно. Если
+    // герой позже снова выпадет в гаче, SummonService.GrantHero увидит IsUnlocked()==false и вызовет
+    // UnlockHero (не HandleDuplicatePull) — герой откроется заново со ВСЕМ уже накопленным банком гемов
+    // (и, если voucherConversionUnlocked уже true, конвертация в ваучер будет доступна сразу).
+    private void ResetHeroToNeverUnlocked(HeroOwnershipData data)
+    {
+        data.isUnlocked = false;
+        data.level = 1;
+        data.experience = 0;
+        data.ascensionLevel = 0;
+        data.activeSkillIndex = 0;
+        data.passiveSkillIndex = -1;
+        data.racePassiveEnabled = false;
+        data.equippedItems.Clear();
+    }
+
+    // Death Dungeon — поражение БЕЗ ретрита (см. project_death_dungeon_concept). Все 4 героя текущего
+    // отряда удаляются из коллекции навсегда — не "ранены", как будто их никогда не открывали. Экипировка
+    // с них снимается (сами предметы у игрока остаются, не пропадают вместе с героем). Банк ascensionGems
+    // и voucherConversionUnlocked переживают это — см. ResetHeroToNeverUnlocked.
+    public void PermadeleteSquad()
+    {
+        foreach (var hero in squad.Where(h => h != null).ToList())
+        {
+            var data = ownership.FirstOrDefault(o => o.heroId == hero.heroId);
+            if (data == null) continue;
+
+            ResetHeroToNeverUnlocked(data);
+        }
+
+        for (int i = 0; i < squad.Count; i++)
+            squad[i] = null;
+
+        SaveOwnership();
+        SaveSquad();
+    }
+
+    // Добровольная жертва ОДНОГО героя как "карты" в ретрите из Death Dungeon (см.
+    // project_death_dungeon_concept, DeathDungeonMapUI/RetreatSelectionUI) — тот же необратимый сброс,
+    // что и PermadeleteSquad, но точечно на один конкретный банк-героя вне текущего отряда данжа
+    // (currentSquadHeroIds передаётся вызывающим кодом, чтобы не завязываться на DeathDungeonManager).
+    // Возвращает false, если герой не найден, не разблокирован, или входит в переданный текущий отряд.
+    public bool SacrificeHeroForRetreat(string heroId, IEnumerable<string> currentSquadHeroIds)
+    {
+        var data = ownership.FirstOrDefault(o => o.heroId == heroId);
+        if (data == null || !data.isUnlocked) return false;
+        if (currentSquadHeroIds != null && currentSquadHeroIds.Contains(heroId)) return false;
+
+        ResetHeroToNeverUnlocked(data);
+
+        SaveOwnership();
+        return true;
+    }
+
     public void RemoveFromSquad(int slotIndex)
     {
         EnsureSquadSize();
@@ -309,7 +535,7 @@ public class HeroCollectionManager : MonoBehaviour
             .Select(e => $"{(int)e.slotType},{e.itemInstanceId}"));
 
         return $"{data.heroId}:{(data.isUnlocked ? 1 : 0)}:{data.level}:{data.experience}:{data.activeSkillIndex}:{data.passiveSkillIndex}:{equipped}" +
-               $":{data.ascensionGems}:{data.ascensionLevel}:{(data.racePassiveEnabled ? 1 : 0)}";
+               $":{data.ascensionGems}:{data.ascensionLevel}:{(data.racePassiveEnabled ? 1 : 0)}:{(data.voucherConversionUnlocked ? 1 : 0)}";
     }
 
     private void LoadOwnership()
@@ -336,7 +562,9 @@ public class HeroCollectionManager : MonoBehaviour
                 ascensionGems = parts.Length > 7 ? int.Parse(parts[7]) : 0,
                 ascensionLevel = parts.Length > 8 ? int.Parse(parts[8]) : 0,
                 // Ещё позже добавлена пассивка расы — старые сохранения (9 частей, без неё) получат выключенную по умолчанию
-                racePassiveEnabled = parts.Length > 9 && parts[9] == "1"
+                racePassiveEnabled = parts.Length > 9 && parts[9] == "1",
+                // Ваучер-разблокировка добавлена ещё позже — старые сохранения (без части 10) получат false
+                voucherConversionUnlocked = parts.Length > 10 && parts[10] == "1"
             };
 
             string equippedBlock = parts[6];

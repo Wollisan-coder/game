@@ -31,7 +31,12 @@ public class FloatingStatusIcon : MonoBehaviour
         obj.AddComponent<FloatingStatusIcon>().Init(rect, image, riseDistance);
 
         if (sound != null)
-            AudioSource.PlayClipAtPoint(sound, Vector3.zero);
+        {
+            // Позиционный 3D-звук у мирового нуля был не связан с тем, где реально стоит камера —
+            // громкость/слышимость зависела от расстояния до (0,0,0), а не до слушателя.
+            Vector3 listenerPos = Camera.main != null ? Camera.main.transform.position : Vector3.zero;
+            AudioSource.PlayClipAtPoint(sound, listenerPos);
+        }
     }
 
     private RectTransform rect;

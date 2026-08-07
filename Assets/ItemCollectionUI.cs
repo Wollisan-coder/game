@@ -25,6 +25,7 @@ public class ItemCollectionUI : MonoBehaviour
         ("Accessory", ItemCategory.Equipment, EquipmentSlotType.Accessory),
         ("Trinket", ItemCategory.Equipment, EquipmentSlotType.Trinket),
         ("Consumable", ItemCategory.HeroExperience, null),
+        ("Vouchers", ItemCategory.HeroVoucher, null),
     };
 
     private readonly List<Image> tabBackgrounds = new List<Image>();

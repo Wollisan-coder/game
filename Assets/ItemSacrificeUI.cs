@@ -296,41 +296,21 @@ public class ItemSacrificeUI : MonoBehaviour
 
     private void CreateDonorEntry(ItemData donorData, ItemOwnershipData donorOwnership)
     {
-        var entryObj = new GameObject(donorOwnership.instanceId, typeof(RectTransform));
-        var entryRect = (RectTransform)entryObj.transform;
-        entryRect.SetParent(listContainer, false);
+        PickerTileUtility.BuildTile(listContainer, donorOwnership.instanceId, NormalBgColor,
+            out Image bg, out Image icon, out TMP_Text label, out Button btn);
 
-        var bg = entryObj.AddComponent<Image>();
-        bg.color = NormalBgColor;
-        var btn = entryObj.AddComponent<Button>();
-
-        var iconObj = new GameObject("Icon", typeof(RectTransform));
-        var iconRect = (RectTransform)iconObj.transform;
-        iconRect.SetParent(entryRect, false);
-        iconRect.anchorMin = new Vector2(0, 0.35f);
-        iconRect.anchorMax = new Vector2(1, 1);
-        iconRect.offsetMin = new Vector2(6, 0);
-        iconRect.offsetMax = new Vector2(-6, -6);
-        var icon = iconObj.AddComponent<Image>();
         icon.sprite = donorData.icon;
-        icon.preserveAspect = true;
 
-        var labelObj = new GameObject("Label", typeof(RectTransform));
-        var labelRect = (RectTransform)labelObj.transform;
-        labelRect.SetParent(entryRect, false);
-        labelRect.anchorMin = new Vector2(0, 0);
-        labelRect.anchorMax = new Vector2(1, 0.35f);
-        labelRect.offsetMin = new Vector2(4, 2);
-        labelRect.offsetMax = new Vector2(-4, 0);
-        var label = labelObj.AddComponent<TextMeshProUGUI>();
         label.enableAutoSizing = true; // строка = имя+уровень+опыт, а при выборе ещё и "Selected: X/Y" — длина плавает
         label.fontSizeMin = 14;
         label.fontSizeMax = 22;
-        label.alignment = TextAlignmentOptions.Center;
         label.color = donorData.GetRarityColor();
 
+        Image rarityFrame = null;
+        ItemBadgeUtility.ApplyRarityFrame(icon, donorData.GetRarityColor(), ref rarityFrame);
+
         TMP_Text quantityBadge = null;
-        ItemBadgeUtility.ApplyQuantityBadge(iconRect, donorOwnership.quantity, ref quantityBadge);
+        ItemBadgeUtility.ApplyQuantityBadge(icon.rectTransform, donorOwnership.quantity, ref quantityBadge);
 
         string donorId = donorOwnership.instanceId;
         btn.onClick.AddListener(() => IncrementDonor(donorId));

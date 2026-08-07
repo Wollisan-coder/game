@@ -168,6 +168,7 @@ public class HeroExperienceUseUI : MonoBehaviour
         closeBtnRect.sizeDelta = new Vector2(160, 36);
         closeBtnRect.anchoredPosition = new Vector2(0, 12);
         closeBg = closeBtnObj.AddComponent<Image>();
+        ConfirmationDialog.StyleAsButton(closeBg);
         var closeBtn = closeBtnObj.AddComponent<Button>();
         closeBtn.onClick.AddListener(Close);
 
@@ -181,6 +182,7 @@ public class HeroExperienceUseUI : MonoBehaviour
         closeButtonText = closeTextObj.AddComponent<TextMeshProUGUI>();
         closeButtonText.text = "Cancel";
         closeButtonText.alignment = TextAlignmentOptions.Center;
+        closeButtonText.color = ConfirmationDialog.ButtonTextColor;
 
         overlayRoot.SetActive(false);
     }
@@ -203,38 +205,15 @@ public class HeroExperienceUseUI : MonoBehaviour
 
     private void CreateHeroEntry(HeroData hero)
     {
-        var entryObj = new GameObject(hero.heroId, typeof(RectTransform));
-        var entryRect = (RectTransform)entryObj.transform;
-        entryRect.SetParent(listContainer, false);
+        PickerTileUtility.BuildTile(listContainer, hero.heroId, new Color(1, 1, 1, 0.06f),
+            out Image bg, out Image icon, out TMP_Text label, out Button btn);
 
-        var bg = entryObj.AddComponent<Image>();
-        bg.color = new Color(1, 1, 1, 0.06f);
-        var btn = entryObj.AddComponent<Button>();
-
-        var iconObj = new GameObject("Icon", typeof(RectTransform));
-        var iconRect = (RectTransform)iconObj.transform;
-        iconRect.SetParent(entryRect, false);
-        iconRect.anchorMin = new Vector2(0, 0.35f);
-        iconRect.anchorMax = new Vector2(1, 1);
-        iconRect.offsetMin = new Vector2(6, 0);
-        iconRect.offsetMax = new Vector2(-6, -6);
-        var icon = iconObj.AddComponent<Image>();
         icon.sprite = hero.portrait;
-        icon.preserveAspect = true;
 
-        var labelObj = new GameObject("Label", typeof(RectTransform));
-        var labelRect = (RectTransform)labelObj.transform;
-        labelRect.SetParent(entryRect, false);
-        labelRect.anchorMin = new Vector2(0, 0);
-        labelRect.anchorMax = new Vector2(1, 0.35f);
-        labelRect.offsetMin = new Vector2(4, 2);
-        labelRect.offsetMax = new Vector2(-4, 0);
-        var label = labelObj.AddComponent<TextMeshProUGUI>();
         var ownership = heroCollectionManager.ownership.FirstOrDefault(o => o.heroId == hero.heroId);
         int level = ownership != null ? ownership.level : 1;
-        label.text = $"{hero.heroName}\nLvl.{level}";
+        label.text = $"{hero.heroName}\nLv. {level}"; // формат уровня как у HeroMiniCardUI — общий вид карточки героя
         label.fontSize = 12;
-        label.alignment = TextAlignmentOptions.Center;
         label.color = hero.themeColor;
 
         btn.onClick.AddListener(() => OnHeroSelected(hero));
@@ -254,6 +233,13 @@ public class HeroExperienceUseUI : MonoBehaviour
 
     private void Apply(string heroId, int amount)
     {
+        // Стек уже мог быть списан предыдущим вызовом этого же подтверждения (например, если попап
+        // открыли двойным тапом дважды до того, как первый успел закрыться) — тогда просто выходим,
+        // не начисляя опыт повторно бесплатно. Порядок GrantExperience -> ConsumeItem ниже сохранён
+        // намеренно: если у героя уже максимальный уровень, GrantExperience честно провалится ДО списания
+        // предмета — иначе использование на прокачанном герое тратило бы предмет впустую.
+        if (itemCollectionManager.GetStackByInstanceId(itemInstanceId) == null) return;
+
         if (!heroCollectionManager.GrantExperience(heroId, amount)) return;
         if (!itemCollectionManager.ConsumeItem(itemInstanceId)) return;
 
