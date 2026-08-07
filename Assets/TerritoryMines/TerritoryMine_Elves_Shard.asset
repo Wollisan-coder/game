@@ -26,7 +26,7 @@ MonoBehaviour:
   upgradeCostWood: 50
   upgradeCostStone: 30
   producedCurrency: 2
-  baseProductionPerHour: 1
+  baseProductionPerHour: 0.2
   baseStorageCap: 15
   heroSummonPool: {fileID: 0}
   itemSummonPool: {fileID: 0}

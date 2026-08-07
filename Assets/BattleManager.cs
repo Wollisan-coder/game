@@ -132,7 +132,7 @@ public class BattleManager : MonoBehaviour
     // ОЦЕНКА, не измерено живым тестом — см. project_campaign_difficulty_curve для методологии перекалибровки после плейтеста.
     public int bossTrainingMaxHP = 300;
     public int bossTrainingTotalTurns = 15;
-    public int baseTrainingXp = 1600; // = ценность одного HeroExpGemPurple — см. project_campaign_difficulty_curve
+    public int baseTrainingXp = 1600; // унаследовано от ценности старого предмета HeroExpGemPurple — см. project_campaign_difficulty_curve
     public BossTrainingSkillData[] bossTrainingSkillKit; // один общий набор на всех тренируемых героев — см. BattleUI
 
     // Прямая ссылка на ассет, а не heroId-строка — при запуске SampleScene напрямую (Play без похода через
@@ -281,6 +281,12 @@ public class BattleManager : MonoBehaviour
             }
 
             var heroState = new HeroRuntimeState(hero, level, ascensionLevel);
+
+            // Дивная броня (куск 6, пересобрана — см. project_gem_economy_v2_redesign_pending) — плоский
+            // squad-wide бонус (НЕ расовый), применяется всегда, включая Death Dungeon (там "гир не решает"
+            // касается только пункта ниже — это не экипировка, а перманентный аккаунт-прогресс отряда).
+            if (HeroCollectionManager.Instance != null)
+                heroState.damageMultiplier += HeroCollectionManager.Instance.GetWondrousArmorSquadBonus();
 
             // Бонусы от экипированных предметов (не меняют сам ассет HeroData, только эту копию на бой) —
             // в Death Dungeon статы уравниваются на входе, экипировка не даёт ничего (см.
@@ -483,6 +489,11 @@ public class BattleManager : MonoBehaviour
             // Тренируется герой в своём реальном виде — экипировка работает как обычно (это не Death Dungeon
             // с уравниванием статов, тут смысл именно прокачать существующего героя таким, какой он есть).
             var heroState = new HeroRuntimeState(hero, level, ascensionLevel);
+
+            // Дивная броня — перманентный squad-wide бонус, см. тот же блок в основном squad-цикле выше.
+            if (HeroCollectionManager.Instance != null)
+                heroState.damageMultiplier += HeroCollectionManager.Instance.GetWondrousArmorSquadBonus();
+
             var bonuses = HeroStatUtility.CalculateEquipmentBonuses(ownership);
             heroState.maxHealth += bonuses.health;
             heroState.currentHealth += bonuses.health;
@@ -1383,6 +1394,23 @@ public class BattleManager : MonoBehaviour
 
         bool runComplete = dungeon != null && dungeon.AdvanceToNextNode();
 
+        // Куск 6 (пересобран — см. project_gem_economy_v2_redesign_pending) — сезонная награда только за
+        // ПЕРВУЮ чистую победу за 2-недельный сезон (DeathDungeonManager.CanClaimSeasonReward), не за каждый
+        // забег подряд: гарантированный 1 ArmorShard + выбор скина 1 из 3 ЛЮБЫХ героев (см. WondrousArmorChoiceUI).
+        bool offerWondrousArmorChoice = false;
+        if (runComplete && dungeon != null && dungeon.CanClaimSeasonReward)
+        {
+            const int seasonRewardPremiumGems = 100; // = Altar_HeroPool.premiumCost (10) x 10 пуллов, синхронизировать вручную, если та цена поменяется
+            const int seasonRewardArmorShards = 1;
+            PlayerCurrencies.Instance?.Add(CurrencyType.PremiumGems, seasonRewardPremiumGems);
+            PlayerCurrencies.Instance?.Add(CurrencyType.ArmorShards, seasonRewardArmorShards);
+            dungeon.ClaimSeasonReward();
+            offerWondrousArmorChoice = true;
+            rewardLines.Add($"Premium Gems +{seasonRewardPremiumGems}");
+            rewardLines.Add($"Armor Shards +{seasonRewardArmorShards}");
+            rewardLines.Add("Wondrous Armor awaits...");
+        }
+
         if (AccountManager.Instance != null)
             AccountManager.Instance.returningFromDeathDungeon = true;
 
@@ -1398,6 +1426,11 @@ public class BattleManager : MonoBehaviour
             {
                 var buffUI = gameObject.AddComponent<DeathDungeonBuffChoiceUI>();
                 buffUI.Open(root, () => SceneManager.LoadScene(mainMenuSceneName));
+            }
+            else if (offerWondrousArmorChoice)
+            {
+                var armorUI = gameObject.AddComponent<WondrousArmorChoiceUI>();
+                armorUI.Open(root, () => SceneManager.LoadScene(mainMenuSceneName));
             }
             else
             {

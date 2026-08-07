@@ -74,15 +74,15 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     [Header("Кнопка закрытия")]
     public Button closeButton;
 
-    private Button heroUpgradeButton; // строится программно — прокачать героя предметом опыта
+    private Button heroUpgradeButton; // строится программно — прокачать героя за валюту CurrencyType.HeroExperience
     private Image heroUpgradeBg;
     private TMP_Text heroUpgradeText;
-    private HeroExperienceItemPickerUI experienceItemPickerUI;
 
-    // Конвертация банка ascensionGems — 2 кнопки над Upgrade (см. CreateGemConversionUIIfNeeded).
+    // Конвертация банка ascensionGems — 1 кнопка над Upgrade (см. CreateGemConversionUIIfNeeded).
+    // ascensionGems тратятся ТОЛЬКО на AscendHero и на Hero Voucher (Orange-путь) — конвертация в опыт
+    // убрана полностью (см. project_gem_economy_v2_redesign_pending): единая валюта опыта копится сама
+    // по себе через HandleDuplicatePull/ProgressExchangeUI, а не выжимается из гемов вознесения.
     private TMP_Text gemCountText;
-    private Button convertToExpButton;
-    private TMP_Text convertToExpText;
     private Button convertToVoucherButton;
     private TMP_Text convertToVoucherText;
 
@@ -574,9 +574,20 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
     private void OnUpgradeClicked()
     {
-        if (experienceItemPickerUI == null || currentHero == null) return;
+        if (currentHero == null || HeroCollectionManager.Instance == null || PlayerCurrencies.Instance == null) return;
 
-        experienceItemPickerUI.Open(currentHero.heroId, Refresh);
+        int needed = HeroCollectionManager.Instance.GetExperienceNeededToCap(currentHero.heroId);
+        if (needed <= 0) return;
+
+        int balance = PlayerCurrencies.Instance.GetBalance(CurrencyType.HeroExperience);
+        int spend = Mathf.Min(needed, balance);
+        if (spend <= 0) return;
+
+        if (PlayerCurrencies.Instance.Spend(CurrencyType.HeroExperience, spend))
+        {
+            HeroCollectionManager.Instance.GrantExperience(currentHero.heroId, spend);
+            Refresh();
+        }
     }
 
     // Кнопку "Upgrade" строим программно рядом с Close (копируя его трансформ),
@@ -613,16 +624,14 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         heroUpgradeText.alignment = TextAlignmentOptions.Center;
 
         heroUpgradeButton.gameObject.SetActive(false);
-
-        experienceItemPickerUI = gameObject.AddComponent<HeroExperienceItemPickerUI>();
     }
 
-    // Счётчик + 2 кнопки, ещё на 1 шаг выше Upgrade — потратить банк ascensionGems этого героя на опыт
-    // или на Hero Voucher (см. HeroCollectionManager.ConvertGemToExperience/ConvertGemToVoucher). Только для
-    // Purple/Orange — у остальных редкостей ascensionGems не копится вообще (см. HandleDuplicatePull).
+    // Счётчик + кнопка, ещё на 1 шаг выше Upgrade — потратить банк ascensionGems этого героя на Hero Voucher
+    // (см. HeroCollectionManager.ConvertGemToVoucher). Только для Purple/Orange — у остальных редкостей
+    // ascensionGems не копится вообще (см. HandleDuplicatePull).
     private void CreateGemConversionUIIfNeeded()
     {
-        if (convertToExpButton != null) return;
+        if (convertToVoucherButton != null) return;
 
         RectTransform referenceRect = closeButton != null ? closeButton.GetComponent<RectTransform>() : null;
         if (referenceRect == null) return;
@@ -643,9 +652,7 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         gemCountText.fontSize = 18;
         gemCountText.color = Color.white;
 
-        float halfGap = referenceRect.sizeDelta.x * 0.55f;
-        convertToExpButton = BuildGemConversionButton(referenceRect, rowBase - new Vector2(halfGap, 0), "+1 Exp", OnConvertGemToExperienceClicked, out convertToExpText);
-        convertToVoucherButton = BuildGemConversionButton(referenceRect, rowBase + new Vector2(halfGap, 0), "+1 Voucher", OnConvertGemToVoucherClicked, out convertToVoucherText);
+        convertToVoucherButton = BuildGemConversionButton(referenceRect, rowBase, "+1 Voucher", OnConvertGemToVoucherClicked, out convertToVoucherText);
     }
 
     private Button BuildGemConversionButton(RectTransform referenceRect, Vector2 anchoredPos, string label, UnityEngine.Events.UnityAction onClick, out TMP_Text text)
@@ -682,14 +689,6 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         return btn;
     }
 
-    private void OnConvertGemToExperienceClicked()
-    {
-        if (currentHero == null || HeroCollectionManager.Instance == null) return;
-
-        HeroCollectionManager.Instance.ConvertGemToExperience(currentHero.heroId);
-        Refresh();
-    }
-
     private void OnConvertGemToVoucherClicked()
     {
         if (currentHero == null || HeroCollectionManager.Instance == null) return;
@@ -704,14 +703,11 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
         bool relevant = HeroAscensionUtility.GetMaxAscension(currentHero.rarity) > 0;
         gemCountText.gameObject.SetActive(relevant);
-        convertToExpButton?.gameObject.SetActive(relevant);
         convertToVoucherButton?.gameObject.SetActive(relevant && currentOwnership.voucherConversionUnlocked);
         if (!relevant) return;
 
         gemCountText.text = $"Ascension Gems: {currentOwnership.ascensionGems}";
 
-        if (convertToExpButton != null)
-            convertToExpButton.interactable = currentOwnership.ascensionGems >= 1;
         if (convertToVoucherButton != null)
             convertToVoucherButton.interactable = currentOwnership.ascensionGems >= 1;
     }
@@ -863,11 +859,13 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
     private void RefreshUpgradeButtonVisibility()
     {
-        if (heroUpgradeButton == null || ItemCollectionManager.Instance == null) return;
+        if (heroUpgradeButton == null || currentHero == null
+            || HeroCollectionManager.Instance == null || PlayerCurrencies.Instance == null) return;
 
-        bool hasExperienceItems = ItemCollectionManager.Instance.ownership.Any(o =>
-            o.quantity > 0 && ItemCollectionManager.Instance.GetItemById(o.itemId)?.category == ItemCategory.HeroExperience);
+        int needed = HeroCollectionManager.Instance.GetExperienceNeededToCap(currentHero.heroId);
+        int balance = PlayerCurrencies.Instance.GetBalance(CurrencyType.HeroExperience);
 
-        heroUpgradeButton.gameObject.SetActive(hasExperienceItems);
+        heroUpgradeButton.gameObject.SetActive(needed > 0 && balance > 0);
+        if (heroUpgradeText != null) heroUpgradeText.text = $"Upgrade ({Mathf.Min(needed, balance)})";
     }
 }

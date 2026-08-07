@@ -41,9 +41,6 @@ public class ItemData : ScriptableObject
     // считается из (slotType, rarity, уровень стека) через EquipmentStatCurve.GetValue. Один слот = один
     // стат: Weapon->Damage, Armor->HP, Accessory->Defense/броня, Trinket->Mana.
 
-    [Header("Опыт для героя (category == HeroExperience)")]
-    public int heroExperienceValue = 0; // сколько опыта герой получает при использовании этого предмета
-
     private void OnValidate()
     {
         if (string.IsNullOrEmpty(itemId))

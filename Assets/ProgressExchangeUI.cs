@@ -3,21 +3,20 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-// Runtime-built window that lets the player spend ОП (Progress Points) on hero-experience items
-// (the same HeroExpGem* items HeroCollectionManager already hands out as duplicate-overflow reward —
-// see project_hero_ascension_system memory). Opened from a "Exchange" nav button in CastleUI.
+// Runtime-built window that lets the player spend ОП (Progress Points) on CurrencyType.HeroExperience
+// (the same unified currency HeroCollectionManager hands out as duplicate-overflow reward for Green/Blue —
+// see project_gem_economy_v2_redesign_pending memory). Opened from a "Exchange" nav button in CastleUI.
 public class ProgressExchangeUI : MonoBehaviour
 {
-    // itemId (from ItemCollectionManager.allItems) -> cost in ОП. Flat 2 exp-per-1-ОП ratio against
-    // each HeroExpGem*'s heroExperienceValue (200/600/1600/4000, doubled 2026-08-01 as part of the
-    // campaign difficulty curve pass — see project_campaign_difficulty_curve memory) — costs doubled
-    // alongside to keep the same 2:1 ratio, not to silently make ОП twice as strong a lever.
-    private static readonly (string itemId, int cost)[] Offers =
+    // (hero exp granted, cost in ОП). Flat 2 exp-per-1-ОП ratio, four tiers kept from the original
+    // per-rarity HeroExpGem prices (200/600/1600/4000 exp for 100/300/800/2000 PP) now that those items
+    // are gone and this sells the unified currency directly.
+    private static readonly (int expAmount, int cost)[] Offers =
     {
-        ("HeroExpGemGreen", 100),
-        ("HeroExpGemBlue", 300),
-        ("HeroExpGemPurple", 800),
-        ("HeroExpGemOrange", 2000),
+        (200, 100),
+        (600, 300),
+        (1600, 800),
+        (4000, 2000),
     };
 
     private Transform canvasRoot;
@@ -216,21 +215,17 @@ public class ProgressExchangeUI : MonoBehaviour
 
         for (int i = 0; i < Offers.Length && i < rowLabels.Count; i++)
         {
-            var item = ItemCollectionManager.Instance != null ? ItemCollectionManager.Instance.GetItemById(Offers[i].itemId) : null;
-            string name = item != null ? item.itemName : Offers[i].itemId;
-            string expLine = item != null ? $" (+{item.heroExperienceValue} hero exp)" : "";
-            rowLabels[i].text = $"{name}{expLine}\nCost: {Offers[i].cost} PP";
+            var (expAmount, cost) = Offers[i];
+            rowLabels[i].text = $"+{expAmount} Hero Exp\nCost: {cost} PP";
         }
     }
 
     private void Buy(int offerIndex)
     {
         if (offerIndex < 0 || offerIndex >= Offers.Length) return;
-        if (PlayerCurrencies.Instance == null || ItemCollectionManager.Instance == null) return;
+        if (PlayerCurrencies.Instance == null) return;
 
-        var (itemId, cost) = Offers[offerIndex];
-        var item = ItemCollectionManager.Instance.GetItemById(itemId);
-        if (item == null) return;
+        var (expAmount, cost) = Offers[offerIndex];
 
         if (!PlayerCurrencies.Instance.Spend(CurrencyType.ProgressPoints, cost))
         {
@@ -238,8 +233,8 @@ public class ProgressExchangeUI : MonoBehaviour
             return;
         }
 
-        ItemCollectionManager.Instance.AddItemCopy(item, 1);
-        ConfirmationDialog.ShowInfo(canvasRoot, $"Bought {item.itemName}!");
+        PlayerCurrencies.Instance.Add(CurrencyType.HeroExperience, expAmount);
+        ConfirmationDialog.ShowInfo(canvasRoot, $"Bought +{expAmount} Hero Exp!");
 
         Refresh();
     }

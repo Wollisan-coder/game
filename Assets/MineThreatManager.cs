@@ -70,6 +70,11 @@ public class MineThreatManager : MonoBehaviour
     // Продвигает очередь настолько, насколько прошло реального времени — может "созреть" сразу несколько
     // угроз подряд, если игрок не заходил в игру много дней. Безопасно звать многократно (например при
     // каждом открытии карты мира/экрана шахт) — no-op, если рано или очередь пуста.
+    // Максимум одновременно АКТИВНЫХ угроз на всю карту — даже если в очереди накопилось больше
+    // принесённых в жертву героев (например, игрок долго не заходил), лишние ждут, пока не освободится
+    // место (см. project_gem_economy_v2_redesign_pending — 2026-08-08, отдельный балансный фикс).
+    private const int MaxActiveThreats = 3;
+
     public void ProcessQueue()
     {
         bool changed = false;
@@ -77,7 +82,6 @@ public class MineThreatManager : MonoBehaviour
         while (queuedHeroIds.Count > 0 && System.DateTime.UtcNow.Ticks >= nextSpawnAtTicks)
         {
             string heroId = queuedHeroIds[0];
-            queuedHeroIds.RemoveAt(0);
 
             var hero = HeroCollectionManager.Instance != null
                 ? HeroCollectionManager.Instance.allHeroes.FirstOrDefault(h => h != null && h.heroId == heroId)
@@ -86,6 +90,14 @@ public class MineThreatManager : MonoBehaviour
             if (hero != null)
             {
                 var existing = activeThreats.FirstOrDefault(t => t.race == hero.race);
+
+                // Мерджиться в уже активную угрозу можно всегда (число активных угроз не растёт) — кап
+                // блокирует только СОЗДАНИЕ новой, когда на карте уже максимум.
+                if (existing == null && activeThreats.Count >= MaxActiveThreats)
+                    break;
+
+                queuedHeroIds.RemoveAt(0);
+
                 if (existing != null)
                 {
                     if (!existing.sacrificedHeroIds.Contains(heroId))
@@ -95,6 +107,10 @@ public class MineThreatManager : MonoBehaviour
                 {
                     activeThreats.Add(new MineThreat { race = hero.race, sacrificedHeroIds = new List<string> { heroId } });
                 }
+            }
+            else
+            {
+                queuedHeroIds.RemoveAt(0); // герой не найден (битая запись) — отбрасываем, кап тут ни при чём
             }
 
             nextSpawnAtTicks = System.DateTime.UtcNow.AddDays(SpawnIntervalDays).Ticks;

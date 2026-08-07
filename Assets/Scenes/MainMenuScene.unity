@@ -25136,10 +25136,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 4ab4033bd177b291563170038417cde4, type: 2}
   - {fileID: 11400000, guid: 561175846d7b3e085f64eaddb683d29d, type: 2}
   - {fileID: 11400000, guid: ec9ccf9462d11c9b11e975efacb8f2b8, type: 2}
-  - {fileID: 11400000, guid: 9f3a7c214b8e6d05c2a19f74e83b56d0, type: 2}
-  - {fileID: 11400000, guid: d4e1b7a935c02f6e88a4d13c759e2b60, type: 2}
-  - {fileID: 11400000, guid: 6b2f9d47e1a83c0594f7b2d63ac081e5, type: 2}
-  - {fileID: 11400000, guid: a97e3d105cb84f26e0a3d7916f2c8b45, type: 2}
   - {fileID: 11400000, guid: 5211d596d3c74bd68780c9045aee1207, type: 2}
   - {fileID: 11400000, guid: 3ca91293d4834631a84dbab3171dafe1, type: 2}
   ownership: []
@@ -54114,12 +54110,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: b2a4b34b39fe90145ad70315282ba7fd, type: 2}
   - {fileID: 11400000, guid: 82a928462fdf8d142ace0c6d2e9d2d6a, type: 2}
   ownership: []
-  rarityExperienceGems:
-  - {fileID: 0}
-  - {fileID: 11400000, guid: 9f3a7c214b8e6d05c2a19f74e83b56d0, type: 2}
-  - {fileID: 11400000, guid: d4e1b7a935c02f6e88a4d13c759e2b60, type: 2}
-  - {fileID: 11400000, guid: 6b2f9d47e1a83c0594f7b2d63ac081e5, type: 2}
-  - {fileID: 11400000, guid: a97e3d105cb84f26e0a3d7916f2c8b45, type: 2}
   heroVoucherItems:
   - {fileID: 0}
   - {fileID: 0}

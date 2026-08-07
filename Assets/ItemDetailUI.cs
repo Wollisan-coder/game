@@ -23,12 +23,11 @@ public class ItemDetailUI : MonoBehaviour
     private Image rarityFrame;
     private TMP_Text infoText;      // Rarity + Lvl + прогресс Exp (или количество — для расходных предметов)
 
-    private Button actionButton;    // "Upgrade" (Equipment) или "Use" (HeroExperience) — в зависимости от категории
+    private Button actionButton;    // "Redeem" (HeroVoucher) или "Sacrifice" (Equipment) — в зависимости от категории
     private Image actionBg;
     private TMP_Text actionText;
 
     private ItemSacrificeUI sacrificeUI;
-    private HeroExperienceUseUI heroExperienceUseUI;
     private HeroVoucherRedeemUI heroVoucherRedeemUI;
 
     // Вызывается при закрытии этого попапа — чтобы экран-каталог позади мог перестроить сетку
@@ -67,7 +66,6 @@ public class ItemDetailUI : MonoBehaviour
         var item = currentItem;
         var ownership = currentStack;
         bool owned = ownership != null;
-        bool isHeroXpItem = item.category == ItemCategory.HeroExperience;
         bool isHeroVoucherItem = item.category == ItemCategory.HeroVoucher;
 
         if (icon != null) icon.sprite = item.icon;
@@ -76,16 +74,12 @@ public class ItemDetailUI : MonoBehaviour
             nameText.text = item.itemName;
             nameText.color = item.GetRarityColor();
         }
-        if (slotTypeText != null) slotTypeText.text = isHeroXpItem ? "Consumable" : isHeroVoucherItem ? "Voucher" : item.slotType.ToString();
+        if (slotTypeText != null) slotTypeText.text = isHeroVoucherItem ? "Voucher" : item.slotType.ToString();
         if (descriptionText != null) descriptionText.text = item.description;
 
         if (statsText != null)
         {
-            if (isHeroXpItem)
-            {
-                statsText.text = $"Hero XP: +{item.heroExperienceValue}";
-            }
-            else if (isHeroVoucherItem)
+            if (isHeroVoucherItem)
             {
                 int voucherCount = ItemCollectionManager.Instance != null ? ItemCollectionManager.Instance.GetTotalQuantity(item.itemId) : 0;
                 statsText.text = $"Owned: {voucherCount} / {HeroCollectionManager.HeroVouchersPerGem} needed to grant a hero an Ascension Gem";
@@ -135,14 +129,7 @@ public class ItemDetailUI : MonoBehaviour
         {
             actionButton.onClick.RemoveAllListeners();
 
-            if (isHeroXpItem)
-            {
-                bool canUse = owned && ownership != null && ownership.quantity > 0;
-                actionButton.gameObject.SetActive(canUse);
-                if (actionText != null) actionText.text = "Use";
-                actionButton.onClick.AddListener(OnUseClicked);
-            }
-            else if (isHeroVoucherItem)
+            if (isHeroVoucherItem)
             {
                 bool canRedeem = owned && manager != null && manager.GetTotalQuantity(item.itemId) >= HeroCollectionManager.HeroVouchersPerGem;
                 actionButton.gameObject.SetActive(canRedeem);
@@ -213,7 +200,6 @@ public class ItemDetailUI : MonoBehaviour
         actionButton.gameObject.SetActive(false);
 
         sacrificeUI = gameObject.AddComponent<ItemSacrificeUI>();
-        heroExperienceUseUI = gameObject.AddComponent<HeroExperienceUseUI>();
         heroVoucherRedeemUI = gameObject.AddComponent<HeroVoucherRedeemUI>();
     }
 
@@ -234,27 +220,6 @@ public class ItemDetailUI : MonoBehaviour
                 Open(refreshedData, refreshedStack);
             else
                 Close(); // целевой стек больше не существует (например, потрачено всё топливо и донор исчез)
-        });
-    }
-
-    private void OnUseClicked()
-    {
-        if (heroExperienceUseUI == null || currentItem == null || currentStack == null) return;
-
-        var manager = ItemCollectionManager.Instance;
-        if (manager == null) return;
-
-        string itemId = currentItem.itemId;
-        string instanceId = currentStack.instanceId;
-        heroExperienceUseUI.Open(instanceId, () =>
-        {
-            var refreshedData = manager.GetItemById(itemId);
-            var refreshedStack = manager.GetStackByInstanceId(instanceId);
-
-            if (refreshedData != null && refreshedStack != null)
-                Open(refreshedData, refreshedStack);
-            else
-                Close(); // последняя копия потрачена
         });
     }
 

@@ -7,7 +7,7 @@ using TMPro;
 // HeroCollectionManager.GrantGemToHero, project_death_dungeon_concept). Ваучер НЕ привязан к конкретному
 // герою — только к редкости, поэтому список показывает ВСЕХ героев этой редкости — и открытых (гем просто
 // пополнит их обычный банк), и запертых (гем включит им кнопку призыва, см. UnlockHeroWithGem). Структура
-// скопирована с HeroExperienceUseUI (тот же приём "оверлей + скролл-сетка + PickerTileUtility").
+// "оверлей + скролл-сетка + PickerTileUtility".
 public class HeroVoucherRedeemUI : MonoBehaviour
 {
     private HeroCollectionManager heroCollectionManager;

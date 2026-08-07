@@ -16,7 +16,6 @@ public class ItemCollectionUI : MonoBehaviour
 
     private static readonly Color TabInactiveColor = new Color(1f, 1f, 1f, 0.08f);
 
-    // Категории — по аналогии с попапом сфер опыта (HeroExperienceItemPickerUI), но вкладками сверху этой же панели
     private readonly (string label, ItemCategory? category, EquipmentSlotType? slot)[] tabs =
     {
         ("All", null, null),
@@ -24,7 +23,6 @@ public class ItemCollectionUI : MonoBehaviour
         ("Armor", ItemCategory.Equipment, EquipmentSlotType.Armor),
         ("Accessory", ItemCategory.Equipment, EquipmentSlotType.Accessory),
         ("Trinket", ItemCategory.Equipment, EquipmentSlotType.Trinket),
-        ("Consumable", ItemCategory.HeroExperience, null),
         ("Vouchers", ItemCategory.HeroVoucher, null),
     };
 

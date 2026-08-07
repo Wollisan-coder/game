@@ -37,6 +37,19 @@ public class HeroOwnershipData
     // этот конкретный герой потом погибнет/будет принесён в жертву и открыт заново с нуля.
     public bool voucherConversionUnlocked;
 
+    // Дивная броня (Wondrous Armor, куск 6 Death Dungeon, полностью пересобрана — см.
+    // project_gem_economy_v2_redesign_pending). wondrousArmorWorn — навсегда true, как только игрок надел
+    // скин на этого героя (см. HeroCollectionManager.WearWondrousArmor) — необратимо, дальше с ним нельзя
+    // ничего сделать (ни распылить, ни поставить в PvP). Как voucherConversionUnlocked выше — престиж за
+    // годы игры, НЕ сбрасывается ни при PermadeleteSquad, ни при жертве героя на ретрит.
+    // wondrousArmorUnwornCount — сколько ещё не надетых копий скина на руках у этого героя (сезонная
+    // награда позволяет выбрать УЖЕ заскиненного героя повторно, плюс есть путь 3 осколка -> случайный
+    // скин) — можно Wear (если ещё не worn) или Disenchant (-1 инстанс, +2 ArmorShards) каждую копию по
+    // отдельности. В отличие от wondrousArmorWorn, ЭТО хероkарта-бонус, а не аккаунт-престиж — сбрасывается
+    // вместе с остальным состоянием карточки в ResetHeroToNeverUnlocked.
+    public bool wondrousArmorWorn;
+    public int wondrousArmorUnwornCount;
+
     [Header("Выбранные навыки")]
     public int activeSkillIndex = 0;   // навык, используемый кнопкой в бою
     public int passiveSkillIndex = -1; // -1 = не выбран

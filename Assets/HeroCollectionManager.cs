@@ -12,11 +12,11 @@ public class HeroCollectionManager : MonoBehaviour
     [Header("Состояние владения (заполняется при загрузке сохранения)")]
     public List<HeroOwnershipData> ownership = new List<HeroOwnershipData>();
 
-    // Индекс = (int)Rarity. Гем опыта героя ИМЕННО этого цвета — для White/Green/Blue (вознесения не имеют)
-    // выдаётся АВТОМАТОМ за каждый дубликат. Для Purple/Orange больше не выдаётся автоматом (см.
-    // HandleDuplicatePull) — доступен только через ручную кнопку "-> Experience" на банке ascensionGems.
-    [Header("Гемы опыта героя по редкости")]
-    public ItemData[] rarityExperienceGems;
+    // Green/Blue (вознесения не имеют) — дубликат всегда автоматом конвертируется в эту сумму единой
+    // валюты опыта (CurrencyType.HeroExperience, см. project_gem_economy_v2_redesign_pending) — числа
+    // сохранены от старых предметов-кристаллов опыта, которые эта валюта заменила.
+    private const int GreenDuplicateExperience = 200;
+    private const int BlueDuplicateExperience = 600;
 
     // Индекс = (int)Rarity, заполнено только для Purple/Orange (у остальных вознесения нет вообще).
     // Ваучер этой редкости — получается конвертацией ascensionGems (см. ConvertGemToVoucher), доступно
@@ -113,6 +113,14 @@ public class HeroCollectionManager : MonoBehaviour
     // потолке больше нет для этих редкостей. Что делать с накопленным гемом (потратить на вознесение,
     // конвертировать в опыт, конвертировать в Hero Voucher), игрок решает сам отдельной кнопкой позже —
     // см. AscendHero/ConvertGemToExperience/ConvertGemToVoucher, project_death_dungeon_concept.
+    // Green/Blue (нет вознесения) — дубль всегда даёт единую валюту опыта (см. GreenDuplicateExperience/
+    // BlueDuplicateExperience). Purple/Orange ниже потолка вознесения — как раньше, +1 ascensionGems.
+    // Purple НА потолке вознесения — НОВОЕ (см. project_gem_economy_v2_redesign_pending): вместо
+    // продолжающегося накопления ascensionGems идёт в Осколки души (CurrencyType.SoulShards), отдельный
+    // ресурс под будущий магазин обмена — у Purple физически нет пути открыть ваучер-конвертацию (потолок
+    // вознесения 2, гейт требует 3), поэтому им нужен свой выход для дублей на максимуме. Orange-путь
+    // (гем -> Hero Voucher через ConvertGemToVoucher) не тронут — Orange на максимуме всё ещё копит обычные
+    // ascensionGems, как и было.
     public void HandleDuplicatePull(HeroData hero)
     {
         if (hero == null) return;
@@ -123,10 +131,20 @@ public class HeroCollectionManager : MonoBehaviour
         int maxAscension = HeroAscensionUtility.GetMaxAscension(hero.rarity);
         if (maxAscension <= 0)
         {
-            ItemData gem = GetRarityExperienceGem(hero.rarity);
-            int count = HeroAscensionUtility.GetOverflowGemCount(hero.rarity);
-            if (gem != null)
-                ItemCollectionManager.Instance?.AddItemCopy(gem, count);
+            // White сюда попадать не должен (не выдаётся игрокам), но на всякий случай не начисляем
+            // ничего — тот же эффект, что и раньше у null-гема без предмета.
+            int amount = hero.rarity switch
+            {
+                Rarity.Green => GreenDuplicateExperience,
+                Rarity.Blue => BlueDuplicateExperience,
+                _ => 0
+            };
+            if (amount > 0)
+                PlayerCurrencies.Instance?.Add(CurrencyType.HeroExperience, amount);
+        }
+        else if (hero.rarity == Rarity.Purple && data.ascensionLevel >= maxAscension)
+        {
+            PlayerCurrencies.Instance?.Add(CurrencyType.SoulShards, 1);
         }
         else
         {
@@ -134,25 +152,6 @@ public class HeroCollectionManager : MonoBehaviour
         }
 
         SaveOwnership();
-    }
-
-    // Тратит 1 гем вознесения этого героя за 1 предмет опыта той же редкости (rarityExperienceGems) —
-    // ручная версия того, что раньше выдавалось автоматом на потолке вознесения. Доступна всегда
-    // (не требует voucherConversionUnlocked, в отличие от ConvertGemToVoucher ниже).
-    public bool ConvertGemToExperience(string heroId)
-    {
-        var hero = allHeroes.FirstOrDefault(h => h.heroId == heroId);
-        var data = ownership.FirstOrDefault(o => o.heroId == heroId);
-        if (hero == null || data == null || data.ascensionGems < 1) return false;
-
-        ItemData gem = GetRarityExperienceGem(hero.rarity);
-        if (gem == null) return false;
-
-        data.ascensionGems--;
-        ItemCollectionManager.Instance?.AddItemCopy(gem, 1);
-
-        SaveOwnership();
-        return true;
     }
 
     // Тратит 1 гем вознесения этого героя за 1 Hero Voucher той же редкости (heroVoucherItems) — доступно
@@ -284,13 +283,6 @@ public class HeroCollectionManager : MonoBehaviour
         return consumed;
     }
 
-    private ItemData GetRarityExperienceGem(Rarity rarity)
-    {
-        int index = (int)rarity;
-        return rarityExperienceGems != null && index >= 0 && index < rarityExperienceGems.Length
-            ? rarityExperienceGems[index] : null;
-    }
-
     private ItemData GetHeroVoucherItem(Rarity rarity)
     {
         int index = (int)rarity;
@@ -351,6 +343,30 @@ public class HeroCollectionManager : MonoBehaviour
 
         SaveOwnership();
         return true;
+    }
+
+    // Сколько единиц CurrencyType.HeroExperience нужно герою, чтобы ровно дойти до потолка уровня
+    // (без остатка, который GrantExperience иначе сжигает по достижении потолка) — используется кнопкой
+    // Upgrade в HeroInventoryUI, чтобы не тратить валюту впустую.
+    public int GetExperienceNeededToCap(string heroId)
+    {
+        var hero = allHeroes.FirstOrDefault(h => h.heroId == heroId);
+        var data = ownership.FirstOrDefault(o => o.heroId == heroId);
+        if (hero == null || data == null) return 0;
+
+        int levelCap = HeroAscensionUtility.GetLevelCap(hero.rarity, data.ascensionLevel);
+        if (data.level >= levelCap) return 0;
+
+        int needed = 0;
+        int level = data.level;
+        int banked = data.experience;
+        while (level < levelCap)
+        {
+            needed += ExperienceToNextLevel(level) - banked;
+            banked = 0;
+            level++;
+        }
+        return needed;
     }
 
     // Экипирован ли этот конкретный стек (по instanceId) хоть на одном герое сейчас.
@@ -430,11 +446,14 @@ public class HeroCollectionManager : MonoBehaviour
     // ретрита (PermadeleteSquad), и для добровольной жертвы одним героем на ретрит (SacrificeHeroForRetreat).
     // НЕ трогает voucherConversionUnlocked (см. HeroOwnershipData) — это единственное поле героя,
     // рассчитанное пережить его "смерть" в любой форме.
-    // ascensionGems и voucherConversionUnlocked НЕ трогаем — гемы получены игроком через уже состоявшиеся
-    // гача-пуллы (а не "прогресс этой конкретной карточки"), терять их вместе с героем неправильно. Если
-    // герой позже снова выпадет в гаче, SummonService.GrantHero увидит IsUnlocked()==false и вызовет
-    // UnlockHero (не HandleDuplicatePull) — герой откроется заново со ВСЕМ уже накопленным банком гемов
-    // (и, если voucherConversionUnlocked уже true, конвертация в ваучер будет доступна сразу).
+    // ascensionGems, voucherConversionUnlocked И wondrousArmorWorn НЕ трогаем — гемы получены игроком через
+    // уже состоявшиеся гача-пуллы (а не "прогресс этой конкретной карточки"), а ваучер-разблокировка и
+    // надетая Дивная броня — престиж за годы игры (см. project_gem_economy_v2_redesign_pending куски 5/6);
+    // терять их вместе с героем неправильно. wondrousArmorUnwornCount, наоборот, СБРАСЫВАЕМ — непрожитые
+    // копии скина привязаны к текущей "жизни" карточки, а не к аккаунту. Если герой позже снова выпадет в
+    // гаче, SummonService.GrantHero увидит IsUnlocked()==false и вызовет UnlockHero (не HandleDuplicatePull)
+    // — герой откроется заново со ВСЕМ уже накопленным банком гемов (и, если voucherConversionUnlocked/
+    // wondrousArmorWorn уже true, оба остаются активны сразу).
     private void ResetHeroToNeverUnlocked(HeroOwnershipData data)
     {
         data.isUnlocked = false;
@@ -445,6 +464,7 @@ public class HeroCollectionManager : MonoBehaviour
         data.passiveSkillIndex = -1;
         data.racePassiveEnabled = false;
         data.equippedItems.Clear();
+        data.wondrousArmorUnwornCount = 0;
     }
 
     // Death Dungeon — поражение БЕЗ ретрита (см. project_death_dungeon_concept). Все 4 героя текущего
@@ -483,6 +503,111 @@ public class HeroCollectionManager : MonoBehaviour
 
         SaveOwnership();
         return true;
+    }
+
+    private const int WondrousArmorChoiceCount = 3;
+    private const int WondrousArmorDisenchantRefund = 2; // распыл даёт МЕНЬШЕ, чем нужно на новый скин (3) — намеренно, см. TryRedeemArmorShardsForRandomSkin
+    private const int WondrousArmorRandomSkinCost = 3;
+
+    // count случайных РАЗБЛОКИРОВАННЫХ героев — теперь ЛЮБЫХ, включая уже заскиненных (см.
+    // project_gem_economy_v2_redesign_pending: пул больше не иссякает, повторный выбор того же героя просто
+    // добавляет ему ещё один неношеный инстанс). Кандидаты на сезонную награду, см. WondrousArmorChoiceUI.
+    public List<HeroData> DrawWondrousArmorCandidates(int count)
+    {
+        var eligible = ownership
+            .Where(o => o.isUnlocked)
+            .Select(o => allHeroes.FirstOrDefault(h => h != null && h.heroId == o.heroId))
+            .Where(h => h != null)
+            .ToList();
+
+        var result = new List<HeroData>();
+        for (int i = 0; i < count && eligible.Count > 0; i++)
+        {
+            int index = UnityEngine.Random.Range(0, eligible.Count);
+            result.Add(eligible[index]);
+            eligible.RemoveAt(index);
+        }
+        return result;
+    }
+
+    // Добавляет герою ещё один неношеный инстанс Дивной брони (см. HeroOwnershipData.wondrousArmorUnwornCount)
+    // — источники: сезонная награда (WondrousArmorChoiceUI) и обмен 3 осколков на случайный скин
+    // (TryRedeemArmorShardsForRandomSkin). Сам по себе НЕ надевает броню — см. WearWondrousArmor.
+    public bool GrantWondrousArmorInstance(string heroId)
+    {
+        var data = ownership.FirstOrDefault(o => o.heroId == heroId);
+        if (data == null || !data.isUnlocked) return false;
+
+        data.wondrousArmorUnwornCount++;
+        SaveOwnership();
+        return true;
+    }
+
+    // Надевает один неношеный инстанс — необратимо (см. HeroOwnershipData.wondrousArmorWorn), тратит 1 из
+    // wondrousArmorUnwornCount. Если уже надет, повторно надеть нечего — лишние инстансы можно только
+    // распылить (см. DisenchantWondrousArmor).
+    public bool WearWondrousArmor(string heroId)
+    {
+        var data = ownership.FirstOrDefault(o => o.heroId == heroId);
+        if (data == null || !data.isUnlocked || data.wondrousArmorWorn || data.wondrousArmorUnwornCount <= 0) return false;
+
+        data.wondrousArmorUnwornCount--;
+        data.wondrousArmorWorn = true;
+        SaveOwnership();
+        return true;
+    }
+
+    // Распыляет один неношеный инстанс на ArmorShards — сознательно МЕНЬШЕ (2), чем стоит новый случайный
+    // скин (3), чтобы фарм "ролл, пока не выпадет нужный герой" был не бесплатным (см.
+    // project_gem_economy_v2_redesign_pending).
+    public bool DisenchantWondrousArmor(string heroId)
+    {
+        var data = ownership.FirstOrDefault(o => o.heroId == heroId);
+        if (data == null || data.wondrousArmorUnwornCount <= 0) return false;
+
+        data.wondrousArmorUnwornCount--;
+        SaveOwnership();
+        PlayerCurrencies.Instance?.Add(CurrencyType.ArmorShards, WondrousArmorDisenchantRefund);
+        return true;
+    }
+
+    // Тратит 3 ArmorShards на ещё один инстанс скина случайному РАЗБЛОКИРОВАННОМУ герою (любому, включая
+    // уже заскиненных — тот же пул, что и DrawWondrousArmorCandidates). Возвращает выбранного героя, либо
+    // null, если не хватило осколков или разблокированных героев вообще нет.
+    public HeroData TryRedeemArmorShardsForRandomSkin()
+    {
+        if (PlayerCurrencies.Instance == null) return null;
+
+        var eligible = ownership
+            .Where(o => o.isUnlocked)
+            .Select(o => allHeroes.FirstOrDefault(h => h != null && h.heroId == o.heroId))
+            .Where(h => h != null)
+            .ToList();
+        if (eligible.Count == 0) return null;
+
+        if (!PlayerCurrencies.Instance.Spend(CurrencyType.ArmorShards, WondrousArmorRandomSkinCost)) return null;
+
+        var hero = eligible[UnityEngine.Random.Range(0, eligible.Count)];
+        GrantWondrousArmorInstance(hero.heroId);
+        return hero;
+    }
+
+    // +5% урона ВСЕМУ отряду, только когда все 4 слота заполнены И каждый герой в них уже НОСИТ Дивную
+    // броню (см. HeroOwnershipData.wondrousArmorWorn) — НИКАКОГО расового бонуса больше нет, только этот
+    // плоский squad-wide бонус (финальное решение, см. project_gem_economy_v2_redesign_pending).
+    public const float WondrousArmorSquadBonus = 0.05f;
+
+    public float GetWondrousArmorSquadBonus()
+    {
+        EnsureSquadSize();
+        if (squad.Count < MaxSquadSize || squad.Any(h => h == null)) return 0f;
+
+        bool allWorn = squad.All(h =>
+        {
+            var data = ownership.FirstOrDefault(o => o.heroId == h.heroId);
+            return data != null && data.wondrousArmorWorn;
+        });
+        return allWorn ? WondrousArmorSquadBonus : 0f;
     }
 
     public void RemoveFromSquad(int slotIndex)
@@ -535,7 +660,8 @@ public class HeroCollectionManager : MonoBehaviour
             .Select(e => $"{(int)e.slotType},{e.itemInstanceId}"));
 
         return $"{data.heroId}:{(data.isUnlocked ? 1 : 0)}:{data.level}:{data.experience}:{data.activeSkillIndex}:{data.passiveSkillIndex}:{equipped}" +
-               $":{data.ascensionGems}:{data.ascensionLevel}:{(data.racePassiveEnabled ? 1 : 0)}:{(data.voucherConversionUnlocked ? 1 : 0)}";
+               $":{data.ascensionGems}:{data.ascensionLevel}:{(data.racePassiveEnabled ? 1 : 0)}:{(data.voucherConversionUnlocked ? 1 : 0)}:{(data.wondrousArmorWorn ? 1 : 0)}" +
+               $":{data.wondrousArmorUnwornCount}";
     }
 
     private void LoadOwnership()
@@ -564,7 +690,11 @@ public class HeroCollectionManager : MonoBehaviour
                 // Ещё позже добавлена пассивка расы — старые сохранения (9 частей, без неё) получат выключенную по умолчанию
                 racePassiveEnabled = parts.Length > 9 && parts[9] == "1",
                 // Ваучер-разблокировка добавлена ещё позже — старые сохранения (без части 10) получат false
-                voucherConversionUnlocked = parts.Length > 10 && parts[10] == "1"
+                voucherConversionUnlocked = parts.Length > 10 && parts[10] == "1",
+                // Дивная броня (куск 6, пересобрана — см. project_gem_economy_v2_redesign_pending) —
+                // старые сохранения (без частей 11/12) получат false/0
+                wondrousArmorWorn = parts.Length > 11 && parts[11] == "1",
+                wondrousArmorUnwornCount = parts.Length > 12 ? int.Parse(parts[12]) : 0
             };
 
             string equippedBlock = parts[6];

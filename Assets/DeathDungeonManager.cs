@@ -72,7 +72,7 @@ public class DeathDungeonManager : MonoBehaviour
     // через PlayerPrefs (не просто в памяти) — иначе рестарт игры тривиально снимал бы недельный дебафф.
     private const string DebuffExpiryKey = "dd_retreat_debuff_expiry";
     private const string LockoutExpiryKey = "dd_retreat_lockout_expiry";
-    private const int RetreatDebuffDays = 7;
+    private const int RetreatDebuffDays = 5; // 7 -> 5, компромиссная цифра финального ребаланса (см. project_gem_economy_v2_redesign_pending)
     private const int RetreatLockoutDays = 7;
 
     public long retreatDebuffExpiryTicks;
@@ -93,9 +93,27 @@ public class DeathDungeonManager : MonoBehaviour
 
     // heroId'ы, причастные к последнему ретриту (см. HeroCollectionManager.ExecuteRetreatSacrifice) —
     // и те, с кого списаны гемы (могут повторяться, если с одного героя ушло больше 1 гема), и те, кто
-    // целиком принесён в жертву как "карта" — задел на кусок 5 (принесённые герои "возвращаются" как
-    // боссы-нежить), сам кусок 5 ещё не построен, просто сохраняем, чтобы не потерять.
+    // целиком принесён в жертву как "карта" — читает MineThreatManager.EnqueueThreats (куск 5, см.
+    // project_death_dungeon_implementation).
     public List<string> lastSacrificedHeroIds = new List<string>();
+
+    // Сезонная награда за прохождение гаунтлета (куск 6, см. project_death_dungeon_concept) — сезон 2
+    // недели, попыток внутри сезона неограничено, но НАГРАДА (скин + валюта) засчитывается только за
+    // ПЕРВУЮ чистую победу за сезон. Персистится через PlayerPrefs, тот же приём, что и retreat-таймеры
+    // выше — 0 (никогда не клеймилось) значит "сезон доступен".
+    private const string SeasonRewardKey = "dd_season_reward_claimed";
+    private const int SeasonRewardCooldownDays = 14;
+
+    public long lastSeasonRewardClaimedAtTicks;
+
+    public bool CanClaimSeasonReward => System.DateTime.UtcNow.Ticks >= lastSeasonRewardClaimedAtTicks + System.TimeSpan.FromDays(SeasonRewardCooldownDays).Ticks;
+
+    public void ClaimSeasonReward()
+    {
+        lastSeasonRewardClaimedAtTicks = System.DateTime.UtcNow.Ticks;
+        PlayerPrefs.SetString(SeasonRewardKey, lastSeasonRewardClaimedAtTicks.ToString());
+        PlayerPrefs.Save();
+    }
 
     private void Awake()
     {
@@ -105,6 +123,7 @@ public class DeathDungeonManager : MonoBehaviour
 
         retreatDebuffExpiryTicks = long.TryParse(PlayerPrefs.GetString(DebuffExpiryKey, "0"), out long d) ? d : 0;
         retreatLockoutExpiryTicks = long.TryParse(PlayerPrefs.GetString(LockoutExpiryKey, "0"), out long l) ? l : 0;
+        lastSeasonRewardClaimedAtTicks = long.TryParse(PlayerPrefs.GetString(SeasonRewardKey, "0"), out long s) ? s : 0;
     }
 
     public void StartNewRun()

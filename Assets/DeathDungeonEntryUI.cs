@@ -22,6 +22,7 @@ public class DeathDungeonEntryUI : MonoBehaviour
     private Transform squadContainer;
     private Transform essenceContainer;
     private GameObject essenceEmptyLabel;
+    private WondrousArmorScreenUI wondrousArmorScreenUI;
 
     public void Open(Transform canvasRoot, MainMenuUI mainMenuUI)
     {
@@ -91,6 +92,34 @@ public class DeathDungeonEntryUI : MonoBehaviour
         title.fontSize = 46;
         title.alignment = TextAlignmentOptions.Center;
         title.color = Color.white;
+
+        // Отдельная кнопка в углу — открывает выделенный экран Дивной брони (WondrousArmorScreenUI), тот же
+        // приём "отдельный экран", что раньше был у Soul Essence (см. project_gem_economy_v2_redesign_pending).
+        var armorBtnObj = new GameObject("WondrousArmorButton", typeof(RectTransform));
+        var armorBtnRect = (RectTransform)armorBtnObj.transform;
+        armorBtnRect.SetParent(windowRect, false);
+        armorBtnRect.anchorMin = new Vector2(1, 1);
+        armorBtnRect.anchorMax = new Vector2(1, 1);
+        armorBtnRect.pivot = new Vector2(1, 1);
+        armorBtnRect.sizeDelta = new Vector2(220, 50);
+        armorBtnRect.anchoredPosition = new Vector2(-20, -20);
+        var armorBtnImg = armorBtnObj.AddComponent<Image>();
+        ConfirmationDialog.StyleAsButton(armorBtnImg);
+        var armorBtn = armorBtnObj.AddComponent<Button>();
+        armorBtn.onClick.AddListener(OnWondrousArmorClicked);
+
+        var armorBtnTextObj = new GameObject("Text", typeof(RectTransform));
+        var armorBtnTextRect = (RectTransform)armorBtnTextObj.transform;
+        armorBtnTextRect.SetParent(armorBtnRect, false);
+        armorBtnTextRect.anchorMin = Vector2.zero;
+        armorBtnTextRect.anchorMax = Vector2.one;
+        armorBtnTextRect.offsetMin = Vector2.zero;
+        armorBtnTextRect.offsetMax = Vector2.zero;
+        var armorBtnText = armorBtnTextObj.AddComponent<TextMeshProUGUI>();
+        armorBtnText.text = "Wondrous Armor";
+        armorBtnText.fontSize = 18;
+        armorBtnText.alignment = TextAlignmentOptions.Center;
+        armorBtnText.color = ConfirmationDialog.ButtonTextColor;
 
         var squadLabelObj = new GameObject("SquadLabel", typeof(RectTransform));
         var squadLabelRect = (RectTransform)squadLabelObj.transform;
@@ -317,6 +346,14 @@ public class DeathDungeonEntryUI : MonoBehaviour
         var card = cardObj.GetComponent<HeroMiniCardUI>();
         var ownership = collectionManager.ownership.Find(o => o.heroId == hero.heroId);
         card?.Setup(hero, ownership);
+    }
+
+    private void OnWondrousArmorClicked()
+    {
+        if (wondrousArmorScreenUI == null)
+            wondrousArmorScreenUI = gameObject.AddComponent<WondrousArmorScreenUI>();
+
+        wondrousArmorScreenUI.Open(canvasRoot);
     }
 
     private void OnEnterClicked()
