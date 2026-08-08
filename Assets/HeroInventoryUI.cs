@@ -63,6 +63,12 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     public GameObject itemSlotPrefab; // слот с компонентом ItemSlotUI
     public ItemPickerUI itemPicker;
 
+    [Header("Своя картинка пустого слота на каждый тип экипировки (иначе — общий спрайт с itemSlotPrefab)")]
+    public Sprite emptySlotWeaponSprite;
+    public Sprite emptySlotArmorSprite;
+    public Sprite emptySlotAccessorySprite;
+    public Sprite emptySlotTrinketSprite;
+
     private static readonly EquipmentSlotType[] AllSlotTypes =
     {
         EquipmentSlotType.Weapon,
@@ -115,9 +121,11 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
         if (ascendOutline != null)
         {
-            ascendOutline.sprite = GetRingOutlineSprite();
+            ascendOutline.sprite = GetSquareOutlineSprite();
+            ascendOutline.type = Image.Type.Sliced;
             ascendOutline.color = new Color(1f, 0.9f, 0.55f, 1f);
             ascendOutline.raycastTarget = false;
+            AlignAscendOutlineToButton();
         }
 
         if (activeSkillInfoBg != null) ConfirmationDialog.StyleAsDescriptionPanel(activeSkillInfoBg);
@@ -493,7 +501,7 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         {
             GameObject slotObj = Instantiate(itemSlotPrefab, itemsContainer);
             var slot = slotObj.GetComponent<ItemSlotUI>();
-            slot.Setup(slotType, this);
+            slot.Setup(slotType, this, GetEmptySlotSprite(slotType));
 
             string equippedInstanceId = currentOwnership != null ? currentOwnership.GetEquippedItemInstanceId(slotType) : null;
             ItemOwnershipData equippedStack = (!string.IsNullOrEmpty(equippedInstanceId) && ItemCollectionManager.Instance != null)
@@ -506,6 +514,15 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
         RefreshStats();
     }
+
+    private Sprite GetEmptySlotSprite(EquipmentSlotType type) => type switch
+    {
+        EquipmentSlotType.Weapon => emptySlotWeaponSprite,
+        EquipmentSlotType.Armor => emptySlotArmorSprite,
+        EquipmentSlotType.Accessory => emptySlotAccessorySprite,
+        EquipmentSlotType.Trinket => emptySlotTrinketSprite,
+        _ => null
+    };
 
     // База героя + сумма бонусов от текущей экипировки (через общий HeroStatUtility — тот же расчёт,
     // что использует BattleManager при старте боя, чтобы цифры в меню совпадали с реальными в бою).
@@ -821,34 +838,55 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         return radialGlowSprite;
     }
 
-    private static Sprite ringOutlineSprite;
+    private static Sprite squareOutlineSprite;
 
-    // Тонкое кольцо (белое на прозрачном) — обводка вокруг значка, отдельная от свечения. Не используем
-    // штатный компонент Outline — он дублирует спрайт со сдвигом, а не обводит по силуэту (см. CastleUI).
-    private static Sprite GetRingOutlineSprite()
+    // Прямоугольная рамка (белая на прозрачном), 9-слайс — обводка вокруг кнопки вознесения. Раньше тут
+    // был круг: ascendButton — это Image БЕЗ спрайта (просто залитый цветом прямоугольник, m_Sprite:
+    // fileID 0 в сцене), круг его реальные (прямые) края не обводил. 9-слайс нужен, чтобы толщина рамки
+    // не "плыла" при любом размере RectTransform (см. AlignAscendOutlineToButton — размер берётся от
+    // самой кнопки + отступ). Не используем штатный компонент Outline — он дублирует спрайт со сдвигом,
+    // а не обводит по силуэту (та же оговорка, что и в CastleUI).
+    private static Sprite GetSquareOutlineSprite()
     {
-        if (ringOutlineSprite != null) return ringOutlineSprite;
+        if (squareOutlineSprite != null) return squareOutlineSprite;
 
-        const int size = 128;
-        const float thickness = 8f;
+        const int size = 32;
+        const int thickness = 4;
         var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
-        var center = new Vector2(size / 2f, size / 2f);
-        float outerRadius = size / 2f - 2f;
-        float innerRadius = outerRadius - thickness;
 
         for (int y = 0; y < size; y++)
         {
             for (int x = 0; x < size; x++)
             {
-                float dist = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), center);
-                bool onRing = dist <= outerRadius && dist >= innerRadius;
-                tex.SetPixel(x, y, onRing ? Color.white : new Color(1f, 1f, 1f, 0f));
+                bool onBorder = x < thickness || x >= size - thickness || y < thickness || y >= size - thickness;
+                tex.SetPixel(x, y, onBorder ? Color.white : new Color(1f, 1f, 1f, 0f));
             }
         }
         tex.Apply();
 
-        ringOutlineSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
-        return ringOutlineSprite;
+        squareOutlineSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f, 0,
+            SpriteMeshType.FullRect, new Vector4(thickness, thickness, thickness, thickness));
+        return squareOutlineSprite;
+    }
+
+    private const float AscendOutlinePadding = 6f; // отступ рамки НАРУЖУ от реальных краёв кнопки, на сторону
+
+    // Копирует anchor/pivot/anchoredPosition кнопки вознесения на рамку и раздувает sizeDelta на
+    // отступ — раньше эти два RectTransform были заданы независимо и по факту не совпадали (другой pivot,
+    // другой размер), поэтому даже прямоугольная рамка не легла бы точно на кнопку без этого шага.
+    private void AlignAscendOutlineToButton()
+    {
+        if (ascendOutline == null || ascendButton == null) return;
+
+        var buttonRect = ascendButton.GetComponent<RectTransform>();
+        var outlineRect = ascendOutline.rectTransform;
+        if (buttonRect == null) return;
+
+        outlineRect.anchorMin = buttonRect.anchorMin;
+        outlineRect.anchorMax = buttonRect.anchorMax;
+        outlineRect.pivot = buttonRect.pivot;
+        outlineRect.anchoredPosition = buttonRect.anchoredPosition;
+        outlineRect.sizeDelta = buttonRect.sizeDelta + new Vector2(AscendOutlinePadding * 2f, AscendOutlinePadding * 2f);
     }
 
     private void RefreshUpgradeButtonTheme()

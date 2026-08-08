@@ -16,13 +16,13 @@ public class DeathDungeonMapUI : MonoBehaviour
     // теплица, террариум, обсерватория, мастерская, трофейная, кристаллы+пентаграмма, библиотека, Boss Arena.
     private static readonly Vector2[] NodeAnchors =
     {
-        new Vector2(0.22f, 0.10f),
-        new Vector2(0.80f, 0.16f),
-        new Vector2(0.20f, 0.31f),
-        new Vector2(0.82f, 0.42f),
-        new Vector2(0.22f, 0.53f),
+        new Vector2(0.25f, 0.10f),
+        new Vector2(0.75f, 0.2f),
+        new Vector2(0.27f, 0.3f),
+        new Vector2(0.76f, 0.42f),
+        new Vector2(0.25f, 0.53f),
         new Vector2(0.80f, 0.67f),
-        new Vector2(0.22f, 0.71f),
+        new Vector2(0.25f, 0.65f),
         new Vector2(0.52f, 0.85f),
     };
 

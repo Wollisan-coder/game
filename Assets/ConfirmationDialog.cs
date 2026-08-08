@@ -10,8 +10,8 @@ public static class ConfirmationDialog
     public static readonly Color ButtonColor = new Color32(0xE8, 0xB8, 0x4B, 0xFF);
     public static readonly Color ButtonTextColor = new Color32(0xF0, 0xF0, 0xF0, 0xFF);
 
-    private const float WindowWidth = 880f;
-    private const float MinWindowHeight = 320f;
+    private const float WindowWidth = 1000f;
+    private const float MinWindowHeight = 500f;
     private const float HeaderHeight = 90f;
 
     // Спрайты рамок (тёмно-синий/серебро, ассет-пак пользователя) — Assets/Resources/UI/*.png,
@@ -237,8 +237,8 @@ public static class ConfirmationDialog
         textRect.SetParent(windowRect, false);
         textRect.anchorMin = new Vector2(0, 0.24f);
         textRect.anchorMax = new Vector2(1, textTop);
-        textRect.offsetMin = new Vector2(36, 0);
-        textRect.offsetMax = new Vector2(-36, -24);
+        textRect.offsetMin = new Vector2(48, 0);
+        textRect.offsetMax = new Vector2(-48, -48);
         var text = textObj.AddComponent<TextMeshProUGUI>();
         text.text = message;
         text.alignment = TextAlignmentOptions.Center;

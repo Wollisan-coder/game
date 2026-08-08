@@ -16,7 +16,7 @@ MonoBehaviour:
   nodeName: 
   description: 
   icon: {fileID: 0}
-  enemy: {fileID: 0}
+  enemy: {fileID: 11400000, guid: b46c71db5cd4f0d41936b704662977a3, type: 2}
   territory: 7
   nodeIndex: 18
   requiredNodes:

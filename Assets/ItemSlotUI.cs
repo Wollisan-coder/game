@@ -10,10 +10,16 @@ public class ItemSlotUI : MonoBehaviour
     private EquipmentSlotType slotType;
     private HeroInventoryUI owner;
 
-    public void Setup(EquipmentSlotType type, HeroInventoryUI ownerUI)
+    public void Setup(EquipmentSlotType type, HeroInventoryUI ownerUI, Sprite emptySprite = null)
     {
         slotType = type;
         owner = ownerUI;
+
+        // Позволяет вызывающему коду задать свою картинку пустого слота на конкретный тип экипировки
+        // (см. HeroInventoryUI.PopulateItems) — иначе все 4 слота показывают один и тот же спрайт,
+        // запечённый в общем itemSlotPrefab. Если не передали — оставляем то, что уже на префабе.
+        if (emptySprite != null)
+            emptySlotSprite = emptySprite;
 
         if (slotButton != null)
         {

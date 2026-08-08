@@ -30,9 +30,7 @@ MonoBehaviour:
     accountExperience: 20
     heroExperience: 20
     progressPoints: 30
-    currency:
-    - type: 0
-      amount: 100
+    currency: []
     items:
     - item: {fileID: 11400000, guid: ad773ad50d64587ccfa3e865205bff72, type: 2}
       count: 1

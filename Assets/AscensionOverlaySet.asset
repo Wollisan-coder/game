@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: AscensionOverlaySet
   m_EditorClassIdentifier: Assembly-CSharp::AscensionOverlaySet
   orangeOverlays:
-  - {fileID: 21300000, guid: fea43187e63094d4499bb6f7ac95ec7c, type: 3}
+  - {fileID: 21300000, guid: ba344f95b1fc82d488e0b50564a3d565, type: 3}
   - {fileID: 21300000, guid: 861315021b963c246b49725accc79c63, type: 3}
   - {fileID: 21300000, guid: 0ce11d3eabd7f4b46b043f3548aab2e3, type: 3}
   - {fileID: 21300000, guid: ce8c482d7b11fd5439ae3d4a6b9e7974, type: 3}
