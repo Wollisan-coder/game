@@ -29,6 +29,10 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     public Image ascendGlow;     // мягкое пятно позади значка — маленькое и статичное, пока просто "доступно";
                                   // крупнее и мерцает, когда гемов хватает прямо сейчас (см. RefreshAscendButton)
 
+    [Header("Дивная броня — общий ассет WondrousArmorSkinSet на всю игру")]
+    public Image wondrousArmorOverlay;
+    public WondrousArmorSkinSet wondrousArmorSkinSet;
+
     [Header("Пассивка расы — вкл/выкл за RacePassiveUtility.ManaCost маны, см. BattleManager")]
     public TMP_Text racePassiveInfoText;
     public Button racePassiveToggleButton;
@@ -199,6 +203,7 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
         RarityUtility.ApplyFrame(rarityFrame, rarityFrameSet, currentHero.rarity);
         HeroAscensionUtility.ApplyOverlay(ascensionOverlay, ascensionOverlaySet, currentHero.rarity, currentOwnership != null ? currentOwnership.ascensionLevel : 0);
+        WondrousArmorSkinSet.Apply(wondrousArmorOverlay, wondrousArmorSkinSet, currentHero.heroId, currentOwnership != null && currentOwnership.wondrousArmorWorn);
 
         if (raceEmblem != null)
         {

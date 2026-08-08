@@ -22,7 +22,6 @@ public class DeathDungeonEntryUI : MonoBehaviour
     private Transform squadContainer;
     private Transform essenceContainer;
     private GameObject essenceEmptyLabel;
-    private WondrousArmorScreenUI wondrousArmorScreenUI;
 
     public void Open(Transform canvasRoot, MainMenuUI mainMenuUI)
     {
@@ -92,34 +91,6 @@ public class DeathDungeonEntryUI : MonoBehaviour
         title.fontSize = 46;
         title.alignment = TextAlignmentOptions.Center;
         title.color = Color.white;
-
-        // Отдельная кнопка в углу — открывает выделенный экран Дивной брони (WondrousArmorScreenUI), тот же
-        // приём "отдельный экран", что раньше был у Soul Essence (см. project_gem_economy_v2_redesign_pending).
-        var armorBtnObj = new GameObject("WondrousArmorButton", typeof(RectTransform));
-        var armorBtnRect = (RectTransform)armorBtnObj.transform;
-        armorBtnRect.SetParent(windowRect, false);
-        armorBtnRect.anchorMin = new Vector2(1, 1);
-        armorBtnRect.anchorMax = new Vector2(1, 1);
-        armorBtnRect.pivot = new Vector2(1, 1);
-        armorBtnRect.sizeDelta = new Vector2(220, 50);
-        armorBtnRect.anchoredPosition = new Vector2(-20, -20);
-        var armorBtnImg = armorBtnObj.AddComponent<Image>();
-        ConfirmationDialog.StyleAsButton(armorBtnImg);
-        var armorBtn = armorBtnObj.AddComponent<Button>();
-        armorBtn.onClick.AddListener(OnWondrousArmorClicked);
-
-        var armorBtnTextObj = new GameObject("Text", typeof(RectTransform));
-        var armorBtnTextRect = (RectTransform)armorBtnTextObj.transform;
-        armorBtnTextRect.SetParent(armorBtnRect, false);
-        armorBtnTextRect.anchorMin = Vector2.zero;
-        armorBtnTextRect.anchorMax = Vector2.one;
-        armorBtnTextRect.offsetMin = Vector2.zero;
-        armorBtnTextRect.offsetMax = Vector2.zero;
-        var armorBtnText = armorBtnTextObj.AddComponent<TextMeshProUGUI>();
-        armorBtnText.text = "Wondrous Armor";
-        armorBtnText.fontSize = 18;
-        armorBtnText.alignment = TextAlignmentOptions.Center;
-        armorBtnText.color = ConfirmationDialog.ButtonTextColor;
 
         var squadLabelObj = new GameObject("SquadLabel", typeof(RectTransform));
         var squadLabelRect = (RectTransform)squadLabelObj.transform;
@@ -288,46 +259,14 @@ public class DeathDungeonEntryUI : MonoBehaviour
             BuildCard(squadContainer, hero, collectionManager);
         }
 
+        // Плитки гема вознесения — общий код с ItemCollectionUI (вкладка Consumables — те же плитки
+        // прямо в общей сетке предметов), см. AscensionGemGridUtility.
         foreach (Transform child in essenceContainer)
             Destroy(child.gameObject);
 
-        var gemHolders = collectionManager.ownership.Where(o => o.ascensionGems > 0).ToList();
-
+        bool hasGems = AscensionGemGridUtility.Populate(essenceContainer, collectionManager);
         if (essenceEmptyLabel != null)
-            essenceEmptyLabel.SetActive(gemHolders.Count == 0);
-
-        foreach (var ownership in gemHolders)
-        {
-            HeroData hero = collectionManager.allHeroes.FirstOrDefault(h => h != null && h.heroId == ownership.heroId);
-            if (hero == null) continue;
-            BuildAscensionGemTile(essenceContainer, hero, ownership);
-        }
-    }
-
-    // Плитка гема вознесения — портрет героя в рамке цвета его редкости ("кристалл с лицом героя") +
-    // бедж количества, тот же визуальный язык, что и у обычных предметов (см. ItemBadgeUtility). Чисто
-    // витрина, клика нет — даже для запертых героев с гемом (см. HeroCollectionManager.GrantGemToHero):
-    // призыв живёт ТОЛЬКО в HeroCollectionUI (кнопка Summon на самой карточке героя) — этот экран про
-    // валюту ретрита, а не про получение новых героев, два входа в одно действие только путали.
-    private void BuildAscensionGemTile(Transform parent, HeroData hero, HeroOwnershipData ownership)
-    {
-        PickerTileUtility.BuildTile(parent, hero.heroId + "_AscensionGem", new Color(1, 1, 1, 0.06f),
-            out Image bg, out Image icon, out TMP_Text label, out Button btn);
-
-        icon.sprite = HeroAscensionUtility.GetDisplayPortrait(hero, ownership);
-
-        bool locked = !ownership.isUnlocked;
-        label.text = locked ? $"{hero.heroName}\n(locked)" : hero.heroName;
-        label.fontSize = 14;
-        label.color = hero.GetRarityColor();
-
-        Image rarityFrame = null;
-        ItemBadgeUtility.ApplyRarityFrame(icon, hero.GetRarityColor(), ref rarityFrame);
-
-        TMP_Text quantityBadge = null;
-        ItemBadgeUtility.ApplyQuantityBadge(icon.rectTransform, ownership.ascensionGems, ref quantityBadge);
-
-        btn.interactable = false;
+            essenceEmptyLabel.SetActive(!hasGems);
     }
 
     // Обёртка — реальный ребёнок GridLayoutGroup (сетка форсирует его RectTransform под cellSize),
@@ -346,14 +285,6 @@ public class DeathDungeonEntryUI : MonoBehaviour
         var card = cardObj.GetComponent<HeroMiniCardUI>();
         var ownership = collectionManager.ownership.Find(o => o.heroId == hero.heroId);
         card?.Setup(hero, ownership);
-    }
-
-    private void OnWondrousArmorClicked()
-    {
-        if (wondrousArmorScreenUI == null)
-            wondrousArmorScreenUI = gameObject.AddComponent<WondrousArmorScreenUI>();
-
-        wondrousArmorScreenUI.Open(canvasRoot);
     }
 
     private void OnEnterClicked()

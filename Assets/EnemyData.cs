@@ -31,8 +31,13 @@ public class EnemyData : ScriptableObject
     public LootReward loot = new LootReward();
 
     [Header("Визуал")]
-    public Sprite portrait;
+    public Sprite portrait; // статичный фолбэк — используется, пока idleFrames пустой, и в местах без анимации (превью коллекции и т.п.)
     public Color themeColor = Color.white;
+
+    [Header("2D-анимация (спрайт-лист, необязательно — без кадров работает как раньше, один статичный portrait)")]
+    public Sprite[] idleFrames;   // зациклены, пока враг не атакует
+    public Sprite[] attackFrames; // проигрываются один раз при ходе врага, потом возврат на idleFrames
+    public float animationFPS = 8f;
 
     private void OnValidate()
     {

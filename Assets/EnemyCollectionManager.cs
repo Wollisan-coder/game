@@ -25,6 +25,10 @@ public class EnemyCollectionManager : MonoBehaviour
         LoadSelectedEnemy();
     }
 
+    // Разблокированы по умолчанию — UnlockEnemy() нигде в проекте не вызывается (нет системы прогрессии
+    // коллекции врагов), а WorldMapManager.SelectNode требует IsUnlocked() перед входом в бой — без этого
+    // default'а ЛЮБАЯ нода тихо отказывалась запускать бой (SelectNode просто возвращал false без единого
+    // сообщения). Если позже появится реальная система разблокировки — поменять на false и звать UnlockEnemy.
     private void InitializeOwnershipIfMissing()
     {
         foreach (var enemy in allEnemies)
@@ -34,7 +38,7 @@ public class EnemyCollectionManager : MonoBehaviour
                 ownership.Add(new EnemyOwnershipData
                 {
                     enemyId = enemy.enemyId,
-                    isUnlocked = false
+                    isUnlocked = true
                 });
             }
         }

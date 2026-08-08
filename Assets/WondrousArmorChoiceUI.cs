@@ -6,8 +6,9 @@ using TMPro;
 // Попап выбора героя для Дивной брони (куск 6 Death Dungeon, пересобран — см.
 // project_gem_economy_v2_redesign_pending) — 3 случайных разблокированных героя, ЛЮБЫХ (пул больше не
 // иссякает — см. HeroCollectionManager.DrawWondrousArmorCandidates), выбор одного добавляет ему неношеный
-// инстанс скина (см. GrantWondrousArmorInstance) — надеть/распылить его можно на отдельном экране (см.
-// WondrousArmorScreenUI). Никакого расового бонуса — только squad-wide +5% при полном заскиненном отряде
+// инстанс скина (см. GrantWondrousArmorInstance) — надеть/распылить его можно во вкладке Consumables
+// инвентаря предметов (см. ItemCollectionUI/WondrousArmorTileUI). Никакого расового бонуса — только
+// squad-wide +5% при полном заскиненном отряде
 // (см. HeroCollectionManager.GetWondrousArmorSquadBonus). Открывается из BattleManager после сезонной
 // чистой победы гаунтлета — строится полностью в рантайме, та же схема, что и у DeathDungeonBuffChoiceUI.
 public class WondrousArmorChoiceUI : MonoBehaviour

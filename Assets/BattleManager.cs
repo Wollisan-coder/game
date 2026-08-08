@@ -72,6 +72,7 @@ public class BattleManager : MonoBehaviour
     public System.Action<string> OnBattleLog; // вызов с текстом строки при каждом нанесённом/полученном уроне
     public System.Action<int> OnEnemyDamaged; // фактически применённый урон (после щита/множителей) — для всплывающих цифр
     public System.Action<HeroRuntimeState, int> OnHeroDamaged; // конкретный герой + фактически применённый урон
+    public System.Action OnEnemyAttackAnimation; // враг начинает ход атакой (скилл или базовая) — см. EnemySpriteAnimator.PlayAttack
 
     private HeroRuntimeState lastAttackedHero;
     private int consecutiveHitsOnLastHero;
@@ -943,6 +944,8 @@ public class BattleManager : MonoBehaviour
         }
         else
         {
+            OnEnemyAttackAnimation?.Invoke();
+
             EnemySkillData skill = PickEnemySkill();
             if (skill != null)
                 UseEnemySkill(skill);

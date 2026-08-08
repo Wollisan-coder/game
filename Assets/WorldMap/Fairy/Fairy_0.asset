@@ -21,3 +21,4 @@ MonoBehaviour:
   nodeIndex: 1
   requiredNodes: []
   isFarmNode: 0
+  farmLootPool: {fileID: 0}

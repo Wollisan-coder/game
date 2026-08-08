@@ -22,3 +22,4 @@ MonoBehaviour:
   requiredNodes:
   - {fileID: 11400000, guid: fe994e51c63afa249b2ac50360843376, type: 2}
   isFarmNode: 0
+  farmLootPool: {fileID: 0}

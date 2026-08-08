@@ -15,6 +15,7 @@ public class BattleUI : MonoBehaviour
 
     [Header("Портрет ворога")]
     public Image enemyPortrait;
+    private EnemySpriteAnimator enemyAnimator;
 
     [Header("HP ворога")]
     public Slider enemyHPSlider;
@@ -76,8 +77,14 @@ public class BattleUI : MonoBehaviour
         battleManager.OnStateChanged += RefreshUI;
         battleManager.OnBattleLog += AppendLog;
         battleManager.OnEnemyDamaged += HandleEnemyDamaged;
-if (enemyPortrait != null && battleManager.currentEnemy != null && battleManager.currentEnemy.portrait != null)
-    enemyPortrait.sprite = battleManager.currentEnemy.portrait;
+        battleManager.OnEnemyAttackAnimation += HandleEnemyAttackAnimation;
+
+        if (enemyPortrait != null)
+        {
+            enemyAnimator = enemyPortrait.gameObject.AddComponent<EnemySpriteAnimator>();
+            enemyAnimator.target = enemyPortrait;
+            enemyAnimator.SetEnemy(battleManager.currentEnemy);
+        }
 
         EnsureEnemyShieldText();
         EnsureEnemyStatusIcons();
@@ -309,6 +316,13 @@ if (enemyPortrait != null && battleManager.currentEnemy != null && battleManager
     {
         if (enemyPortrait != null)
             FloatingDamageText.Spawn((RectTransform)enemyPortrait.transform, amount, FloatingDamageText.EnemyDamageColor);
+
+        enemyAnimator?.PlayHitReaction();
+    }
+
+    private void HandleEnemyAttackAnimation()
+    {
+        enemyAnimator?.PlayAttack();
     }
 
     // Новая строка добавляется сверху, старые за пределами лимита отбрасываются снизу

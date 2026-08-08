@@ -106,7 +106,11 @@ public class DeathDungeonManager : MonoBehaviour
 
     public long lastSeasonRewardClaimedAtTicks;
 
-    public bool CanClaimSeasonReward => System.DateTime.UtcNow.Ticks >= lastSeasonRewardClaimedAtTicks + System.TimeSpan.FromDays(SeasonRewardCooldownDays).Ticks;
+    // ВРЕМЕННО ОТКЛЮЧЕНО ДЛЯ ТЕСТА — лимит на прохождение (14-дневный кулдаун сезонной награды) снят,
+    // чтобы можно было гонять Death Dungeon повторно без ожидания. Перед релизом раскомментировать
+    // строку ниже и удалить "return true".
+    public bool CanClaimSeasonReward => true;
+    // public bool CanClaimSeasonReward => System.DateTime.UtcNow.Ticks >= lastSeasonRewardClaimedAtTicks + System.TimeSpan.FromDays(SeasonRewardCooldownDays).Ticks;
 
     public void ClaimSeasonReward()
     {

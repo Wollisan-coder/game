@@ -28,6 +28,10 @@ public class HeroMiniCardUI : MonoBehaviour
     public Image ascensionOverlay;
     public AscensionOverlaySet ascensionOverlaySet;
 
+    [Header("Дивная броня — общий ассет WondrousArmorSkinSet на всю игру")]
+    public Image wondrousArmorOverlay;
+    public WondrousArmorSkinSet wondrousArmorSkinSet;
+
     [Header("Замок — используется только в Collection (герой ещё не открыт)")]
     public Image lockOverlay;
 
@@ -47,6 +51,7 @@ public class HeroMiniCardUI : MonoBehaviour
 
         RarityUtility.ApplyFrame(rarityFrame, rarityFrameSet, data.rarity);
         HeroAscensionUtility.ApplyOverlay(ascensionOverlay, ascensionOverlaySet, data.rarity, ownership != null ? ownership.ascensionLevel : 0);
+        WondrousArmorSkinSet.Apply(wondrousArmorOverlay, wondrousArmorSkinSet, data.heroId, ownership != null && ownership.wondrousArmorWorn);
 
         if (raceEmblem != null)
         {
