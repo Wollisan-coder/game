@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.UI;
 
 // Значок "игрок здесь" — сам едет к ноде, где сейчас находится игрок (следующая открытая, но ещё не
 // пройденная нода; либо последняя пройденная/стартовая, если открывать больше нечего — см. WorldMapManager.GetCurrentPlayerNodeId).
@@ -24,12 +25,86 @@ public class PlayerMapMarkerUI : MonoBehaviour
     private Vector3 basePosition;
     private bool isMoving;
 
+    // Портрет вознёсшегося на максимум героя вместо флажка — визуальная награда за полное вознесение
+    // (см. project_hero_ascension_system: "how they're shown on the world map"). Ничего нового в Inspector
+    // не заводим — icon это Image, уже висящий на этом же GameObject (см. сцену), defaultIconSprite
+    // захватывается один раз в Awake до первой подмены, чтобы было куда откатиться, если в отряде нет
+    // максимально вознёсшегося героя. Так апгрейд работает сразу на всех 10 маркеров (мировая карта +
+    // каждый CityMap_*) без правки сцены.
+    private Image icon;
+    private Sprite defaultIconSprite;
+    private Outline ascensionOutline;
+
+    private void Awake()
+    {
+        icon = GetComponent<Image>();
+        if (icon != null) defaultIconSprite = icon.sprite;
+    }
+
     private void OnEnable()
     {
         if (WorldMapManager.Instance != null)
             WorldMapManager.Instance.OnProgressChanged += HandleProgressChanged;
 
+        RefreshHeroVisual();
         SnapOrMoveToCurrentNode(instant: true);
+    }
+
+    // Сначала ручной выбор игрока (HeroCollectionManager.mapAvatarHeroId, см. HeroInventoryUI "Set as Map
+    // Avatar" — доступно только если тот герой ещё на максимальном вознесении, иначе игнорируем, как
+    // будто выбор не задан). Если не задан/невалиден — авто-выбор среди отряда: Orange предпочтительнее
+    // Purple, если максимальны оба (реже/престижнее). Никого не нашли — остаётся обычный флаг.
+    private void RefreshHeroVisual()
+    {
+        if (icon == null) return;
+
+        HeroData bestHero = null;
+        HeroOwnershipData bestOwnership = null;
+
+        if (HeroCollectionManager.Instance != null && HeroCollectionManager.Instance.squad != null)
+        {
+            string preferredId = HeroCollectionManager.Instance.mapAvatarHeroId;
+
+            foreach (var hero in HeroCollectionManager.Instance.squad)
+            {
+                if (hero == null) continue;
+                var ownership = HeroCollectionManager.Instance.ownership.Find(o => o.heroId == hero.heroId);
+                if (ownership == null || !HeroAscensionUtility.IsMaxAscension(hero.rarity, ownership.ascensionLevel))
+                    continue;
+
+                if (!string.IsNullOrEmpty(preferredId) && hero.heroId == preferredId)
+                {
+                    bestHero = hero;
+                    bestOwnership = ownership;
+                    break; // ручной выбор всегда побеждает — дальше искать/сравнивать не нужно
+                }
+
+                if (bestHero == null || (hero.rarity == Rarity.Orange && bestHero.rarity != Rarity.Orange))
+                {
+                    bestHero = hero;
+                    bestOwnership = ownership;
+                }
+            }
+        }
+
+        if (bestHero == null)
+        {
+            icon.sprite = defaultIconSprite;
+            icon.preserveAspect = false;
+            if (ascensionOutline != null) ascensionOutline.enabled = false;
+            return;
+        }
+
+        icon.sprite = HeroAscensionUtility.GetDisplayPortrait(bestHero, bestOwnership);
+        icon.preserveAspect = true;
+
+        if (ascensionOutline == null)
+        {
+            ascensionOutline = gameObject.AddComponent<Outline>();
+            ascensionOutline.effectDistance = new Vector2(4, -4);
+        }
+        ascensionOutline.effectColor = new Color(1f, 0.85f, 0.2f, 0.9f); // тёплое золото — тот же тон, что и glow иконок Castle
+        ascensionOutline.enabled = true;
     }
 
     private void OnDisable()

@@ -52,6 +52,24 @@ public class HeroCardUI : MonoBehaviour
     private bool wasDamageBuffed;
     private bool wasDamageDebuffed;
     private bool wasInvulnerable;
+    private bool wasSkillBlocked;
+
+    // Skill-Blocked — 6я статус-иконка, добавлена в рантайме (не в префабе — HorizontalLayoutGroup-контейнер
+    // уже есть вокруг stunStatusIcon и т.д., просто дописываем в него ещё один child, см. EnsureStatusExtras).
+    private Image skillBlockedStatusIcon;
+
+    // Таймер-бейджи поверх всех 6 иконок — тоже строятся в рантайме, тёмный кружок в правом верхнем углу
+    // иконки с числом (ходы для большинства статусов, количество для Shield — у него нет фиксированной
+    // длительности, показываем текущий объём щита). Размер/шрифт считаются от размера самой иконки
+    // (см. CreateBadge) — если размер иконки в префабе поменяют, бейдж подстроится сам.
+    private class StatusBadge
+    {
+        public GameObject root;
+        public TMP_Text text;
+    }
+
+    private StatusBadge stunBadge, shieldBadge, damageBuffBadge, damageDebuffBadge, invulnerabilityBadge, skillBlockedBadge;
+    private bool statusExtrasBuilt;
 
     [Header("Состояние гибели")]
     public Color deadTintColor = new Color(0.25f, 0.25f, 0.25f, 1f);
@@ -241,17 +259,33 @@ public class HeroCardUI : MonoBehaviour
     {
         if (battleManager == null) return;
 
+        EnsureStatusExtras();
+
         bool isStunned = heroState.stunnedTurnsRemaining > 0;
         bool isShielded = battleManager.playerShield > 0;
         bool isDamageBuffed = battleManager.damageMultiplierTurnsRemaining > 0 && battleManager.damageMultiplier > 1f;
         bool isDamageDebuffed = battleManager.heroDamageMultiplierTurnsRemaining > 0 && battleManager.heroDamageMultiplier < 1f;
         bool isInvulnerable = battleManager.playerInvulnerableNextEnemyTurn || battleManager.teamDebuffImmuneTurnsRemaining > 0;
+        bool isSkillBlocked = heroState.skillBlockedTurnsRemaining > 0;
 
         SetStatusIconActive(stunStatusIcon, isStunned);
         SetStatusIconActive(shieldStatusIcon, isShielded);
         SetStatusIconActive(damageBuffStatusIcon, isDamageBuffed);
         SetStatusIconActive(damageDebuffStatusIcon, isDamageDebuffed);
         SetStatusIconActive(invulnerabilityStatusIcon, isInvulnerable);
+        SetStatusIconActive(skillBlockedStatusIcon, isSkillBlocked);
+
+        // Бейджи — turns remaining для большинства; у Shield нет фиксированной длительности, показываем
+        // текущий объём щита вместо ходов; у Invulnerability — teamDebuffImmuneTurnsRemaining, если он
+        // активен, иначе просто "1" (playerInvulnerableNextEnemyTurn — ровно один следующий вражеский ход).
+        SetStatusBadge(stunBadge, heroState.stunnedTurnsRemaining);
+        SetStatusBadge(shieldBadge, battleManager.playerShield);
+        SetStatusBadge(damageBuffBadge, battleManager.damageMultiplierTurnsRemaining);
+        SetStatusBadge(damageDebuffBadge, battleManager.heroDamageMultiplierTurnsRemaining);
+        SetStatusBadge(invulnerabilityBadge, battleManager.teamDebuffImmuneTurnsRemaining > 0
+            ? battleManager.teamDebuffImmuneTurnsRemaining
+            : (battleManager.playerInvulnerableNextEnemyTurn ? 1 : 0));
+        SetStatusBadge(skillBlockedBadge, heroState.skillBlockedTurnsRemaining);
 
         // Всплывающая иконка + звук — только в момент, когда эффект только что стал активным (было false, стало true)
         if (isStunned && !wasStunned) FloatingStatusIcon.Spawn((RectTransform)transform, stunPopupSprite, stunSound, stunPopupSize);
@@ -259,17 +293,109 @@ public class HeroCardUI : MonoBehaviour
         if (isDamageBuffed && !wasDamageBuffed) FloatingStatusIcon.Spawn((RectTransform)transform, damageBuffPopupSprite, damageBuffSound, damageBuffPopupSize);
         if (isDamageDebuffed && !wasDamageDebuffed) FloatingStatusIcon.Spawn((RectTransform)transform, damageDebuffPopupSprite, damageDebuffSound, damageDebuffPopupSize);
         if (isInvulnerable && !wasInvulnerable) FloatingStatusIcon.Spawn((RectTransform)transform, invulnerabilityPopupSprite, invulnerabilitySound, invulnerabilityPopupSize);
+        if (isSkillBlocked && !wasSkillBlocked && skillBlockedStatusIcon != null)
+            FloatingStatusIcon.Spawn((RectTransform)transform, skillBlockedStatusIcon.sprite, null, skillBlockedStatusIcon.rectTransform.sizeDelta.x);
 
         wasStunned = isStunned;
         wasShielded = isShielded;
         wasDamageBuffed = isDamageBuffed;
         wasDamageDebuffed = isDamageDebuffed;
         wasInvulnerable = isInvulnerable;
+        wasSkillBlocked = isSkillBlocked;
     }
 
     private static void SetStatusIconActive(Image icon, bool active)
     {
         if (icon != null) icon.gameObject.SetActive(active);
+    }
+
+    private static void SetStatusBadge(StatusBadge badge, int value)
+    {
+        if (badge?.root == null) return;
+
+        bool show = value > 0;
+        badge.root.SetActive(show);
+        if (show) badge.text.text = value.ToString();
+    }
+
+    // Skill-Blocked иконка + бейджи на всех 6 — строится один раз при первом Refresh, не в префабе.
+    // stunStatusIcon.transform.parent — уже существующий HorizontalLayoutGroup-контейнер из префаба
+    // (см. HeroBattleCard.prefab), новую иконку просто дописываем туда сайблингом.
+    private void EnsureStatusExtras()
+    {
+        if (statusExtrasBuilt) return;
+        statusExtrasBuilt = true;
+
+        if (stunStatusIcon != null)
+        {
+            var container = stunStatusIcon.transform.parent;
+            var sprite = Resources.Load<Sprite>("UI/StatusIcons/skill_blocked_icon");
+            skillBlockedStatusIcon = CreateRuntimeStatusIcon(container, "SkillBlockedIcon", sprite, stunStatusIcon.rectTransform.sizeDelta);
+        }
+
+        stunBadge = CreateBadge(stunStatusIcon);
+        shieldBadge = CreateBadge(shieldStatusIcon);
+        damageBuffBadge = CreateBadge(damageBuffStatusIcon);
+        damageDebuffBadge = CreateBadge(damageDebuffStatusIcon);
+        invulnerabilityBadge = CreateBadge(invulnerabilityStatusIcon);
+        skillBlockedBadge = CreateBadge(skillBlockedStatusIcon);
+    }
+
+    private static Image CreateRuntimeStatusIcon(Transform parent, string name, Sprite sprite, Vector2 size)
+    {
+        var obj = new GameObject(name, typeof(RectTransform));
+        var rect = (RectTransform)obj.transform;
+        rect.SetParent(parent, false);
+        rect.sizeDelta = size;
+
+        var img = obj.AddComponent<Image>();
+        img.sprite = sprite;
+        img.preserveAspect = true;
+        img.raycastTarget = false;
+
+        obj.SetActive(false);
+        return img;
+    }
+
+    // Тёмный кружок-бейдж с числом в ПРАВОМ ВЕРХНЕМ углу иконки (было — правый нижний), сидит НАД углом,
+    // выступая за его границы, а не внутри — размер и шрифт считаются от РЕАЛЬНОГО размера иконки
+    // (icon.rectTransform.sizeDelta), а не фиксированной константой: если размер иконки в префабе
+    // увеличат, бейдж вырастет вместе с ней, а не останется мелким на фоне уже подросшей иконки.
+    private static StatusBadge CreateBadge(Image icon)
+    {
+        if (icon == null) return null;
+
+        float iconSize = Mathf.Max(icon.rectTransform.sizeDelta.x, icon.rectTransform.sizeDelta.y);
+        float badgeSize = Mathf.Max(28f, iconSize * 0.55f);
+
+        var rootObj = new GameObject("Badge", typeof(RectTransform));
+        var rootRect = (RectTransform)rootObj.transform;
+        rootRect.SetParent(icon.transform, false);
+        rootRect.anchorMin = new Vector2(1, 1);
+        rootRect.anchorMax = new Vector2(1, 1);
+        rootRect.pivot = new Vector2(0.5f, 0.5f);
+        rootRect.sizeDelta = new Vector2(badgeSize, badgeSize);
+        rootRect.anchoredPosition = Vector2.zero;
+
+        var bg = rootObj.AddComponent<Image>();
+        bg.color = new Color(0f, 0f, 0f, 0.8f);
+        bg.raycastTarget = false;
+
+        var textObj = new GameObject("Text", typeof(RectTransform));
+        var textRect = (RectTransform)textObj.transform;
+        textRect.SetParent(rootRect, false);
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+        var text = textObj.AddComponent<TextMeshProUGUI>();
+        text.alignment = TextAlignmentOptions.Center;
+        text.fontSize = badgeSize * 0.65f;
+        text.color = Color.white;
+        text.raycastTarget = false;
+
+        rootObj.SetActive(false);
+        return new StatusBadge { root = rootObj, text = text };
     }
 
     private void OnActivateClicked()

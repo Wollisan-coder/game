@@ -32,11 +32,13 @@ public class HeroCollectionUI : MonoBehaviour
     private int sortFieldIndex = 0;    // индекс в SortOptions
     private bool sortDescending = false;
 
+    // PopulateGrid() НЕ вызывается отсюда — только явно из MainMenuUI.ShowCollection() при каждом
+    // открытии экрана (тот же приём и по той же причине, что и SquadUI.RefreshSlots/ShowSquad — вызов
+    // и здесь, и из Start() означал бы двойную пересборку грида на самом первом заходе).
     private void Start()
     {
         BuildFilterBar();
         RefreshFilterLabels();
-        PopulateGrid();
     }
 
     // Карточка — общий 450x600 префаб (HeroMiniCard, тот же, что и в Squad), масштабированный тут
@@ -45,7 +47,12 @@ public class HeroCollectionUI : MonoBehaviour
     // вернёт его к исходному размеру до масштаба.
     private const float CardScale = 0.5f;
 
-    private void PopulateGrid()
+    // public — MainMenuUI.ShowCollection() зовёт это явно при каждом открытии экрана (тот же паттерн,
+    // что и SquadUI.RefreshSlots вызывается из ShowSquad — см. её комментарий про то, почему OnEnable
+    // сам по себе не покрывает повторный клик по уже активной вкладке). Раньше грид строился только
+    // один раз из Start(), из-за чего уровни/лок-статус/кнопка Summon "замерзали" после первого захода
+    // на экран (найдено 2026-08-10).
+    public void PopulateGrid()
     {
         var collectionManager = HeroCollectionManager.Instance;
         if (collectionManager == null || gridContainer == null) return;

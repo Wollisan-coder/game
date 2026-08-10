@@ -157,6 +157,11 @@ public class BattleManager : MonoBehaviour
 
     private List<PendingDamage> pendingEnemyDamage = new List<PendingDamage>();
 
+    // Для UI (BattleUI — иконка Delayed Damage Mark, см. project_next_up_buff_debuff_vfx) — сколько
+    // ходов осталось до САМОГО БЛИЖНЕГО взрыва отложенного урона, 0 если меток нет вообще.
+    public int GetSoonestPendingDamageTurns() =>
+        pendingEnemyDamage.Count > 0 ? pendingEnemyDamage.Min(p => p.turnsRemaining) : 0;
+
         private EnemyData ResolveEnemy()
     {
         // Mine Defense (кусок 5) — переиспользуем босса территории mineDefenseRace (нода 18, тот же
@@ -245,11 +250,14 @@ public class BattleManager : MonoBehaviour
         // Нода на карте перекрывает числа из EnemyData процедурной кривой (EnemyStatCurve) — EnemyData
         // остаётся архетипом (портрет/скиллы/лут), а HP/атака считаются из (территория, номер ноды).
         // Не трогает FarmNode/повторные бои без node-контекста и debug-тесты без WorldMapManager — тогда
-        // просто остаются сырые значения EnemyData/инспектора, как раньше. Mine Defense тоже пропускает
-        // это — currentNode тут может быть залипшим от последнего ОБЫЧНОГО боя на карте и не имеет
-        // отношения к этому бою (см. MineThreatManager, не идёт через WorldMapManager.SelectNode).
+        // просто остаются сырые значения EnemyData/инспектора, как раньше. Mine Defense И Death Dungeon
+        // тоже пропускают это — currentNode тут может быть залипшим от последнего ОБЫЧНОГО боя на карте
+        // и не имеет отношения к этому бою (ни один из них не идёт через WorldMapManager.SelectNode).
+        // Баг был найден 2026-08-10: guard стоял только на isMineDefense, из-за чего Death Dungeon реально
+        // считал статы врага по чужой залипшей ноде — ломало весь смысл "уравненного гаунтлета".
+        // !node.isTutorialNode — самый первый бой игры (Base.asset) намеренно легче кривой, см. MapNodeData.
         var node = WorldMapManager.Instance != null ? WorldMapManager.Instance.currentNode : null;
-        if (node != null && !isMineDefense)
+        if (node != null && !isMineDefense && !isDeathDungeon && !node.isTutorialNode)
         {
             var curveStats = EnemyStatCurve.GetStats(node.territory, node.nodeIndex);
             enemyMaxHP = curveStats.maxHP;
@@ -583,11 +591,14 @@ public class BattleManager : MonoBehaviour
                 int baseDamage = count * GetDamagePerGem(type);
                 int finalDamage = Mathf.RoundToInt(baseDamage * GetColorPowerMultiplier(type) * damageMultiplier * heroDamageMultiplier);
 
-                // Орки — пассивка: 10% шанс утроить урон этого попадания ("3х удар"), любой цвет.
-                if (HasLivingHeroOfRace(Race.Orcs) && Random.value < 0.10f)
+                // Орки — пассивка: 10% (15% на 3й ступени вознесения) шанс утроить урон этого попадания
+                // ("3х удар"), любой цвет.
+                float orcsChance = HasLivingMaxAscendedHeroOfRace(Race.Orcs) ? 0.15f : 0.10f;
+                if (HasLivingHeroOfRace(Race.Orcs) && Random.value < orcsChance)
                 {
                     finalDamage *= 3;
                     Debug.Log($"[RacePassive] {GetLivingHeroOfRace(Race.Orcs)?.data.heroName} (Orcs): triple damage proc -> {finalDamage} dmg");
+                    RaceQuestManager.Instance?.ReportPassiveTriggered(Race.Orcs);
                 }
 
                 totalEnemyDamageThisTurn += DealDamageToEnemy(finalDamage, raiseEvent: false);
@@ -602,13 +613,15 @@ public class BattleManager : MonoBehaviour
             }
         }
 
-        // Эльфы — пассивка: 10% шанс оглушить врага при обычном матче (любой цвет). enemyStunnedNextTurn —
-        // bool, не счётчик, поэтому одной попытки за ход достаточно (несколько цветов в одном ходу не дают
-        // накопления оглушения).
-        if (matchedTypeCounts.Count > 0 && HasLivingHeroOfRace(Race.Elves) && Random.value < 0.10f)
+        // Эльфы — пассивка: 10% (15% на 3й ступени вознесения) шанс оглушить врага при обычном матче
+        // (любой цвет). enemyStunnedNextTurn — bool, не счётчик, поэтому одной попытки за ход достаточно
+        // (несколько цветов в одном ходу не дают накопления оглушения).
+        float elvesChance = HasLivingMaxAscendedHeroOfRace(Race.Elves) ? 0.15f : 0.10f;
+        if (matchedTypeCounts.Count > 0 && HasLivingHeroOfRace(Race.Elves) && Random.value < elvesChance)
         {
             enemyStunnedNextTurn = true;
             Debug.Log($"[RacePassive] {GetLivingHeroOfRace(Race.Elves)?.data.heroName} (Elves): stun proc");
+            RaceQuestManager.Instance?.ReportPassiveTriggered(Race.Elves);
         }
 
         if (totalEnemyDamageThisTurn > 0)
@@ -1112,52 +1125,74 @@ public class BattleManager : MonoBehaviour
     private HeroRuntimeState GetLivingHeroOfRace(Race race, HeroRuntimeState exclude = null) =>
         activeHeroes.FirstOrDefault(h => h.currentHealth > 0 && h.stunnedTurnsRemaining <= 0 && h.racePassiveEnabled && h.data.race == race && h != exclude);
 
+    // 3я ступень вознесения (Orange-only) усиливает числа расовой пассивки — не отдельный новый эффект,
+    // просто лучший % у уже существующей (см. project_hero_ascension_system). Работает, пока в отряде жив
+    // (не оглушён) хотя бы один такой герой этой расы с пассивкой расы включённой — та же гейт-логика,
+    // что и HasLivingHeroOfRace, плюс проверка ascensionLevel.
+    private bool HasLivingMaxAscendedHeroOfRace(Race race) =>
+        activeHeroes.Any(h => h.currentHealth > 0 && h.stunnedTurnsRemaining <= 0 && h.racePassiveEnabled
+            && h.data.race == race && HeroAscensionUtility.IsMaxAscension(h.data.rarity, h.ascensionLevel));
+
     // Пассивки рас — по одной на расу, включаются, пока в отряде жив (не оглушён) хотя бы один герой этой
     // расы. Проки Эльфов/Орков (завязаны на конкретное попадание) — прямо в цикле ResolvePlayerTurn, здесь —
     // тикающие раз в ход. Список и проценты — по прямому ТЗ пользователя, не выведены из дизайн-доков.
     private void ApplyRacePassivesPerTurn()
     {
-        // Феи (Fairy, "Гномы" в разговоре) — щит на 15% макс. HP случайного героя, каждый ход. Щит в этом
-        // проекте общий на отряд (playerShield), не per-hero — случайный герой определяет только % базу.
+        // Феи (Fairy, "Гномы" в разговоре) — щит на 15% (20% на 3й ступени вознесения, Orange) макс. HP
+        // случайного героя, каждый ход. Щит в этом проекте общий на отряд (playerShield), не per-hero —
+        // случайный герой определяет только % базу.
         if (HasLivingHeroOfRace(Race.Fairy))
         {
             var randomHero = GetRandomAliveHero();
             if (randomHero != null)
             {
-                int shieldAmount = Mathf.RoundToInt(randomHero.maxHealth * 0.15f);
+                float pct = HasLivingMaxAscendedHeroOfRace(Race.Fairy) ? 0.20f : 0.15f;
+                int shieldAmount = Mathf.RoundToInt(randomHero.maxHealth * pct);
                 AddShield(shieldAmount);
                 Debug.Log($"[RacePassive] {GetLivingHeroOfRace(Race.Fairy)?.data.heroName} (Fairy): shield tick +{shieldAmount} (based on {randomHero.data.heroName})");
+                RaceQuestManager.Instance?.ReportPassiveTriggered(Race.Fairy);
             }
         }
 
-        // Драконы (Dragonkin) — периодический урон врагу, 1% от его максимального HP, каждый ход.
+        // Драконы (Dragonkin) — периодический урон врагу, 1% (1.5% на 3й ступени вознесения) от его
+        // максимального HP, каждый ход.
         if (HasLivingHeroOfRace(Race.Dragonkin))
         {
-            int dragonDamage = Mathf.RoundToInt(enemyMaxHP * 0.01f);
+            float pct = HasLivingMaxAscendedHeroOfRace(Race.Dragonkin) ? 0.015f : 0.01f;
+            int dragonDamage = Mathf.RoundToInt(enemyMaxHP * pct);
             DealDamageToEnemy(dragonDamage);
             Debug.Log($"[RacePassive] {GetLivingHeroOfRace(Race.Dragonkin)?.data.heroName} (Dragonkin): damage tick -{dragonDamage}");
+            RaceQuestManager.Instance?.ReportPassiveTriggered(Race.Dragonkin);
         }
 
-        // Демоны — сопротивление врага снижается на 2% каждый ход, накопительно (см. demonsResistanceShredBonus).
+        // Демоны — сопротивление врага снижается на 2% (3% на 3й ступени вознесения) каждый ход,
+        // накопительно (см. demonsResistanceShredBonus).
         if (HasLivingHeroOfRace(Race.Demons))
         {
-            demonsResistanceShredBonus += 0.02f;
+            float pct = HasLivingMaxAscendedHeroOfRace(Race.Demons) ? 0.03f : 0.02f;
+            demonsResistanceShredBonus += pct;
             Debug.Log($"[RacePassive] {GetLivingHeroOfRace(Race.Demons)?.data.heroName} (Demons): resistance shred tick, total bonus now {demonsResistanceShredBonus:P0}");
+            RaceQuestManager.Instance?.ReportPassiveTriggered(Race.Demons);
         }
 
-        // Ангелы — лечение всей команде, 5% от playerMaxHP каждый ход.
+        // Ангелы — лечение всей команде, 5% (7.5% на 3й ступени вознесения) от playerMaxHP каждый ход.
         if (HasLivingHeroOfRace(Race.Angels))
         {
-            int healAmount = Mathf.RoundToInt(playerMaxHP * 0.05f);
+            float pct = HasLivingMaxAscendedHeroOfRace(Race.Angels) ? 0.075f : 0.05f;
+            int healAmount = Mathf.RoundToInt(playerMaxHP * pct);
             Heal(healAmount);
             Debug.Log($"[RacePassive] {GetLivingHeroOfRace(Race.Angels)?.data.heroName} (Angels): heal tick +{healAmount}");
+            RaceQuestManager.Instance?.ReportPassiveTriggered(Race.Angels);
         }
 
-        // Зверолюди (Beastfolk) — 10% шанс не потратить ход на этом матче (лишний бесплатный ход).
-        if (HasLivingHeroOfRace(Race.Beastfolk) && Random.value < 0.10f)
+        // Зверолюди (Beastfolk) — 10% (15% на 3й ступени вознесения) шанс не потратить ход на этом матче
+        // (лишний бесплатный ход).
+        float beastfolkChance = HasLivingMaxAscendedHeroOfRace(Race.Beastfolk) ? 0.15f : 0.10f;
+        if (HasLivingHeroOfRace(Race.Beastfolk) && Random.value < beastfolkChance)
         {
             freeExtraTurnsRemaining++;
             Debug.Log($"[RacePassive] {GetLivingHeroOfRace(Race.Beastfolk)?.data.heroName} (Beastfolk): free turn proc");
+            RaceQuestManager.Instance?.ReportPassiveTriggered(Race.Beastfolk);
         }
     }
 
@@ -1246,6 +1281,10 @@ public class BattleManager : MonoBehaviour
         DailyQuestManager.Instance?.ReportBattleWon();
         AchievementManager.Instance?.ReportEnemyDefeated();
 
+        if (RaceQuestManager.Instance != null)
+            foreach (var race in activeHeroes.Select(h => h.data.race).Distinct())
+                RaceQuestManager.Instance.ReportBattleWon(race);
+
         // Mine Defense (кусок 5) — полностью свой хвост, никакой обычной награды (см. project_death_dungeon_concept:
         // "снятие угрозы — уже достаточная причина драться"), и намеренно НЕ читает WorldMapManager.currentNode
         // ниже (может быть залипшим от последнего обычного боя, не имеет отношения к этому бою).
@@ -1260,8 +1299,11 @@ public class BattleManager : MonoBehaviour
         int heroXp = loot != null ? loot.heroExperience : 0;
 
         // heroExperience растёт по той же кривой, что и HP врага (EnemyStatCurve), когда есть node-контекст —
-        // перекрывает статичное значение из LootReward, как и статы врага выше в Awake().
-        var rewardNode = WorldMapManager.Instance != null ? WorldMapManager.Instance.currentNode : null;
+        // перекрывает статичное значение из LootReward, как и статы врага выше в Awake(). !isDeathDungeon —
+        // тот же баг 2026-08-10, что и у enemyMaxHP выше: currentNode мог залипнуть от последнего обычного
+        // боя и не имеет отношения к этому забегу; без guard'а Death Dungeon получал героя-XP/Wood/Stone/
+        // фарм-лут по чужой ноде вместо честного LootReward данжевого врага.
+        var rewardNode = (WorldMapManager.Instance != null && !isDeathDungeon) ? WorldMapManager.Instance.currentNode : null;
         if (rewardNode != null)
             heroXp = EnemyStatCurve.GetHeroExperience(rewardNode.territory, rewardNode.nodeIndex);
 
@@ -1324,11 +1366,15 @@ public class BattleManager : MonoBehaviour
 
         // ОП начисляется только за ПЕРВОЕ прохождение ноды ("1 story level = 30 ОП") — проверяем ДО того,
         // как CompleteCurrentNode() пометит её пройденной, иначе фарм уже открытых уровней давал бы ОП бесконечно.
+        // !isDeathDungeon — найденный 2026-08-10 баг: currentNodeId никогда не выставляется для Death
+        // Dungeon, так что alreadyCompleted тут был бы всегда false и ОП сыпались бы за каждую победу без
+        // ограничений. Данж получает свою собственную гейтовку — один раз за ПОЛНЫЙ забег, см.
+        // EndDeathDungeonNodeVictory (runComplete).
         int progressPoints = loot != null ? loot.progressPoints : 0;
         bool alreadyCompleted = WorldMapManager.Instance != null
             && WorldMapManager.Instance.completedNodeIds.Contains(WorldMapManager.Instance.currentNodeId);
 
-        if (progressPoints > 0 && !alreadyCompleted)
+        if (progressPoints > 0 && !alreadyCompleted && !isDeathDungeon)
         {
             PlayerCurrencies.Instance?.Add(CurrencyType.ProgressPoints, progressPoints);
             rewardLines.Add($"Progress Points +{progressPoints}");
@@ -1396,6 +1442,19 @@ public class BattleManager : MonoBehaviour
         }
 
         bool runComplete = dungeon != null && dungeon.AdvanceToNextNode();
+
+        // ОП за Death Dungeon — только один раз за ПОЛНЫЙ забег (не за каждую ноду, см. guard в
+        // EndBattleVictory выше), сумма берётся из loot текущего (последнего, Boss) врага — то же
+        // число, что уже используется для героя-XP/валюты, ничего нового не изобретаем.
+        if (runComplete)
+        {
+            int dungeonProgressPoints = currentEnemy != null && currentEnemy.loot != null ? currentEnemy.loot.progressPoints : 0;
+            if (dungeonProgressPoints > 0)
+            {
+                PlayerCurrencies.Instance?.Add(CurrencyType.ProgressPoints, dungeonProgressPoints);
+                rewardLines.Add($"Progress Points +{dungeonProgressPoints}");
+            }
+        }
 
         // Куск 6 (пересобран — см. project_gem_economy_v2_redesign_pending) — сезонная награда только за
         // ПЕРВУЮ чистую победу за 2-недельный сезон (DeathDungeonManager.CanClaimSeasonReward), не за каждый
@@ -1523,14 +1582,17 @@ public class BattleManager : MonoBehaviour
 
         ApplySkillEffect(hero, skill);
 
-        // Люди — пассивка: 15% от потраченной маны возвращается живому герою-Человеку рядом (не самому
-        // кастующему — если кастующий и есть тот единственный Человек, возвращать некому).
+        // Люди — пассивка: 15% (25% на 3й ступени вознесения) от потраченной маны возвращается живому
+        // герою-Человеку рядом (не самому кастующему — если кастующий и есть тот единственный Человек,
+        // возвращать некому).
         var humanAlly = GetLivingHeroOfRace(Race.Humans, exclude: hero);
         if (humanAlly != null)
         {
-            int manaRefund = Mathf.RoundToInt(actualCost * 0.15f);
+            float humansPct = HasLivingMaxAscendedHeroOfRace(Race.Humans) ? 0.25f : 0.15f;
+            int manaRefund = Mathf.RoundToInt(actualCost * humansPct);
             humanAlly.currentResource = Mathf.Min(humanAlly.maxResource, humanAlly.currentResource + manaRefund);
             Debug.Log($"[RacePassive] {humanAlly.data.heroName} (Humans): mana refund +{manaRefund} (from {hero.data.heroName}'s skill)");
+            RaceQuestManager.Instance?.ReportPassiveTriggered(Race.Humans);
         }
 
         // Этот ход потрачен на скилл, а не на матч — 0 подходящих гемм за ход (читается, например,

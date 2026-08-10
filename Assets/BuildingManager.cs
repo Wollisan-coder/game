@@ -83,7 +83,7 @@ public class BuildingManager : MonoBehaviour
     {
         var data = GetOwnership(building.buildingId);
         if (data == null || !data.isBuilt || PlayerCurrencies.Instance == null) return false;
-        if (data.level >= building.maxLevel) return false;
+        if (data.level >= GetEffectiveMaxLevel(building)) return false;
 
         CollectProduction(building); // забираем накопленное по старой мощности/складу, прежде чем они изменятся
 
@@ -100,6 +100,21 @@ public class BuildingManager : MonoBehaviour
         Save();
         AchievementManager.Instance?.ReportBuildingUpgraded();
         return true;
+    }
+
+    // Обычно просто building.maxLevel — но для TerritoryMine_<Race>_<Resource> (см. Assets/TerritoryMines/,
+    // project_territory_mines) он захардкожен в 1 на самом ассете (общие данные, мутировать напрямую
+    // нельзя — не переживёт перезапуск, в отличие от per-игрок ownership) и поднимается ЗДЕСЬ во время
+    // выполнения, как только игрок закрывает все 3 расовых квеста этой расы (см. RaceQuestManager).
+    public int GetEffectiveMaxLevel(BuildingData building)
+    {
+        if (building != null && building.buildingId.StartsWith("TerritoryMine_")
+            && RaceQuestManager.Instance != null && RaceQuestManager.Instance.IsRaceQuestsComplete(building.requiredTerritory))
+        {
+            return Mathf.Max(building.maxLevel, RaceQuestManager.UnlockedMineMaxLevel);
+        }
+
+        return building.maxLevel;
     }
 
     // TerritoryMine_<Race>_<Resource> (см. Assets/TerritoryMines/, project_territory_mines) — если для
@@ -176,6 +191,24 @@ public class BuildingManager : MonoBehaviour
         Save();
 
         return amount;
+    }
+
+    // Хотя бы у одной построенной шахты территории (TerritoryMine_*) склад уже заполнен под завязку —
+    // используется бейджем-уведомлением у кнопки Mines (см. MainMenuUI), чтобы игрок не терял продукцию,
+    // простаивающую на капе.
+    public bool HasAnyMineAtCap()
+    {
+        foreach (var building in allBuildings)
+        {
+            if (building == null || !building.buildingId.StartsWith("TerritoryMine_")) continue;
+            if (!IsBuilt(building.buildingId)) continue;
+
+            var data = GetOwnership(building.buildingId);
+            if (data == null) continue;
+
+            if (GetPendingAmount(building) >= building.GetStorageCap(data.level)) return true;
+        }
+        return false;
     }
 
     private void Save()

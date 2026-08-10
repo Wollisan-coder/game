@@ -34,6 +34,14 @@ public class MapNodeData : ScriptableObject
     [Header("Пул гарантированного дропа фарм-ноды (только isFarmNode)")]
     public ItemSummonPoolData farmLootPool;
 
+    // Туториал-нода (самый первый бой в игре, см. Base.asset/WorldMapManager.startingNode) — статы врага
+    // НЕ считаются через EnemyStatCurve(territory,nodeIndex) даже если эти поля заданы, берутся сырые
+    // maxHP/minAttack/maxAttack прямо с EnemyData.enemy (обычно заметно слабее кривой) — намеренно более
+    // лёгкий первый бой, отдельный от "настоящей" первой ноды территории. Награды (XP/валюта/ОП) идут как
+    // у обычной ноды, не урезаны — см. BattleManager.Awake().
+    [Header("Туториал (статы врага — сырые из EnemyData, не по кривой сложности)")]
+    public bool isTutorialNode;
+
     private void OnValidate()
     {
         if (string.IsNullOrEmpty(nodeId))

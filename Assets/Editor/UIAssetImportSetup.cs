@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -27,14 +29,21 @@ public static class UIAssetImportSetup
         SetupSprite("Assets/Resources/UI/Castle/StoneQuarry.png", Vector4.zero);
         SetupSprite("Assets/Resources/UI/Castle/Barracks.png", Vector4.zero);
         SetupSprite("Assets/Resources/UI/Castle/Training zone.png", Vector4.zero);
-        SetupSprite("Assets/Resources/UI/Castle/AchivIcon.png", Vector4.zero);
-        SetupSprite("Assets/Resources/UI/Castle/DailyQIcon.png", Vector4.zero);
+        // readable=true — CastleUI.GetSilhouetteGlowSprite читает альфа-канал в рантайме, чтобы собрать
+        // glow по силуэту иконки, а не квадратом/кругом позади неё (см. CreateBareIconButton/CreateMinesIconButton).
+        SetupSprite("Assets/Resources/UI/Castle/AchivIcon.png", Vector4.zero, readable: true);
+        SetupSprite("Assets/Resources/UI/Castle/DailyQIcon.png", Vector4.zero, readable: true);
+        SetupSprite("Assets/Resources/UI/Castle/Mines.png", Vector4.zero, readable: true);
         SetupSprite("Assets/Resources/UI/Currency/Wood.png", Vector4.zero);
         SetupSprite("Assets/Resources/UI/Currency/Stone.png", Vector4.zero);
         SetupSprite("Assets/Resources/UI/Currency/Shards.png", Vector4.zero);
         SetupSprite("Assets/Resources/UI/Currency/Gems.png", Vector4.zero);
         SetupSprite("Assets/Resources/UI/Currency/PP.png", Vector4.zero);
         SetupSprite("Assets/Resources/UI/Currency/Energy.png", Vector4.zero);
+        // Копии из Assets/Images/StatusIcons/ (те не под Resources — а HeroCardUI/BattleUI грузят статус-
+        // иконки Skill-Blocked/Delayed Damage Mark Resources.Load'ом, не через Inspector, см. project_next_up_buff_debuff_vfx).
+        SetupSprite("Assets/Resources/UI/StatusIcons/skill_blocked_icon.png", Vector4.zero);
+        SetupSprite("Assets/Resources/UI/StatusIcons/status_dot.png", Vector4.zero);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 
@@ -43,8 +52,93 @@ public static class UIAssetImportSetup
 
         BootstrapSceneManagers();
         WireGridManagerSpecialPrefabs();
+        WireFarmDungeonNodes();
 
         Debug.Log("UIAssetImportSetup: done");
+    }
+
+    // Purple/OrangeFarmDungeon (см. project_campaign_difficulty_curve) существовали только как ассеты —
+    // ни в WorldMapManager.allNodes, ни в виде кликабельной ноды в сцене, игрок физически не мог их
+    // открыть. Карта мира — 3D-сцена (не Canvas), руками собирать Image/Button/Canvas-иерархию с нуля
+    // рискованно, поэтому клонируем готовую ноду-врата "Elfs" (Elf_01) как шаблон визуала/масштаба —
+    // она гарантированно лежит прямо на WorldMapPanel, а не внутри CityMap_*, как и требуется по
+    // description обоих ассетов. Позиция клонов — ЗАГЛУШКА (просто рядом с Elf_01, чтобы не перекрывать
+    // друг друга), место на арте карты нужно подобрать руками в Scene View — см. лог по завершении.
+    private static void WireFarmDungeonNodes()
+    {
+        // WireGridManagerSpecialPrefabs (запускается прямо перед этим в Run()) переключает активную сцену
+        // на SampleScene — открываем MainMenuScene заново явно, как и остальные scene-методы этого файла,
+        // а не полагаемся на то, что она случайно осталась открыта с прошлого шага.
+        const string scenePath = "Assets/Scenes/MainMenuScene.unity";
+        var scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+
+        var worldMapManager = Object.FindAnyObjectByType<WorldMapManager>();
+        if (worldMapManager == null)
+        {
+            Debug.LogError("UIAssetImportSetup: WorldMapManager not found in MainMenuScene");
+            return;
+        }
+
+        var purpleDungeon = AssetDatabase.LoadAssetAtPath<MapNodeData>("Assets/WorldMap/PurpleFarmDungeon.asset");
+        var orangeDungeon = AssetDatabase.LoadAssetAtPath<MapNodeData>("Assets/WorldMap/OrangeFarmDungeon.asset");
+
+        bool dirty = false;
+        dirty |= AddToAllNodes(worldMapManager, purpleDungeon);
+        dirty |= AddToAllNodes(worldMapManager, orangeDungeon);
+
+        var allNodeUIs = Object.FindObjectsByType<MapNodeUI>(FindObjectsSortMode.None);
+        var template = allNodeUIs.FirstOrDefault(m => m.node != null && m.node.nodeId == "Elfs"
+            && m.transform.parent != null && m.transform.parent.name == "WorldMapPanel");
+        if (template == null)
+        {
+            Debug.LogError("UIAssetImportSetup: template gate node 'Elfs' not found directly on WorldMapPanel");
+            return;
+        }
+
+        dirty |= CloneFarmDungeonNode(allNodeUIs, template, purpleDungeon, "PurpleFarmDungeonNode",
+            template.transform.localPosition + new Vector3(120, 0, 0));
+        dirty |= CloneFarmDungeonNode(allNodeUIs, template, orangeDungeon, "OrangeFarmDungeonNode",
+            template.transform.localPosition + new Vector3(240, 0, 0));
+
+        if (!dirty) return;
+
+        EditorUtility.SetDirty(worldMapManager);
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene);
+        Debug.LogWarning("UIAssetImportSetup: farm dungeon nodes wired with PLACEHOLDER positions — " +
+            "reposition PurpleFarmDungeonNode/OrangeFarmDungeonNode under WorldMapPanel in Scene View to match the map art.");
+    }
+
+    private static bool AddToAllNodes(WorldMapManager manager, MapNodeData node)
+    {
+        if (node == null) return false;
+        if (manager.allNodes != null && manager.allNodes.Contains(node)) return false;
+
+        var list = manager.allNodes != null ? manager.allNodes.ToList() : new List<MapNodeData>();
+        list.Add(node);
+        manager.allNodes = list.ToArray();
+        return true;
+    }
+
+    private static bool CloneFarmDungeonNode(MapNodeUI[] existing, MapNodeUI template, MapNodeData data, string gameObjectName, Vector3 localPosition)
+    {
+        if (data == null) return false;
+        if (existing.Any(m => m.node == data)) return false; // уже склонировано раньше — не дублируем
+
+        var clone = Object.Instantiate(template.gameObject, template.transform.parent);
+        clone.name = gameObjectName;
+        clone.transform.localPosition = localPosition;
+        clone.transform.localRotation = template.transform.localRotation;
+        clone.transform.localScale = template.transform.localScale;
+
+        var mapNodeUI = clone.GetComponent<MapNodeUI>();
+        mapNodeUI.node = data;
+        // В отличие от шаблона (Elf_01 открывает CityMap_Elfs), фарм-данж — обычный бой: клик должен
+        // вести в BattlePrepPopup, а не переключать панель на саб-карту города.
+        mapNodeUI.cityMapPanel = null;
+        mapNodeUI.worldMapContent = null;
+
+        return true;
     }
 
     // GridManager.lineClearSpecialPrefab/colorBombSpecialPrefab (см. Item.MarkAsSpecial) — в SampleScene
@@ -117,6 +211,13 @@ public static class UIAssetImportSetup
             Debug.Log("UIAssetImportSetup: created AchievementManager in MainMenuScene");
         }
 
+        if (GameObject.Find("RaceQuestManager") == null)
+        {
+            var go = new GameObject("RaceQuestManager");
+            go.AddComponent<RaceQuestManager>();
+            Debug.Log("UIAssetImportSetup: created RaceQuestManager in MainMenuScene");
+        }
+
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene);
     }
@@ -174,7 +275,7 @@ public static class UIAssetImportSetup
         EditorUtility.SetDirty(building);
     }
 
-    private static void SetupSprite(string path, Vector4 border)
+    private static void SetupSprite(string path, Vector4 border, bool readable = false)
     {
         var importer = AssetImporter.GetAtPath(path) as TextureImporter;
         if (importer == null)
@@ -189,6 +290,7 @@ public static class UIAssetImportSetup
         importer.alphaIsTransparency = true;
         importer.mipmapEnabled = false;
         importer.filterMode = FilterMode.Bilinear;
+        importer.isReadable = readable;
 
         var settings = importer.GetDefaultPlatformTextureSettings();
         settings.format = TextureImporterFormat.RGBA32;

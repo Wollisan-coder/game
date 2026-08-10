@@ -167,7 +167,9 @@ public class DeathDungeonMapUI : MonoBehaviour
     private void OnRetreated()
     {
         Close();
-        ConfirmationDialog.ShowInfo(canvasRoot, "You retreated safely. Your squad is shaken (-20% in normal battles for 1 week) and the Death Dungeon is sealed to you for 1 week.");
+        ConfirmationDialog.ShowInfo(canvasRoot,
+            $"You retreated safely. Your squad is shaken (-20% in normal battles for {DeathDungeonManager.RetreatDebuffDays} days) " +
+            $"and the Death Dungeon is sealed to you for {DeathDungeonManager.RetreatLockoutDays} days.");
     }
 
     private void BuildNodeHotspot(int index)
@@ -238,7 +240,7 @@ public class DeathDungeonMapUI : MonoBehaviour
 
         if (AccountManager.Instance == null || !AccountManager.Instance.SpendEnergy(mainMenuUI.battleEnergyCost))
         {
-            ConfirmationDialog.ShowInfo(canvasRoot, "Not enough energy to start a battle.");
+            ConfirmationDialog.ShowInfo(canvasRoot, "Not enough energy to start a battle.", iconPath: "UI/Currency/Energy");
             return;
         }
 

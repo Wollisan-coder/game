@@ -17,6 +17,8 @@ public class DailyQuestUI : MonoBehaviour
     private Button dailyRewardButton;
     private Image dailyRewardButtonBg;
     private TMP_Text dailyRewardButtonText;
+    private Image dailyRewardIcon;
+    private TMP_Text dailyRewardAmountText;
 
     // onClosed — чтобы CastleUI мог обновить бейдж-уведомление на кнопке "Quests" сразу после того, как
     // игрок что-то заклеймил внутри и закрыл попап (см. CastleUI.RefreshNotificationBadges).
@@ -91,6 +93,10 @@ public class DailyQuestUI : MonoBehaviour
 
         dailyRewardButtonBg = dailyRewardObj.AddComponent<Image>();
         dailyRewardButton = dailyRewardObj.AddComponent<Button>();
+        // Явно назначаем targetGraphic — рантайм-кнопки не проходят через Selectable.OnValidate, без этого
+        // interactable=false никак не тонирует фон (см. project_ui_text_size_standard / тот же паттерн,
+        // что и claimBtn в ProgressCardUI и collectAllGlobalBtn в TerritoryMinesUI).
+        dailyRewardButton.targetGraphic = dailyRewardButtonBg;
         dailyRewardButton.onClick.AddListener(OnDailyRewardClicked);
 
         var dailyRewardTextObj = new GameObject("Text", typeof(RectTransform));
@@ -99,11 +105,38 @@ public class DailyQuestUI : MonoBehaviour
         dailyRewardTextRect.anchorMin = Vector2.zero;
         dailyRewardTextRect.anchorMax = Vector2.one;
         dailyRewardTextRect.offsetMin = Vector2.zero;
-        dailyRewardTextRect.offsetMax = Vector2.zero;
+        dailyRewardTextRect.offsetMax = new Vector2(-190, 0); // место под иконку+число ресурса справа
         dailyRewardButtonText = dailyRewardTextObj.AddComponent<TextMeshProUGUI>();
         dailyRewardButtonText.alignment = TextAlignmentOptions.Center;
         dailyRewardButtonText.fontSize = 30;
         dailyRewardButtonText.color = ConfirmationDialog.ButtonTextColor;
+
+        // Иконка + число вместо текстового названия ресурса ("Progress Points") — сгруппированы в
+        // отдельный контейнер, прижатый к правому краю кнопки, чтобы не зависеть от ширины основного текста.
+        var dailyRewardGroupObj = new GameObject("RewardGroup", typeof(RectTransform));
+        var dailyRewardGroupRect = (RectTransform)dailyRewardGroupObj.transform;
+        dailyRewardGroupRect.SetParent(dailyRewardRect, false);
+        dailyRewardGroupRect.anchorMin = new Vector2(1, 0.5f);
+        dailyRewardGroupRect.anchorMax = new Vector2(1, 0.5f);
+        dailyRewardGroupRect.pivot = new Vector2(1, 0.5f);
+        dailyRewardGroupRect.sizeDelta = new Vector2(180, 60);
+        dailyRewardGroupRect.anchoredPosition = new Vector2(-24, 0);
+
+        dailyRewardIcon = ConfirmationDialog.CreateCurrencyIcon(dailyRewardGroupRect,
+            ConfirmationDialog.GetCurrencyIconPath(CurrencyType.ProgressPoints), new Vector2(0, 0), 44);
+
+        var dailyRewardAmountObj = new GameObject("Amount", typeof(RectTransform));
+        var dailyRewardAmountRect = (RectTransform)dailyRewardAmountObj.transform;
+        dailyRewardAmountRect.SetParent(dailyRewardGroupRect, false);
+        dailyRewardAmountRect.anchorMin = new Vector2(0, 0.5f);
+        dailyRewardAmountRect.anchorMax = new Vector2(0, 0.5f);
+        dailyRewardAmountRect.pivot = new Vector2(0, 0.5f);
+        dailyRewardAmountRect.sizeDelta = new Vector2(130, 60);
+        dailyRewardAmountRect.anchoredPosition = new Vector2(52, 0);
+        dailyRewardAmountText = dailyRewardAmountObj.AddComponent<TextMeshProUGUI>();
+        dailyRewardAmountText.alignment = TextAlignmentOptions.MidlineLeft;
+        dailyRewardAmountText.fontSize = ConfirmationDialog.MinTextFontSize;
+        dailyRewardAmountText.color = ConfirmationDialog.ButtonTextColor;
 
         var claimAllBtnObj = new GameObject("ClaimAllButton", typeof(RectTransform));
         var claimAllBtnRect = (RectTransform)claimAllBtnObj.transform;
@@ -127,7 +160,7 @@ public class DailyQuestUI : MonoBehaviour
         claimAllTextRect.offsetMax = Vector2.zero;
         var claimAllText = claimAllTextObj.AddComponent<TextMeshProUGUI>();
         claimAllText.text = "Claim All";
-        claimAllText.fontSize = 26;
+        claimAllText.fontSize = ConfirmationDialog.MinTextFontSize;
         claimAllText.alignment = TextAlignmentOptions.Center;
         claimAllText.color = ConfirmationDialog.ButtonTextColor;
 
@@ -206,7 +239,15 @@ public class DailyQuestUI : MonoBehaviour
             dailyRewardButtonBg.color = claimed ? new Color(0.5f, 0.5f, 0.5f, 0.6f) : Color.white; // тускло-серый поверх той же рамки, пока не получена
         }
         if (dailyRewardButtonText != null)
-            dailyRewardButtonText.text = claimed ? "Daily Reward — claimed" : $"Claim Daily Reward (+{amount} Progress Points)";
+            dailyRewardButtonText.text = claimed ? "Daily Reward claimed" : "Claim Daily Reward";
+
+        // Иконка+число ресурса только когда реально есть что забрать — после клейма показывать нечего.
+        if (dailyRewardIcon != null) dailyRewardIcon.gameObject.SetActive(!claimed);
+        if (dailyRewardAmountText != null)
+        {
+            dailyRewardAmountText.gameObject.SetActive(!claimed);
+            dailyRewardAmountText.text = $"+{amount}";
+        }
     }
 
     private void Refresh()
@@ -218,20 +259,23 @@ public class DailyQuestUI : MonoBehaviour
         foreach (Transform child in content)
             Destroy(child.gameObject);
 
+        string ppIconPath = ConfirmationDialog.GetCurrencyIconPath(CurrencyType.ProgressPoints);
+        string shardsIconPath = ConfirmationDialog.GetCurrencyIconPath(CurrencyType.SummonShards);
+
         float yTop = 0f;
         foreach (var slot in manager.todaysQuests)
         {
-            string title = $"{DailyQuestManager.GetDescription(slot.type)} (+{DailyQuestManager.PerQuestReward} PP)";
+            string title = DailyQuestManager.GetDescription(slot.type);
             var capturedType = slot.type;
             ProgressCardUI.Create(content, yTop, title, slot.current, 0, slot.target, slot.claimed, slot.IsReady,
-                () => { manager.ClaimQuest(capturedType); Refresh(); });
+                () => { manager.ClaimQuest(capturedType); Refresh(); }, ppIconPath, DailyQuestManager.PerQuestReward);
             yTop -= ProgressCardUI.CardHeight + ProgressCardUI.CardSpacing;
         }
 
-        string bonusTitle = $"Complete all 3 quests (+{DailyQuestManager.AllCompleteBonusShards} Shards)";
+        string bonusTitle = "Complete all 3 quests";
         int bonusDone = manager.todaysQuests.Count(s => s.claimed);
         ProgressCardUI.Create(content, yTop, bonusTitle, bonusDone, 0, 3, manager.allBonusGranted, manager.IsBonusReady,
-            () => { manager.ClaimBonus(); Refresh(); });
+            () => { manager.ClaimBonus(); Refresh(); }, shardsIconPath, DailyQuestManager.AllCompleteBonusShards);
         yTop -= ProgressCardUI.CardHeight + ProgressCardUI.CardSpacing;
 
         content.sizeDelta = new Vector2(0, -yTop);

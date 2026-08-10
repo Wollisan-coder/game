@@ -12,11 +12,11 @@ using TMPro;
 // уровней.
 public static class ProgressCardUI
 {
-    public const float CardHeight = 130f;
+    public const float CardHeight = 150f;
     public const float CardSpacing = 16f;
 
     public static void Create(RectTransform parent, float yTop, string title, int current, int levelFloor, int target,
-        bool done, bool ready, System.Action onClaim)
+        bool done, bool ready, System.Action onClaim, string rewardIconPath = null, int rewardAmount = 0)
     {
         var cardObj = new GameObject("Card", typeof(RectTransform));
         var cardRect = (RectTransform)cardObj.transform;
@@ -40,15 +40,46 @@ public static class ProgressCardUI
         titleRect.anchorMax = new Vector2(1, 1);
         titleRect.pivot = new Vector2(0.5f, 1);
         titleRect.offsetMin = new Vector2(16, 0);
-        titleRect.offsetMax = new Vector2(-160, 0); // место под Claim-кнопку справа
-        titleRect.sizeDelta = new Vector2(0, 44);
-        titleRect.anchoredPosition = new Vector2(0, -10);
+        titleRect.offsetMax = new Vector2(-220, 0); // место под Claim-кнопку справа (200 шириной + отступ)
+        titleRect.sizeDelta = new Vector2(0, 50);
+        titleRect.anchoredPosition = new Vector2(0, -8);
         var titleText = titleObj.AddComponent<TextMeshProUGUI>();
         titleText.text = title;
-        titleText.fontSize = 22;
+        titleText.fontSize = ConfirmationDialog.MinTextFontSize;
         titleText.alignment = TextAlignmentOptions.MidlineLeft;
         titleText.color = Color.white;
         titleText.enableWordWrapping = true;
+
+        // Награда — иконка ресурса + число вместо текстового названия (Wood/PP/Shards и т.п.), в
+        // свободной полосе между заголовком и прогресс-баром. Ничего не создаём, если вызывающий не
+        // передал rewardIconPath (старое поведение — просто число дописано прямо в title).
+        if (!string.IsNullOrEmpty(rewardIconPath) && rewardAmount > 0)
+        {
+            var rewardRowObj = new GameObject("RewardRow", typeof(RectTransform));
+            var rewardRowRect = (RectTransform)rewardRowObj.transform;
+            rewardRowRect.SetParent(cardRect, false);
+            rewardRowRect.anchorMin = new Vector2(0, 1);
+            rewardRowRect.anchorMax = new Vector2(0, 1);
+            rewardRowRect.pivot = new Vector2(0, 1);
+            rewardRowRect.sizeDelta = new Vector2(160, 40);
+            rewardRowRect.anchoredPosition = new Vector2(16, -64);
+
+            ConfirmationDialog.CreateCurrencyIcon(rewardRowRect, rewardIconPath, new Vector2(0, 0), 34);
+
+            var rewardAmountObj = new GameObject("Amount", typeof(RectTransform));
+            var rewardAmountRect = (RectTransform)rewardAmountObj.transform;
+            rewardAmountRect.SetParent(rewardRowRect, false);
+            rewardAmountRect.anchorMin = new Vector2(0, 0.5f);
+            rewardAmountRect.anchorMax = new Vector2(0, 0.5f);
+            rewardAmountRect.pivot = new Vector2(0, 0.5f);
+            rewardAmountRect.sizeDelta = new Vector2(110, 40);
+            rewardAmountRect.anchoredPosition = new Vector2(42, 0);
+            var rewardAmountText = rewardAmountObj.AddComponent<TextMeshProUGUI>();
+            rewardAmountText.text = $"+{rewardAmount}";
+            rewardAmountText.fontSize = ConfirmationDialog.MinTextFontSize;
+            rewardAmountText.alignment = TextAlignmentOptions.MidlineLeft;
+            rewardAmountText.color = Color.white;
+        }
 
         // Claim-кнопка — верхний правый угол карточки. Активна только когда ready; иначе статичная
         // подпись состояния (Claimed/MAX либо просто скрыта, если уровень ещё не набран).
@@ -58,11 +89,15 @@ public static class ProgressCardUI
         claimRect.anchorMin = new Vector2(1, 1);
         claimRect.anchorMax = new Vector2(1, 1);
         claimRect.pivot = new Vector2(1, 1);
-        claimRect.sizeDelta = new Vector2(140, 44);
-        claimRect.anchoredPosition = new Vector2(-16, -10);
+        claimRect.sizeDelta = new Vector2(200, 50);
+        claimRect.anchoredPosition = new Vector2(-16, -8);
 
         var claimImg = claimObj.AddComponent<Image>();
         var claimBtn = claimObj.AddComponent<Button>();
+        // Рантайм-кнопка не проходит через Selectable.OnValidate (тот авто-назначает targetGraphic, но
+        // только если !Application.isPlaying) — без явного назначения здесь Disabled Color из
+        // Button.colors не сработает при interactable=false.
+        claimBtn.targetGraphic = claimImg;
         var claimTextObj = new GameObject("Text", typeof(RectTransform));
         var claimTextRect = (RectTransform)claimTextObj.transform;
         claimTextRect.SetParent(claimRect, false);
@@ -71,23 +106,27 @@ public static class ProgressCardUI
         claimTextRect.offsetMin = Vector2.zero;
         claimTextRect.offsetMax = Vector2.zero;
         var claimText = claimTextObj.AddComponent<TextMeshProUGUI>();
-        claimText.fontSize = 18;
+        claimText.fontSize = ConfirmationDialog.MinTextFontSize;
         claimText.alignment = TextAlignmentOptions.Center;
+
+        // Рамка (StyleAsButton) всегда та же, что у активной кнопки, не подменяется плоской серой
+        // заливкой — серый некликабельный вид даёт стандартный Disabled Color из Button.colors
+        // (тот же приём, что и Collect/Collect All в TerritoryMinesUI).
+        ConfirmationDialog.StyleAsButton(claimImg);
+        claimBtn.interactable = ready;
 
         if (ready)
         {
-            ConfirmationDialog.StyleAsButton(claimImg);
-            claimBtn.interactable = true;
             claimBtn.onClick.AddListener(() => onClaim?.Invoke());
             claimText.text = "Claim!";
             claimText.color = new Color(1f, 0.92f, 0.4f);
         }
         else
         {
-            claimImg.color = new Color(0f, 0f, 0f, 0.25f);
-            claimBtn.interactable = false;
-            claimText.text = done ? "Done" : "—";
-            claimText.color = new Color(1f, 1f, 1f, 0.4f);
+            // Обычный дефис вместо em-dash — у используемого TMP-шрифта нет глифа "—", символ рендерился
+            // "пустым" и текст на неактивной кнопке визуально пропадал.
+            claimText.text = done ? "Done" : "-";
+            claimText.color = ConfirmationDialog.ButtonTextColor;
         }
 
         // Плоский progress bar: тёмный трек + заливка (Image.Type.Filled, Horizontal), число поверх.
@@ -97,8 +136,8 @@ public static class ProgressCardUI
         trackRect.anchorMin = new Vector2(0, 0);
         trackRect.anchorMax = new Vector2(1, 0);
         trackRect.pivot = new Vector2(0.5f, 0);
-        trackRect.sizeDelta = new Vector2(-32, 30);
-        trackRect.anchoredPosition = new Vector2(0, 16);
+        trackRect.sizeDelta = new Vector2(-32, 42);
+        trackRect.anchoredPosition = new Vector2(0, 0);
         var trackImg = trackObj.AddComponent<Image>();
         trackImg.color = new Color(0f, 0f, 0f, 0.5f);
 
@@ -129,7 +168,7 @@ public static class ProgressCardUI
         progressTextRect.offsetMax = Vector2.zero;
         var progressText = progressTextObj.AddComponent<TextMeshProUGUI>();
         progressText.text = done ? "MAX" : $"{Mathf.Min(current, target)}/{target}";
-        progressText.fontSize = 16;
+        progressText.fontSize = ConfirmationDialog.MinTextFontSize;
         progressText.alignment = TextAlignmentOptions.Center;
         progressText.color = Color.white;
     }

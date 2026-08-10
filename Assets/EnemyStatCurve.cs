@@ -12,10 +12,11 @@ using UnityEngine;
 //
 // Тир-якоря (конец полосы) — рядовые растут ×1.20 территория-к-территории (форма не менялась, только
 // стартовое значение). Босс = рядовые той же территории × множитель длины боссфайта, подтверждённый
-// пользователем 2026-08-02: Elves/Fairy ×2, Orcs/Beastfolk ×3, Demons/Dragonkin ×5. Демоны разбиты на 3
-// полосы внутри себя: лёгкая(1-9, ×1.25 от рядовых Зверолюдов) → средняя(10-17, ×1.50 от лёгкой) →
-// босс(18, ×5 от средней, было ×1.15). Драконоиды растут от Демонов-СРЕДНИХ (не от босса — намеренная
-// передышка после стены), не Демонов.
+// пользователем 2026-08-02: Elves/Fairy ×2, Orcs/Beastfolk/Demons/Dragonkin ×3 (Demons/Dragonkin были ×5
+// до 2026-08-09 — снижены после того, как фикс скейлинга урона по геммам всё равно не закрыл "стену",
+// см. project_campaign_difficulty_curve). Демоны разбиты на 3 полосы внутри себя: лёгкая(1-9, ×1.25 от
+// рядовых Зверолюдов) → средняя(10-17, ×1.50 от лёгкой) → босс(18, ×3 от средней). Драконоиды растут от
+// Демонов-СРЕДНИХ (не от босса — намеренная передышка после стены), не Демонов.
 public static class EnemyStatCurve
 {
     public struct Stats
@@ -39,19 +40,23 @@ public static class EnemyStatCurve
 
     private static readonly Stats DemonsLight = Scale(T4Reg, 1.25f);
     private static readonly Stats DemonsMedium = Scale(DemonsLight, 1.50f);
-    private static readonly Stats DemonsBoss = Scale(DemonsMedium, 5f);
+    // Босс-множитель снижен 5 -> 3 (2026-08-09) — после фикса скейлинга урона по геммам
+    // (GetColorPowerMultiplier, см. project_campaign_difficulty_curve) симуляция всё равно давала
+    // ~102-153 хода на Demons-босса, "стена" никуда не делась. ×3 — тот же множитель, что уже
+    // подтверждён живым плейтестом на Orcs/Beastfolk (T3Boss), а не новая непроверенная цифра.
+    private static readonly Stats DemonsBoss = Scale(DemonsMedium, 3f);
 
     private static readonly Stats DragonReg = Scale(DemonsMedium, 1.20f);
-    private static readonly Stats DragonBoss = Scale(DragonReg, 5f);
+    private static readonly Stats DragonBoss = Scale(DragonReg, 3f);
 
     // Ангелы/Люди (7-8): контент ещё не спроектирован (см. project_campaign_difficulty_curve — открытый
-    // вопрос), это НЕ подтверждённые цифры — просто продолжение того же +20% паттерна (и того же ×5
+    // вопрос), это НЕ подтверждённые цифры — просто продолжение того же +20% паттерна (и того же ×3
     // босса, для единообразия с Demons/Dragonkin), чтобы кривая хотя бы не проваливалась вниз, если
     // кто-то по ошибке создаст ноду с territory=Angels/Humans раньше времени.
     private static readonly Stats AngelsReg = Scale(DragonReg, 1.20f);
-    private static readonly Stats AngelsBoss = Scale(AngelsReg, 5f);
+    private static readonly Stats AngelsBoss = Scale(AngelsReg, 3f);
     private static readonly Stats HumansReg = Scale(AngelsReg, 1.20f);
-    private static readonly Stats HumansBoss = Scale(HumansReg, 5f);
+    private static readonly Stats HumansBoss = Scale(HumansReg, 3f);
 
     private const float RampStart = 0.85f; // нода 1 полосы = 85% от значения на конце полосы
 

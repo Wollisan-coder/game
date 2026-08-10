@@ -41,19 +41,30 @@ public static class BattlePrepPopup
         var windowBlocker = windowObj.AddComponent<Button>();
         windowBlocker.transition = Selectable.Transition.None;
 
+        // Горизонтальный отступ везде — ConfirmationDialog.WindowContentPaddingX (40), тот же стандарт,
+        // что и у остальных рантайм-окон. Рамка окна (DialogWindowFrame) режется на 9-slice с border 70px
+        // с каждой стороны — раньше у Title/EnergyCost отступа не было вообще (sizeDelta.x=0, во всю
+        // ширину окна), у LootContent было только 30 — при узком (700px) окне и крупном тексте заголовка
+        // текст реально залезал на орнамент рамки (баг найден 2026-08-10). Заголовок и EnergyCost также
+        // получили enableAutoSizing — при любой ширине окна/длине текста больше не может физически
+        // переполниться, что бы ни было в node.nodeName.
+        float pad = ConfirmationDialog.WindowContentPaddingX;
+
         var titleObj = new GameObject("Title", typeof(RectTransform));
         var titleRect = (RectTransform)titleObj.transform;
         titleRect.SetParent(windowRect, false);
         titleRect.anchorMin = new Vector2(0, 1);
         titleRect.anchorMax = new Vector2(1, 1);
         titleRect.pivot = new Vector2(0.5f, 1);
-        titleRect.sizeDelta = new Vector2(0, 140);
+        titleRect.sizeDelta = new Vector2(-pad * 2, 140);
         titleRect.anchoredPosition = new Vector2(0, -20);
         var title = titleObj.AddComponent<TextMeshProUGUI>();
         // nodeName редко заполнен вручную для рядовых боевых нод (авторить его на все 100+ нод — морока),
         // так что для них честнее показать territory+nodeIndex, чем сырой nodeId ("Beasts 0_ 5").
         title.text = !string.IsNullOrEmpty(node.nodeName) ? node.nodeName : $"{node.territory} #{node.nodeIndex}";
-        title.fontSize = 84;
+        title.enableAutoSizing = true;
+        title.fontSizeMin = ConfirmationDialog.MinTextFontSize;
+        title.fontSizeMax = 84;
         title.fontStyle = FontStyles.Bold;
         title.alignment = TextAlignmentOptions.Center;
         title.color = Color.white;
@@ -64,11 +75,13 @@ public static class BattlePrepPopup
         energyRect.anchorMin = new Vector2(0, 1);
         energyRect.anchorMax = new Vector2(1, 1);
         energyRect.pivot = new Vector2(0.5f, 1);
-        energyRect.sizeDelta = new Vector2(0, 90);
+        energyRect.sizeDelta = new Vector2(-pad * 2, 90);
         energyRect.anchoredPosition = new Vector2(0, -180);
         var energyText = energyObj.AddComponent<TextMeshProUGUI>();
         energyText.text = $"Energy cost: {energyCost}";
-        energyText.fontSize = 66;
+        energyText.enableAutoSizing = true;
+        energyText.fontSizeMin = ConfirmationDialog.MinTextFontSize;
+        energyText.fontSizeMax = 66;
         energyText.alignment = TextAlignmentOptions.Center;
         energyText.color = new Color(0.6f, 0.85f, 1f);
 
@@ -77,8 +90,8 @@ public static class BattlePrepPopup
         contentRect.SetParent(windowRect, false);
         contentRect.anchorMin = new Vector2(0, 0);
         contentRect.anchorMax = new Vector2(1, 1);
-        contentRect.offsetMin = new Vector2(30, 230);
-        contentRect.offsetMax = new Vector2(-30, -290);
+        contentRect.offsetMin = new Vector2(pad, 230);
+        contentRect.offsetMax = new Vector2(-pad, -290);
 
         var vlg = contentObj.AddComponent<VerticalLayoutGroup>();
         vlg.childAlignment = TextAnchor.UpperCenter;

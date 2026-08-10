@@ -13,8 +13,13 @@ MonoBehaviour:
   m_Name: Base
   m_EditorClassIdentifier: Assembly-CSharp::MapNodeData
   nodeId: Base
-  nodeName: 
-  description: 
+  nodeName: Training Grounds
+  description: Your first battle — a gentle warm-up before the real journey begins.
   icon: {fileID: 0}
   enemy: {fileID: 11400000, guid: 44f586928af305f4bb36b1f2f488cb07, type: 2}
+  territory: 0
+  nodeIndex: 1
   requiredNodes: []
+  isFarmNode: 0
+  farmLootPool: {fileID: 0}
+  isTutorialNode: 1

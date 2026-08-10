@@ -4,11 +4,11 @@ using UnityEngine.UI;
 using TMPro;
 
 // Экран подготовки перед входом в Death Dungeon (см. project_death_dungeon_concept /
-// project_death_dungeon_implementation) — показывает текущий отряд и витрину "Ascension Gems",
-// предупреждает о permadeath перед входом. Гемы вознесения — двойного назначения (см.
-// HeroOwnershipData.ascensionGems): тратятся либо на вознесение героя, либо как одна из "монет" жертвы для
-// ретрита (наравне с целиком принесёнными героями-картами) — см. HeroCollectionManager.ExecuteRetreatSacrifice /
-// DeathDungeonRetreatSelectionUI. Тут гемы только отображаются, чтобы игрок видел цену ретрита ДО входа.
+// project_death_dungeon_implementation) — показывает текущий отряд, предупреждает о permadeath перед
+// входом. Витрина Ascension Gems тут раньше тоже была, но убрана 2026-08-10 — по мнению пользователя
+// гемам тут не место, их основной дом ItemCollectionUI (Item Inventory, вкладка Consumables), где они и
+// так уже показываются через тот же AscensionGemGridUtility — см. её комментарий. Справка "?" по
+// экономике гемов туда же переехала (GemEconomyHelpText теперь в ItemCollectionUI.cs).
 // Вход запускает StartNewRun() и открывает карту гаунтлета (DeathDungeonMapUI).
 public class DeathDungeonEntryUI : MonoBehaviour
 {
@@ -20,8 +20,6 @@ public class DeathDungeonEntryUI : MonoBehaviour
 
     private GameObject overlayRoot;
     private Transform squadContainer;
-    private Transform essenceContainer;
-    private GameObject essenceEmptyLabel;
 
     public void Open(Transform canvasRoot, MainMenuUI mainMenuUI)
     {
@@ -74,7 +72,7 @@ public class DeathDungeonEntryUI : MonoBehaviour
         windowRect.anchorMin = new Vector2(0.5f, 0.5f);
         windowRect.anchorMax = new Vector2(0.5f, 0.5f);
         windowRect.pivot = new Vector2(0.5f, 0.5f);
-        windowRect.sizeDelta = new Vector2(1000, 1300);
+        windowRect.sizeDelta = new Vector2(1000, 560);
         var windowBg = windowObj.AddComponent<Image>();
         ConfirmationDialog.StyleAsPanel(windowBg);
 
@@ -120,73 +118,6 @@ public class DeathDungeonEntryUI : MonoBehaviour
         squadGrid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
         squadGrid.constraintCount = 4;
         squadContainer = squadRowRect;
-
-        var essencesLabelObj = new GameObject("EssencesLabel", typeof(RectTransform));
-        var essencesLabelRect = (RectTransform)essencesLabelObj.transform;
-        essencesLabelRect.SetParent(windowRect, false);
-        essencesLabelRect.anchorMin = new Vector2(0, 1);
-        essencesLabelRect.anchorMax = new Vector2(1, 1);
-        essencesLabelRect.pivot = new Vector2(0.5f, 1);
-        essencesLabelRect.sizeDelta = new Vector2(0, 40);
-        essencesLabelRect.anchoredPosition = new Vector2(0, -390);
-        var essencesLabel = essencesLabelObj.AddComponent<TextMeshProUGUI>();
-        essencesLabel.text = "Ascension Gems";
-        essencesLabel.fontSize = 28;
-        essencesLabel.alignment = TextAlignmentOptions.Center;
-        essencesLabel.color = new Color(1, 1, 1, 0.85f);
-
-        var scrollObj = new GameObject("EssenceScroll", typeof(RectTransform));
-        var scrollRect = (RectTransform)scrollObj.transform;
-        scrollRect.SetParent(windowRect, false);
-        scrollRect.anchorMin = new Vector2(0, 0);
-        scrollRect.anchorMax = new Vector2(1, 1);
-        scrollRect.offsetMin = new Vector2(30, 140);
-        scrollRect.offsetMax = new Vector2(-30, -430);
-
-        var scroll = scrollObj.AddComponent<ScrollRect>();
-        var scrollImage = scrollObj.AddComponent<Image>();
-        scrollImage.color = new Color(1, 1, 1, 0.03f);
-        var scrollMask = scrollObj.AddComponent<Mask>();
-        scrollMask.showMaskGraphic = true;
-
-        var contentObj = new GameObject("Content", typeof(RectTransform));
-        var contentRect = (RectTransform)contentObj.transform;
-        contentRect.SetParent(scrollRect, false);
-        contentRect.anchorMin = new Vector2(0, 1);
-        contentRect.anchorMax = new Vector2(1, 1);
-        contentRect.pivot = new Vector2(0.5f, 1);
-        contentRect.anchoredPosition = Vector2.zero;
-        contentRect.sizeDelta = new Vector2(0, 0);
-
-        var essenceGrid = contentObj.AddComponent<GridLayoutGroup>();
-        essenceGrid.cellSize = new Vector2(150, 200);
-        essenceGrid.spacing = new Vector2(14, 14);
-        essenceGrid.padding = new RectOffset(10, 10, 10, 10);
-
-        var fitter = contentObj.AddComponent<ContentSizeFitter>();
-        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-        scroll.content = contentRect;
-        scroll.viewport = scrollRect;
-        scroll.horizontal = false;
-        scroll.vertical = true;
-
-        essenceContainer = contentRect;
-
-        var essenceEmptyObj = new GameObject("EmptyLabel", typeof(RectTransform));
-        var essenceEmptyRect = (RectTransform)essenceEmptyObj.transform;
-        essenceEmptyRect.SetParent(windowRect, false);
-        essenceEmptyRect.anchorMin = new Vector2(0, 0.3f);
-        essenceEmptyRect.anchorMax = new Vector2(1, 0.55f);
-        essenceEmptyRect.offsetMin = new Vector2(16, 0);
-        essenceEmptyRect.offsetMax = new Vector2(-16, 0);
-        var essenceEmptyText = essenceEmptyObj.AddComponent<TextMeshProUGUI>();
-        essenceEmptyText.text = "No Ascension Gems banked.\nDuplicate hero pulls from summoning grant them.";
-        essenceEmptyText.alignment = TextAlignmentOptions.Center;
-        essenceEmptyText.color = new Color(1, 1, 1, 0.6f);
-        essenceEmptyText.fontSize = 18;
-        essenceEmptyObj.SetActive(false);
-        essenceEmptyLabel = essenceEmptyObj;
 
         var enterObj = new GameObject("EnterButton", typeof(RectTransform));
         var enterRect = (RectTransform)enterObj.transform;
@@ -258,15 +189,6 @@ public class DeathDungeonEntryUI : MonoBehaviour
             if (hero == null) continue;
             BuildCard(squadContainer, hero, collectionManager);
         }
-
-        // Плитки гема вознесения — общий код с ItemCollectionUI (вкладка Consumables — те же плитки
-        // прямо в общей сетке предметов), см. AscensionGemGridUtility.
-        foreach (Transform child in essenceContainer)
-            Destroy(child.gameObject);
-
-        bool hasGems = AscensionGemGridUtility.Populate(essenceContainer, collectionManager);
-        if (essenceEmptyLabel != null)
-            essenceEmptyLabel.SetActive(!hasGems);
     }
 
     // Обёртка — реальный ребёнок GridLayoutGroup (сетка форсирует его RectTransform под cellSize),

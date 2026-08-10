@@ -41,11 +41,29 @@ public class ItemCollectionUI : MonoBehaviour
     private TMP_Text rarityButtonText;
     private TMP_Text levelButtonText;
 
+    // Справочный текст по кнопке "?" (см. project_gem_economy_docs_todo) — переехал сюда 2026-08-10 с
+    // экрана входа в Death Dungeon (там гемам было не место, их основной дом — этот инвентарь).
+    // Статичный экран справки, не контекстный tutorial-попап — выбор пользователя. Держим одним местом,
+    // чтобы при следующем изменении экономики (уже было 5+ раз) текст можно было поправить без раскопок.
+    private const string GemEconomyHelpText =
+        "Purple and Orange heroes can still drop as duplicates from summoning even after you own them — " +
+        "each duplicate grants that hero 1 Ascension Gem instead of nothing.\n\n" +
+        "Spend a hero's gems on:\n" +
+        "- Ascend: raise their ascension level (HeroInventoryUI) — higher level cap, a stat bonus every step, " +
+        "and (Orange only) a stronger race passive at the final step.\n" +
+        "- Hero Voucher: convert 1 gem into 1 Voucher of that rarity — only once the hero has reached max " +
+        "ascension. 3 Vouchers grant 1 gem to ANY hero of that rarity, or unlock a locked one.\n" +
+        "- Hero Experience: convert 1 gem into 1 Hero Experience item, always available.\n\n" +
+        "Gems are also spent as Death Dungeon retreat currency — a safe retreat costs a mix of banked gems " +
+        "and/or benched heroes (permanently sacrificed, your choice which). Gems survive a hero being lost " +
+        "or reset — only their level/skills/gear don't.";
+
     private void Awake()
     {
         BuildTabBar();
         BuildFilterRow();
         RefreshFilterLabels();
+        BuildGemHelpButton();
 
         // Перестраиваем сетку, когда закрывается попап деталей предмета — иначе апгрейд/использование,
         // сделанные внутри попапа, не будут видны в каталоге, пока вкладку не переключить вручную.
@@ -56,6 +74,46 @@ public class ItemCollectionUI : MonoBehaviour
     private void Start()
     {
         PopulateGrid();
+    }
+
+    // Кнопка "?" в правом верхнем углу панели — фиксированная, не зависит от вкладки/скролла (гемы видны
+    // только под All/Consumables, но справка про них уместна с любой вкладки).
+    private void BuildGemHelpButton()
+    {
+        var panelRect = (RectTransform)transform;
+
+        var helpBtnObj = new GameObject("GemHelpButton", typeof(RectTransform));
+        var helpBtnRect = (RectTransform)helpBtnObj.transform;
+        helpBtnRect.SetParent(panelRect, false);
+        helpBtnRect.anchorMin = new Vector2(1, 1);
+        helpBtnRect.anchorMax = new Vector2(1, 1);
+        helpBtnRect.pivot = new Vector2(1, 1);
+        helpBtnRect.sizeDelta = new Vector2(50, 50);
+        helpBtnRect.anchoredPosition = new Vector2(-30, -30);
+        var helpBtnImg = helpBtnObj.AddComponent<Image>();
+        ConfirmationDialog.StyleAsButton(helpBtnImg);
+        var helpBtn = helpBtnObj.AddComponent<Button>();
+        helpBtn.targetGraphic = helpBtnImg;
+        helpBtn.onClick.AddListener(() =>
+        {
+            var canvas = GetComponentInParent<Canvas>();
+            Transform canvasRoot = canvas != null ? canvas.transform : transform;
+            ConfirmationDialog.ShowInfo(canvasRoot, GemEconomyHelpText, title: "Ascension Gems & Vouchers");
+        });
+
+        var helpTextObj = new GameObject("Text", typeof(RectTransform));
+        var helpTextRect = (RectTransform)helpTextObj.transform;
+        helpTextRect.SetParent(helpBtnRect, false);
+        helpTextRect.anchorMin = Vector2.zero;
+        helpTextRect.anchorMax = Vector2.one;
+        helpTextRect.offsetMin = Vector2.zero;
+        helpTextRect.offsetMax = Vector2.zero;
+        var helpText = helpTextObj.AddComponent<TextMeshProUGUI>();
+        helpText.text = "?";
+        helpText.fontStyle = FontStyles.Bold;
+        helpText.fontSize = ConfirmationDialog.MinTextFontSize;
+        helpText.alignment = TextAlignmentOptions.Center;
+        helpText.color = ConfirmationDialog.ButtonTextColor;
     }
 
     // Строит ряд кнопок-вкладок над сеткой и освобождает под него место, подрезая Scroll View сверху.

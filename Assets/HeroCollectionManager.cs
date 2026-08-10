@@ -30,6 +30,18 @@ public class HeroCollectionManager : MonoBehaviour
     public List<HeroData> squad = new List<HeroData>();
     public const int BaseSquadSize = 4;
 
+    // Ручной выбор игрока, чей портрет показывать на маркере карты мира (см. PlayerMapMarkerUI) — "" =
+    // авто-выбор (Orange предпочтительнее Purple, первый максимально вознёсшийся найденный в отряде).
+    // Доступно только для героя на максимальном вознесении — гейтится в HeroInventoryUI, не здесь.
+    public string mapAvatarHeroId = "";
+
+    // 5 независимо сохраняемых вариаций отряда — переключаются целиком (см. SwitchLoadout), каждая
+    // хранит свой состав отдельным PlayerPrefs-ключом (см. SquadKey). Слот 0 намеренно использует СТАРЫЙ
+    // ключ "squad_ids" без индекса — так уже существующие сохранения игроков становятся вариантом №1
+    // без какой-либо отдельной миграции.
+    public const int LoadoutCount = 5;
+    public int activeLoadoutIndex;
+
     // Количество слотов в отряде всегда фиксировано — Бараки НЕ добавляют слоты, только поднимают лимит веса
     public int MaxSquadSize => BaseSquadSize;
 
@@ -71,6 +83,36 @@ public class HeroCollectionManager : MonoBehaviour
 
         LoadOwnership();
         InitializeOwnershipIfMissing();
+        LoadActiveLoadoutIndex();
+        LoadSquad();
+        mapAvatarHeroId = PlayerPrefs.GetString("map_avatar_hero_id", "");
+    }
+
+    // "" сбрасывает на авто-выбор. Не проверяет вознесение здесь — HeroInventoryUI показывает кнопку
+    // выбора только для героя на максимальном вознесении, так что к моменту вызова это уже гарантировано.
+    public void SetMapAvatarHero(string heroId)
+    {
+        mapAvatarHeroId = heroId ?? "";
+        PlayerPrefs.SetString("map_avatar_hero_id", mapAvatarHeroId);
+        PlayerPrefs.Save();
+    }
+
+    private void LoadActiveLoadoutIndex()
+    {
+        activeLoadoutIndex = Mathf.Clamp(PlayerPrefs.GetInt("active_loadout_index", 0), 0, LoadoutCount - 1);
+    }
+
+    // Переключает активный вариант отряда на другой. Ничего отдельно "сохранять" не нужно — состав
+    // каждого варианта уже записан на диск при любом изменении (SaveSquad вызывается из AssignToSlot/
+    // RemoveFromSquad), так что здесь только меняется, какой ключ считается активным, и перечитывается он.
+    public void SwitchLoadout(int index)
+    {
+        if (index < 0 || index >= LoadoutCount || index == activeLoadoutIndex) return;
+
+        activeLoadoutIndex = index;
+        PlayerPrefs.SetInt("active_loadout_index", activeLoadoutIndex);
+        PlayerPrefs.Save();
+
         LoadSquad();
     }
 
@@ -619,11 +661,13 @@ public class HeroCollectionManager : MonoBehaviour
         SaveSquad();
     }
 
+    private string SquadKey(int loadoutIndex) => loadoutIndex == 0 ? "squad_ids" : $"squad_ids_{loadoutIndex}";
+
     private void SaveSquad()
     {
         EnsureSquadSize();
         string ids = string.Join(",", squad.Select(h => h != null ? h.heroId : ""));
-        PlayerPrefs.SetString("squad_ids", ids);
+        PlayerPrefs.SetString(SquadKey(activeLoadoutIndex), ids);
         PlayerPrefs.Save();
     }
 
@@ -632,7 +676,7 @@ public class HeroCollectionManager : MonoBehaviour
         squad.Clear();
         EnsureSquadSize();
 
-        string saved = PlayerPrefs.GetString("squad_ids", "");
+        string saved = PlayerPrefs.GetString(SquadKey(activeLoadoutIndex), "");
         if (string.IsNullOrEmpty(saved)) return;
 
         string[] ids = saved.Split(',');
@@ -642,6 +686,32 @@ public class HeroCollectionManager : MonoBehaviour
             var hero = allHeroes.FirstOrDefault(h => h.heroId == ids[i]);
             if (hero != null) squad[i] = hero;
         }
+    }
+
+    // "Мощь" отряда — сумма HeroStatUtility.CalculatePower по всем занятым слотам ТЕКУЩЕГО активного
+    // отряда. Используется как общий показатель силы состава на экране Squad.
+    public int GetSquadPower() =>
+        squad.Where(h => h != null).Sum(h => HeroStatUtility.CalculatePower(h, ownership.FirstOrDefault(o => o.heroId == h.heroId)));
+
+    // Мощь ЛЮБОГО из 5 сохранённых вариантов отряда без переключения на него — читает состав напрямую
+    // из PlayerPrefs (для активного варианта это то же самое, что и GetSquadPower). Используется для
+    // подписей на кнопках переключения вариантов в SquadUI.
+    public int GetLoadoutPower(int loadoutIndex)
+    {
+        if (loadoutIndex == activeLoadoutIndex) return GetSquadPower();
+
+        string saved = PlayerPrefs.GetString(SquadKey(loadoutIndex), "");
+        if (string.IsNullOrEmpty(saved)) return 0;
+
+        int total = 0;
+        foreach (var id in saved.Split(','))
+        {
+            if (string.IsNullOrEmpty(id)) continue;
+            var hero = allHeroes.FirstOrDefault(h => h.heroId == id);
+            if (hero == null) continue;
+            total += HeroStatUtility.CalculatePower(hero, ownership.FirstOrDefault(o => o.heroId == id));
+        }
+        return total;
     }
 
     // Публичный — вызывать после любой прямой мутации HeroOwnershipData снаружи (экипировка/выбор скиллов

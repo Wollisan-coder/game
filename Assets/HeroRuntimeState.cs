@@ -7,6 +7,9 @@ public class HeroRuntimeState
     public int currentResource;
 
     public int level;
+    // Нужен в бою, не только при расчёте статов на старте — см. BattleManager.HasLivingMaxAscendedHeroOfRace
+    // (3я ступень вознесения усиливает расовую пассивку, см. project_hero_ascension_system).
+    public int ascensionLevel;
     public int maxHealth;
     public int currentHealth;
     public int maxResource;         // heroData.maxResource * бонус от уровня + бонусы от экипировки
@@ -41,6 +44,7 @@ public class HeroRuntimeState
         currentResource = 0;
 
         level = heroLevel;
+        this.ascensionLevel = ascensionLevel;
 
         var baseStats = HeroStatUtility.CalculateBaseStats(heroData, heroLevel, ascensionLevel);
         maxHealth = baseStats.health;

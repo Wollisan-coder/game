@@ -19,9 +19,13 @@ public class MainMenuUI : MonoBehaviour
 
     private CastleUI castleUI; // строится программно — см. EnsureCastleUI()
     private MineThreatMapHotspots mineThreatHotspots; // строится программно — см. EnsureMineThreatHotspots()
+    private HeroCollectionUI heroCollectionUI; // ищется сам в Start() — см. ниже, без ручной привязки в Inspector
 
     private void Start()
     {
+        if (collectionPanel != null)
+            heroCollectionUI = collectionPanel.GetComponentInChildren<HeroCollectionUI>(true);
+
         // Если бой был запущен с ноды карты (currentNodeId выставляется в WorldMapManager.SelectNode),
         // значит мы вернулись именно с боя — открываем карту, а не сбрасываем на Collection по умолчанию.
         // currentNodeId сразу же гасим — иначе флаг остался бы "залипшим" навсегда после первого же боя с карты,
@@ -129,6 +133,11 @@ public class MainMenuUI : MonoBehaviour
         if (itemCollectionPanel != null) itemCollectionPanel.SetActive(false);
         HideAllMapPanels();
         castleUI?.Hide();
+
+        // Обновляем грид при каждом открытии (тот же паттерн, что и squadUI.RefreshSlots() ниже в
+        // ShowSquad) — раньше грид строился только один раз из HeroCollectionUI.Start(), и уровни/
+        // лок-статус/кнопка Summon "замерзали" после первого захода (найдено 2026-08-10).
+        heroCollectionUI?.PopulateGrid();
     }
 
     public void ShowSquad()
@@ -213,7 +222,7 @@ public class MainMenuUI : MonoBehaviour
         {
             var canvas = FindAnyObjectByType<Canvas>();
             if (canvas != null)
-                ConfirmationDialog.ShowInfo(canvas.transform, "Not enough energy to start a battle.");
+                ConfirmationDialog.ShowInfo(canvas.transform, "Not enough energy to start a battle.", iconPath: "UI/Currency/Energy");
             return;
         }
 

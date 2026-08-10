@@ -10,6 +10,23 @@ public static class ConfirmationDialog
     public static readonly Color ButtonColor = new Color32(0xE8, 0xB8, 0x4B, 0xFF);
     public static readonly Color ButtonTextColor = new Color32(0xF0, 0xF0, 0xF0, 0xFF);
 
+    // Единый стандарт шрифтов/отступов для рантайм-окон (задан 2026-08-09) — раньше каждый экран
+    // (Achievement/DailyQuest/TerritoryMines/...) подбирал размеры отдельно, разброс дошёл до title
+    // 24-44 и ни одной пары файлов с одинаковыми отступами. Новые окна/переделки должны использовать
+    // эти константы вместо своих чисел; старые экраны намеренно НЕ ретрофичены целиком в этот заход
+    // (см. project_territory_mines) — только TerritoryMinesUI как образец нового стандарта.
+    //
+    // MinTextFontSize — жёсткое правило по всему проекту (задано 2026-08-09, см.
+    // project_ui_text_size_standard): нигде в игре текст не должен быть мельче 28. HeaderFontSize/
+    // BodyFontSize подняты до этого пола; проверяй новый текст на >= MinTextFontSize, даже если не
+    // используешь остальные константы этого блока (мелкие подписи бейджей и т.п. — тоже под правило).
+    public const float MinTextFontSize = 28f;
+    public const float TitleFontSize = 44f;
+    public const float HeaderFontSize = 32f;
+    public const float BodyFontSize = 28f;
+    public const float ButtonFontSize = 28f;
+    public const float WindowContentPaddingX = 40f;
+
     private const float WindowWidth = 1000f;
     private const float MinWindowHeight = 500f;
     private const float HeaderHeight = 90f;
@@ -102,6 +119,44 @@ public static class ConfirmationDialog
         }
     }
 
+    // Единая таблица CurrencyType -> путь иконки в Resources — раньше CastleUI.CreateCurrencyBar держала
+    // такую же таблицу только для себя, а TerritoryMinesUI.CreateResourceRow дублировал похожую логику
+    // ещё раз для 3 ресурсов шахт. null, если под валюту ещё нет иконки — вызывающий сам решает, что
+    // делать (обычно просто не показывает иконку).
+    public static string GetCurrencyIconPath(CurrencyType type) => type switch
+    {
+        CurrencyType.Wood => "UI/Currency/Wood",
+        CurrencyType.Stone => "UI/Currency/Stone",
+        CurrencyType.SummonShards => "UI/Currency/Shards",
+        CurrencyType.PremiumGems => "UI/Currency/Gems",
+        CurrencyType.ProgressPoints => "UI/Currency/PP",
+        CurrencyType.HeroExperience => "UI/Currency/HeroExperience",
+        CurrencyType.ArmorShards => "UI/Currency/ArmorShards",
+        _ => null,
+    };
+
+    // Спавнит один preserveAspect Image с иконкой ресурса по готовому пути (см. GetCurrencyIconPath) —
+    // общий примитив, а не готовый виджет: каждый вызывающий сам решает компоновку (ряд, бар, кнопка).
+    // anchoredPosition — левый край иконки (anchor/pivot 0,0.5), как в уже существующих CreateCurrencyBar/
+    // CreateResourceRow, чтобы соседний текст можно было ставить сразу после неё по X.
+    public static Image CreateCurrencyIcon(RectTransform parent, string iconPath, Vector2 anchoredPosition, float size)
+    {
+        var iconObj = new GameObject("CurrencyIcon", typeof(RectTransform));
+        var iconRect = (RectTransform)iconObj.transform;
+        iconRect.SetParent(parent, false);
+        iconRect.anchorMin = new Vector2(0, 0.5f);
+        iconRect.anchorMax = new Vector2(0, 0.5f);
+        iconRect.pivot = new Vector2(0, 0.5f);
+        iconRect.sizeDelta = new Vector2(size, size);
+        iconRect.anchoredPosition = anchoredPosition;
+
+        var img = iconObj.AddComponent<Image>();
+        if (!string.IsNullOrEmpty(iconPath))
+            img.sprite = Resources.Load<Sprite>(iconPath);
+        img.preserveAspect = true;
+        return img;
+    }
+
     public static void Show(Transform parent, string message, System.Action onConfirm, string title = null)
     {
         var (overlay, windowRect) = BuildBase(parent, message, MinWindowHeight, title);
@@ -124,9 +179,11 @@ public static class ConfirmationDialog
     // по-прежнему работают и просто получают комфортный размер вместо тесного.
     // onClosed — необязательный коллбэк, вызывается после закрытия (например, переход на другую сцену только после Ok).
     // title — необязательный заголовок в отдельной шапке (новым вызовам; старые без него выглядят как раньше, но крупнее).
-    public static void ShowInfo(Transform parent, string message, float windowHeight = 170, System.Action onClosed = null, string title = null)
+    // iconPath — необязательная иконка ресурса (см. GetCurrencyIconPath) над текстом сообщения, например
+    // для "Not enough energy to start a battle." — чтобы игрок сразу видел, о каком именно ресурсе речь.
+    public static void ShowInfo(Transform parent, string message, float windowHeight = 170, System.Action onClosed = null, string title = null, string iconPath = null)
     {
-        var (overlay, windowRect) = BuildBase(parent, message, windowHeight, title);
+        var (overlay, windowRect) = BuildBase(parent, message, windowHeight, title, iconPath);
 
         CreateButton(windowRect, "Ok", new Vector2(0.5f, 0.12f), ButtonColor, () =>
         {
@@ -135,7 +192,7 @@ public static class ConfirmationDialog
         });
     }
 
-    private static (GameObject overlay, RectTransform windowRect) BuildBase(Transform parent, string message, float windowHeight, string title)
+    private static (GameObject overlay, RectTransform windowRect) BuildBase(Transform parent, string message, float windowHeight, string title, string iconPath = null)
     {
         EnsureSpritesLoaded();
 
@@ -230,6 +287,30 @@ public static class ConfirmationDialog
             titleText.fontSizeMax = 42;
 
             textTop = 1f - HeaderHeight / windowRect.sizeDelta.y;
+        }
+
+        // Иконка ресурса — маленький preserveAspect-Image по центру над текстом, отодвигает верх текстового
+        // блока вниз на свою высоту, чтобы не перекрываться (тот же приём, что заголовок выше).
+        if (!string.IsNullOrEmpty(iconPath))
+        {
+            var iconSprite = Resources.Load<Sprite>(iconPath);
+            if (iconSprite != null)
+            {
+                const float iconSize = 64f;
+                var iconObj = new GameObject("Icon", typeof(RectTransform));
+                var iconRect = (RectTransform)iconObj.transform;
+                iconRect.SetParent(windowRect, false);
+                iconRect.anchorMin = new Vector2(0.5f, textTop);
+                iconRect.anchorMax = new Vector2(0.5f, textTop);
+                iconRect.pivot = new Vector2(0.5f, 1f);
+                iconRect.sizeDelta = new Vector2(iconSize, iconSize);
+                iconRect.anchoredPosition = new Vector2(0, -16);
+                var iconImg = iconObj.AddComponent<Image>();
+                iconImg.sprite = iconSprite;
+                iconImg.preserveAspect = true;
+
+                textTop -= (iconSize + 24f) / windowRect.sizeDelta.y;
+            }
         }
 
         var textObj = new GameObject("Message", typeof(RectTransform));

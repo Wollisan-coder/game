@@ -96,6 +96,12 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     private Button convertToVoucherButton;
     private TMP_Text convertToVoucherText;
 
+    // Ручной выбор портрета для маркера карты мира (см. HeroCollectionManager.mapAvatarHeroId /
+    // PlayerMapMarkerUI) — кнопка видна только для героя на максимальном вознесении, тот же стек, ещё
+    // на шаг выше Gem Conversion.
+    private Button mapAvatarButton;
+    private TMP_Text mapAvatarButtonText;
+
     private const float SwipeThreshold = 80f; // минимальная длина свайпа по X (пиксели), чтобы засчитать переключение героя
     private const float SkillButtonTextPadding = 24f; // запас по ширине сверх самого текста названия навыка
 
@@ -235,6 +241,8 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         RefreshUpgradeButtonVisibility();
         RefreshAscendButton();
         RefreshGemConversionUI();
+        CreateMapAvatarButtonIfNeeded();
+        RefreshMapAvatarButton();
     }
 
     private void PopulateSkillSelectors()
@@ -483,7 +491,9 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         if (racePassiveInfoText != null)
         {
             string state = enabled ? "ON" : "OFF";
-            racePassiveInfoText.text = $"{RacePassiveUtility.GetDescription(currentHero.race)}\n" +
+            bool maxAscended = currentOwnership != null
+                && HeroAscensionUtility.IsMaxAscension(currentHero.rarity, currentOwnership.ascensionLevel);
+            racePassiveInfoText.text = $"{RacePassiveUtility.GetDescription(currentHero.race, maxAscended)}\n" +
                 $"[{state}] costs {RacePassiveUtility.ManaCost} mana";
         }
 
@@ -732,6 +742,46 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
         if (convertToVoucherButton != null)
             convertToVoucherButton.interactable = currentOwnership.ascensionGems >= 1;
+    }
+
+    // Ручной выбор портрета для маркера карты мира — доступно только на максимальном вознесении (см.
+    // HeroCollectionManager.mapAvatarHeroId / PlayerMapMarkerUI.RefreshHeroVisual). Переиспользует
+    // BuildGemConversionButton — тот на самом деле общий билдер подписанной кнопки, не только для гемов.
+    private void CreateMapAvatarButtonIfNeeded()
+    {
+        if (mapAvatarButton != null) return;
+
+        RectTransform referenceRect = closeButton != null ? closeButton.GetComponent<RectTransform>() : null;
+        if (referenceRect == null) return;
+
+        float stepY = referenceRect.sizeDelta.y + 12f;
+        Vector2 pos = referenceRect.anchoredPosition + new Vector2(0, stepY * 3.3f);
+
+        mapAvatarButton = BuildGemConversionButton(referenceRect, pos, "Set as Map Avatar", OnMapAvatarClicked, out mapAvatarButtonText);
+    }
+
+    private void OnMapAvatarClicked()
+    {
+        if (currentHero == null || HeroCollectionManager.Instance == null) return;
+
+        bool isCurrent = HeroCollectionManager.Instance.mapAvatarHeroId == currentHero.heroId;
+        HeroCollectionManager.Instance.SetMapAvatarHero(isCurrent ? "" : currentHero.heroId);
+        RefreshMapAvatarButton();
+    }
+
+    private void RefreshMapAvatarButton()
+    {
+        if (mapAvatarButton == null || currentHero == null) return;
+
+        bool maxed = currentOwnership != null
+            && HeroAscensionUtility.IsMaxAscension(currentHero.rarity, currentOwnership.ascensionLevel);
+        mapAvatarButton.gameObject.SetActive(maxed);
+        if (!maxed) return;
+
+        bool isCurrent = HeroCollectionManager.Instance != null
+            && HeroCollectionManager.Instance.mapAvatarHeroId == currentHero.heroId;
+        if (mapAvatarButtonText != null)
+            mapAvatarButtonText.text = isCurrent ? "Unset Map Avatar" : "Set as Map Avatar";
     }
 
     private void OnAscendClicked()

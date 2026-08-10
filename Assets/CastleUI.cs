@@ -30,7 +30,8 @@ public class CastleUI : MonoBehaviour
     private TerritoryMinesUI territoryMinesUI;
     private GameObject questsBadge;
     private GameObject achieveBadge;
-    private GameObject mineThreatBadge;
+    private GameObject mineThreatBadge; // красный "!" — активная угроза шахтам (см. MineThreatManager)
+    private GameObject mineCapBadge;    // оранжевый "MAX" — у хотя бы одной шахты переполнен склад (см. BuildingManager.HasAnyMineAtCap)
 
     public void Open(MainMenuUI mainMenu)
     {
@@ -186,11 +187,8 @@ public class CastleUI : MonoBehaviour
         // squeezing a 5th button into it. Boss Training moved off this row onto its own map hotspot
         // (Training zone.png, see CreateTrainingZoneHotspot) once the user provided real art for it.
         CreateNavButton(panelRect, "Exchange", new Vector2(0, 160), () => { exchangeUI?.Open(canvasRoot, Refresh); });
-        CreateNavButton(panelRect, "Mines", new Vector2(230, 160), () => { territoryMinesUI?.Open(canvasRoot); });
-        // Простой красный кружок "!" поверх угла кнопки Mines — нет готовой иконки под конкретно эту
-        // угрозу (в отличие от Quests/Achieve, у которых есть UI/Castle/*Icon), поэтому не через
-        // CreateBareIconButton, а минимальный самодостаточный маркер без внешнего арта.
-        mineThreatBadge = CreateSimpleAlertBadge(panelRect, new Vector2(230 + 90, 160 + 40));
+        // Mines — обратно в Замок (была временно на World Map). Реальный арт — Resources/UI/Castle/Mines.png.
+        CreateMinesIconButton(panelRect, new Vector2(486, 470));
 
         summonUI = gameObject.AddComponent<CastleSummonUI>();
         exchangeUI = gameObject.AddComponent<ProgressExchangeUI>();
@@ -300,8 +298,9 @@ public class CastleUI : MonoBehaviour
     {
         // Мягкое жёлтое "пятно" позади иконки — отдельный sibling ПЕРЕД кнопкой (рендерится раньше =
         // ниже по слоям), крупнее самой иконки, чтобы выступать за края и не сливаться с фоном базы.
-        // (Отдельный компонент Outline тут не подходит — он не обводит по силуэту спрайта, а просто
-        // дублирует всю текстуру со сдвигом, для фото-подобной иконки это выглядит как "повторы".)
+        // Glow по силуэту самой иконки (GetSilhouetteGlowSprite), а не квадрат/круг позади неё — тот же
+        // приём, что и у Mines (см. CreateMinesIconButton). Требует Read/Write Enabled на исходнике
+        // (см. UIAssetImportSetup) — если текстура не readable, само тихо откатится на радиальное пятно.
         var glowObj = new GameObject("Glow", typeof(RectTransform));
         var glowRect = (RectTransform)glowObj.transform;
         glowRect.SetParent(parent, false);
@@ -311,9 +310,10 @@ public class CastleUI : MonoBehaviour
         glowRect.sizeDelta = size * 1.5f;
         glowRect.anchoredPosition = anchoredPosition;
         var glowImg = glowObj.AddComponent<Image>();
-        glowImg.sprite = GetRadialGlowSprite();
+        glowImg.sprite = GetSilhouetteGlowSprite(iconResourcePath);
         glowImg.color = new Color(1f, 0.85f, 0.2f, 0.8f);
         glowImg.raycastTarget = false;
+        glowImg.preserveAspect = true; // та же пропорция, что и у иконки — иначе форма glow "поплывёт"
 
         var btnObj = new GameObject("Icon", typeof(RectTransform));
         var btnRect = (RectTransform)btnObj.transform;
@@ -355,6 +355,85 @@ public class CastleUI : MonoBehaviour
         badgeText.fontStyle = FontStyles.Bold;
         badgeText.alignment = TextAlignmentOptions.Center;
         badgeText.color = Color.white;
+
+        badgeObj.SetActive(false);
+        return badgeObj;
+    }
+
+    // Иконка Mines — тот же приём, что и CreateBareIconButton (жёлтый glow позади + сама иконка), но
+    // отдельным методом, а не через CreateBareIconButton, т.к. у Mines два независимых бейджа (threat/cap
+    // от TerritoryMinesUI), а не один общий "есть что забрать" из CreateBareIconButton.
+    private void CreateMinesIconButton(RectTransform parent, Vector2 anchoredPosition)
+    {
+        var size = new Vector2(100f, 200f);
+
+        var glowObj = new GameObject("Glow", typeof(RectTransform));
+        var glowRect = (RectTransform)glowObj.transform;
+        glowRect.SetParent(parent, false);
+        glowRect.anchorMin = new Vector2(0.5f, 0f);
+        glowRect.anchorMax = new Vector2(0.5f, 0f);
+        glowRect.pivot = new Vector2(0.5f, 0.5f);
+        glowRect.sizeDelta = size * 1.5f;
+        glowRect.anchoredPosition = anchoredPosition;
+        var glowImg = glowObj.AddComponent<Image>();
+        glowImg.sprite = GetSilhouetteGlowSprite("UI/Castle/Mines");
+        glowImg.color = new Color(1f, 0.85f, 0.2f, 0.8f);
+        glowImg.raycastTarget = false;
+        // preserveAspect обязателен: glow-текстура генерируется из исходника 1:1, у неё та же пропорция,
+        // что и у иконки. Без этого при sizeDelta glow != sizeDelta иконки * ровно тот же аспект картинка
+        // растянется не туда и свечение перестанет совпадать с силуэтом.
+        glowImg.preserveAspect = true;
+
+        var btnObj = new GameObject("MinesButton", typeof(RectTransform));
+        var btnRect = (RectTransform)btnObj.transform;
+        btnRect.SetParent(parent, false);
+        btnRect.anchorMin = new Vector2(0.5f, 0f);
+        btnRect.anchorMax = new Vector2(0.5f, 0f);
+        btnRect.pivot = new Vector2(0.5f, 0.5f);
+        btnRect.sizeDelta = size;
+        btnRect.anchoredPosition = anchoredPosition;
+
+        var bg = btnObj.AddComponent<Image>();
+        bg.sprite = Resources.Load<Sprite>("UI/Castle/Mines");
+        bg.preserveAspect = true;
+        var btn = btnObj.AddComponent<Button>();
+        btn.onClick.AddListener(() => territoryMinesUI?.Open(canvasRoot, RefreshNotificationBadges));
+
+        mineThreatBadge = CreateAlertBadge(btnRect, new Vector2(8, 10), new Color(0.85f, 0.1f, 0.1f, 0.95f), "!");
+        mineCapBadge = CreateAlertBadge(btnRect, new Vector2(-30, 10), new Color(0.9f, 0.6f, 0.1f, 0.95f), "MAX");
+    }
+
+    // Минимальный самодостаточный маркер — круглый спрайт-заглушка + текст, без внешнего арта.
+    // "!" = активная угроза шахтам (MineThreatManager.HasAnyActiveThreat), "MAX" = у хотя бы одной шахты
+    // переполнен склад (BuildingManager.HasAnyMineAtCap) — оба обновляются вместе в RefreshNotificationBadges.
+    private GameObject CreateAlertBadge(RectTransform parent, Vector2 anchoredPosition, Color color, string label)
+    {
+        var badgeObj = new GameObject("Badge_" + label, typeof(RectTransform));
+        var badgeRect = (RectTransform)badgeObj.transform;
+        badgeRect.SetParent(parent, false);
+        badgeRect.anchorMin = new Vector2(1, 1);
+        badgeRect.anchorMax = new Vector2(1, 1);
+        badgeRect.pivot = new Vector2(1, 1);
+        badgeRect.sizeDelta = new Vector2(38, 38);
+        badgeRect.anchoredPosition = anchoredPosition;
+
+        var bg = badgeObj.AddComponent<Image>();
+        bg.sprite = GetRoundBadgeSprite();
+        bg.color = color;
+
+        var textObj = new GameObject("Text", typeof(RectTransform));
+        var textRect = (RectTransform)textObj.transform;
+        textRect.SetParent(badgeRect, false);
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+        var text = textObj.AddComponent<TextMeshProUGUI>();
+        text.text = label;
+        text.fontSize = label.Length > 1 ? 12 : 24;
+        text.fontStyle = FontStyles.Bold;
+        text.alignment = TextAlignmentOptions.Center;
+        text.color = Color.white;
 
         badgeObj.SetActive(false);
         return badgeObj;
@@ -418,6 +497,107 @@ public class CastleUI : MonoBehaviour
         return radialGlowSprite;
     }
 
+    private static readonly Dictionary<string, Sprite> silhouetteGlowCache = new Dictionary<string, Sprite>();
+
+    // Glow "по силуэту" иконки, а не квадратом/кругом позади неё (в отличие от GetRadialGlowSprite) —
+    // берёт альфа-канал исходной текстуры (та должна быть Read/Write Enabled, см. UIAssetImportSetup),
+    // "растит" непрозрачную область на dilate пикселей (макс-фильтр), затем размывает край на blur
+    // пикселей (box blur) — получается мягкое свечение той же формы, что и сама иконка, просто крупнее.
+    // Component Outline тут не подходит — он обводит bounding box текстуры целиком, а не силуэт по альфе.
+    private static Sprite GetSilhouetteGlowSprite(string resourcePath, int dilate = 14, int blur = 16)
+    {
+        if (silhouetteGlowCache.TryGetValue(resourcePath, out var cached) && cached != null) return cached;
+
+        var source = Resources.Load<Texture2D>(resourcePath);
+        if (source == null || !source.isReadable)
+        {
+            Debug.LogWarning($"CastleUI: '{resourcePath}' missing or not Read/Write Enabled, falling back to radial glow");
+            return GetRadialGlowSprite();
+        }
+
+        int w = source.width, h = source.height;
+        var pixels = source.GetPixels();
+        var alpha = new float[w * h];
+        for (int i = 0; i < pixels.Length; i++) alpha[i] = pixels[i].a;
+
+        var dilated = SeparableMaxFilter(alpha, w, h, dilate);
+        var glowAlpha = SeparableBoxBlur(dilated, w, h, blur);
+
+        var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+        var outPixels = new Color[w * h];
+        for (int i = 0; i < outPixels.Length; i++)
+            outPixels[i] = new Color(1f, 1f, 1f, glowAlpha[i]);
+        tex.SetPixels(outPixels);
+        tex.Apply();
+
+        var sprite = Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f));
+        silhouetteGlowCache[resourcePath] = sprite;
+        return sprite;
+    }
+
+    // Разделяемый макс-фильтр (горизонтальный проход, затем вертикальный) — O(w*h*radius) вместо
+    // O(w*h*radius^2) у честного 2D-варианта. "Растит" непрозрачные области наружу (дилейт).
+    private static float[] SeparableMaxFilter(float[] src, int w, int h, int radius)
+    {
+        if (radius <= 0) return (float[])src.Clone();
+
+        var temp = new float[w * h];
+        for (int y = 0; y < h; y++)
+        {
+            for (int x = 0; x < w; x++)
+            {
+                float max = 0f;
+                int xMin = Mathf.Max(0, x - radius), xMax = Mathf.Min(w - 1, x + radius);
+                for (int xx = xMin; xx <= xMax; xx++) max = Mathf.Max(max, src[y * w + xx]);
+                temp[y * w + x] = max;
+            }
+        }
+
+        var result = new float[w * h];
+        for (int x = 0; x < w; x++)
+        {
+            for (int y = 0; y < h; y++)
+            {
+                float max = 0f;
+                int yMin = Mathf.Max(0, y - radius), yMax = Mathf.Min(h - 1, y + radius);
+                for (int yy = yMin; yy <= yMax; yy++) max = Mathf.Max(max, temp[yy * w + x]);
+                result[y * w + x] = max;
+            }
+        }
+        return result;
+    }
+
+    // Разделяемый box blur — смягчает жёсткий край после дилейта в градиент затухания свечения.
+    private static float[] SeparableBoxBlur(float[] src, int w, int h, int radius)
+    {
+        if (radius <= 0) return (float[])src.Clone();
+
+        var temp = new float[w * h];
+        for (int y = 0; y < h; y++)
+        {
+            for (int x = 0; x < w; x++)
+            {
+                float sum = 0f;
+                int xMin = Mathf.Max(0, x - radius), xMax = Mathf.Min(w - 1, x + radius);
+                for (int xx = xMin; xx <= xMax; xx++) sum += src[y * w + xx];
+                temp[y * w + x] = sum / (xMax - xMin + 1);
+            }
+        }
+
+        var result = new float[w * h];
+        for (int x = 0; x < w; x++)
+        {
+            for (int y = 0; y < h; y++)
+            {
+                float sum = 0f;
+                int yMin = Mathf.Max(0, y - radius), yMax = Mathf.Min(h - 1, y + radius);
+                for (int yy = yMin; yy <= yMax; yy++) sum += temp[yy * w + x];
+                result[y * w + x] = sum / (yMax - yMin + 1);
+            }
+        }
+        return result;
+    }
+
     // Отдельно от CreateNavButton — держит ссылки на bg/text, чтобы Refresh() мог менять подпись/цвет
     // в зависимости от того, забирали ли награду сегодня.
     // Открывает Collection как пикер героя для тренировки (тот же приём, что и выбор героя в слот отряда —
@@ -464,42 +644,8 @@ public class CastleUI : MonoBehaviour
             achieveBadge.SetActive(AchievementManager.Instance != null && AchievementManager.Instance.HasAnyClaimable());
         if (mineThreatBadge != null)
             mineThreatBadge.SetActive(MineThreatManager.Instance != null && MineThreatManager.Instance.HasAnyActiveThreat);
-    }
-
-    // Минимальный самодостаточный маркер "!" — без внешнего арта, просто закрашенный круг + текст.
-    // Только сигнал "тут что-то не так" (кусок 5, см. MineThreatManager) — сам клик по нему не нужен,
-    // реальная точка входа в бой — хотспот на карте мира (см. MineThreatMapHotspots), эта иконка просто
-    // привлекает внимание к уже существующей кнопке Mines.
-    private GameObject CreateSimpleAlertBadge(RectTransform parent, Vector2 anchoredPosition)
-    {
-        var badgeObj = new GameObject("MineThreatBadge", typeof(RectTransform));
-        var badgeRect = (RectTransform)badgeObj.transform;
-        badgeRect.SetParent(parent, false);
-        badgeRect.anchorMin = new Vector2(0.5f, 0f);
-        badgeRect.anchorMax = new Vector2(0.5f, 0f);
-        badgeRect.pivot = new Vector2(0.5f, 0.5f);
-        badgeRect.sizeDelta = new Vector2(44, 44);
-        badgeRect.anchoredPosition = anchoredPosition;
-
-        var bg = badgeObj.AddComponent<Image>();
-        bg.color = new Color(0.85f, 0.1f, 0.1f, 0.95f);
-
-        var textObj = new GameObject("Text", typeof(RectTransform));
-        var textRect = (RectTransform)textObj.transform;
-        textRect.SetParent(badgeRect, false);
-        textRect.anchorMin = Vector2.zero;
-        textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = Vector2.zero;
-        textRect.offsetMax = Vector2.zero;
-        var text = textObj.AddComponent<TextMeshProUGUI>();
-        text.text = "!";
-        text.fontSize = 28;
-        text.fontStyle = FontStyles.Bold;
-        text.alignment = TextAlignmentOptions.Center;
-        text.color = Color.white;
-
-        badgeObj.SetActive(false);
-        return badgeObj;
+        if (mineCapBadge != null)
+            mineCapBadge.SetActive(BuildingManager.Instance != null && BuildingManager.Instance.HasAnyMineAtCap());
     }
 
     private void PopulateBuildings()
@@ -514,6 +660,11 @@ public class CastleUI : MonoBehaviour
         {
             var building = allBuildings[i];
             if (building == null) continue;
+            // TerritoryMine_* — экономика шахт территорий, управляется только через свой отдельный экран
+            // (см. TerritoryMinesUI), никогда не должны показываться хотспотом на базе Замка (без этого
+            // все 24 маленьких здания рисовались тут заглушками-боксами друг на друге в (0,0), т.к. у них
+            // нет mapSprite/mapPosition — те просто не заводились для этой цели).
+            if (building.buildingId.StartsWith("TerritoryMine_")) continue;
 
             CreateBuildingHotspot(building, building.mapPosition);
         }
@@ -719,6 +870,7 @@ public class CastleUI : MonoBehaviour
 
         string status;
         System.Action<RectTransform> addActions = null;
+        System.Action<RectTransform> addCostRow = null;
 
         if (!unlocked)
         {
@@ -732,7 +884,10 @@ public class CastleUI : MonoBehaviour
         }
         else if (!built)
         {
-            status = $"Not built\nCost: {building.buildCostWood} Wood, {building.buildCostStone} Stone";
+            status = "Not built";
+            int costWood = building.buildCostWood;
+            int costStone = building.buildCostStone;
+            addCostRow = row => BuildCostIconRow(row, costWood, costStone);
             addActions = actionRow => CreateActionButton(actionRow, "Build", new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 160), () =>
             {
                 manager.Build(building);
@@ -780,30 +935,47 @@ public class CastleUI : MonoBehaviour
                 int cap = building.GetStorageCap(level);
                 status = $"Level {level}\n{Mathf.FloorToInt(pending)}/{cap} {building.producedCurrency}";
 
-                var (wood, stone) = building.GetUpgradeCost(level + 1);
-                addActions = actionRow =>
+                // level < maxLevel — тот же guard, что уже есть у ветки SquadCapacity выше. Без него для
+                // любого производственного здания с maxLevel==1 (сейчас таких в Замке нет, но раньше сюда
+                // по ошибке попадали TerritoryMine_* — см. фильтр в PopulateBuildings) кнопка Upgrade
+                // показывалась всегда, хотя UpgradeBuilding молча отказывала — обманчивая нерабочая кнопка.
+                if (level < building.maxLevel)
                 {
-                    CreateActionButton(actionRow, "Collect", new Vector2(0, 0), new Vector2(0.48f, 0), new Vector2(0, 160), () =>
+                    var (wood, stone) = building.GetUpgradeCost(level + 1);
+                    addActions = actionRow =>
+                    {
+                        CreateActionButton(actionRow, "Collect", new Vector2(0, 0), new Vector2(0.48f, 0), new Vector2(0, 160), () =>
+                        {
+                            manager.CollectProduction(building);
+                            CloseBuildingDetailPopup();
+                            Refresh();
+                        });
+
+                        CreateActionButton(actionRow, $"Upgrade\n({wood}W/{stone}S)", new Vector2(0.52f, 0), new Vector2(1, 0), new Vector2(0, 160), () =>
+                        {
+                            manager.UpgradeBuilding(building);
+                            CloseBuildingDetailPopup();
+                            Refresh();
+                        });
+                    };
+                }
+                else
+                {
+                    status += "\nMAX";
+                    addActions = actionRow => CreateActionButton(actionRow, "Collect", new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 160), () =>
                     {
                         manager.CollectProduction(building);
                         CloseBuildingDetailPopup();
                         Refresh();
                     });
-
-                    CreateActionButton(actionRow, $"Upgrade\n({wood}W/{stone}S)", new Vector2(0.52f, 0), new Vector2(1, 0), new Vector2(0, 160), () =>
-                    {
-                        manager.UpgradeBuilding(building);
-                        CloseBuildingDetailPopup();
-                        Refresh();
-                    });
-                };
+                }
             }
         }
 
-        BuildBuildingDetailPopupWindow(building, status, addActions);
+        BuildBuildingDetailPopupWindow(building, status, addActions, addCostRow);
     }
 
-    private void BuildBuildingDetailPopupWindow(BuildingData building, string status, System.Action<RectTransform> addActions)
+    private void BuildBuildingDetailPopupWindow(BuildingData building, string status, System.Action<RectTransform> addActions, System.Action<RectTransform> addCostRow = null)
     {
         CloseBuildingDetailPopup();
 
@@ -869,6 +1041,22 @@ public class CastleUI : MonoBehaviour
         statusText.fontSizeMin = 28;
         statusText.fontSizeMax = 48;
 
+        // Иконки Wood/Stone стоимости постройки — узкий ряд под статусом, только когда addCostRow задан
+        // (сейчас только для "Not built", см. OpenBuildingDetailPopup) — заменяет прежний плоский текст
+        // "Cost: N Wood, N Stone" внутри самого status.
+        if (addCostRow != null)
+        {
+            var costRowObj = new GameObject("CostRow", typeof(RectTransform));
+            var costRowRect = (RectTransform)costRowObj.transform;
+            costRowRect.SetParent(windowRect, false);
+            costRowRect.anchorMin = new Vector2(0.5f, 0f);
+            costRowRect.anchorMax = new Vector2(0.5f, 0f);
+            costRowRect.pivot = new Vector2(0.5f, 0f);
+            costRowRect.sizeDelta = new Vector2(400, 60);
+            costRowRect.anchoredPosition = new Vector2(0, 420);
+            addCostRow(costRowRect);
+        }
+
         // Действия (Build/Summon/Collect/Upgrade) сидят в отдельном узком ряду выше кнопки Close, а не
         // прямо в windowRect — CreateActionButton всегда якорит себя к низу СВОЕГО parent'а с фиксированным
         // отступом, так что без этой прокладки кнопка легла бы поверх Close.
@@ -916,6 +1104,43 @@ public class CastleUI : MonoBehaviour
             Destroy(buildingDetailPopupRoot);
             buildingDetailPopupRoot = null;
         }
+    }
+
+    // [Wood-иконка] N  [Stone-иконка] N — заменяет прежний плоский текст "Cost: N Wood, N Stone" в попапе
+    // "Not built" (см. OpenBuildingDetailPopup/BuildBuildingDetailPopupWindow). Использует общий примитив
+    // ConfirmationDialog.CreateCurrencyIcon вместо третьей копии загрузки Resources.Load<Sprite> в этом файле.
+    private void BuildCostIconRow(RectTransform row, int wood, int stone)
+    {
+        const float iconSize = 40f;
+        const float textWidth = 70f;
+        const float pairGap = 24f;
+        float x = 0f;
+
+        ConfirmationDialog.CreateCurrencyIcon(row, ConfirmationDialog.GetCurrencyIconPath(CurrencyType.Wood), new Vector2(x, 0), iconSize);
+        x += iconSize + 8f;
+        CreateInlineAmountText(row, x, textWidth, wood.ToString());
+        x += textWidth + pairGap;
+
+        ConfirmationDialog.CreateCurrencyIcon(row, ConfirmationDialog.GetCurrencyIconPath(CurrencyType.Stone), new Vector2(x, 0), iconSize);
+        x += iconSize + 8f;
+        CreateInlineAmountText(row, x, textWidth, stone.ToString());
+    }
+
+    private void CreateInlineAmountText(RectTransform parent, float x, float width, string amount)
+    {
+        var textObj = new GameObject("Amount", typeof(RectTransform));
+        var textRect = (RectTransform)textObj.transform;
+        textRect.SetParent(parent, false);
+        textRect.anchorMin = new Vector2(0, 0.5f);
+        textRect.anchorMax = new Vector2(0, 0.5f);
+        textRect.pivot = new Vector2(0, 0.5f);
+        textRect.sizeDelta = new Vector2(width, 44);
+        textRect.anchoredPosition = new Vector2(x, 0);
+        var text = textObj.AddComponent<TextMeshProUGUI>();
+        text.text = amount;
+        text.fontSize = ConfirmationDialog.BodyFontSize;
+        text.alignment = TextAlignmentOptions.MidlineLeft;
+        text.color = Color.white;
     }
 
     private void CreateActionButton(RectTransform parent, string label, Vector2 anchorMin, Vector2 anchorMax, Vector2 sizeDelta, System.Action onClick)

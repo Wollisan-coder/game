@@ -90,7 +90,7 @@ public class MapNodeUI : MonoBehaviour
         {
             var canvas = GetComponentInParent<Canvas>();
             if (canvas != null)
-                ConfirmationDialog.ShowInfo(canvas.transform, "Not enough energy to start a battle.");
+                ConfirmationDialog.ShowInfo(canvas.transform, "Not enough energy to start a battle.", iconPath: "UI/Currency/Energy");
             return;
         }
 

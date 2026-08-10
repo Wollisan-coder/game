@@ -37,7 +37,11 @@ public class DeathDungeonManager : MonoBehaviour
         DeathDungeonNodeType.Boss,
     };
 
-    public DeathDungeonNodeType[] currentRunNodes = DefaultNodeSequence;
+    // (DeathDungeonNodeType[])DefaultNodeSequence.Clone(), не прямое присваивание — DefaultNodeSequence
+    // static readonly, но readonly не мешает мутации ЭЛЕМЕНТОВ массива. Найдено 2026-08-10: наивный
+    // in-place shuffle (ровно то, что зовёт сделать комментарий выше про "сезоны") без клонирования
+    // навсегда испортил бы общий DefaultNodeSequence для всех будущих сессий — ничего его не пересоздаёт.
+    public DeathDungeonNodeType[] currentRunNodes = (DeathDungeonNodeType[])DefaultNodeSequence.Clone();
     public int currentNodeIndex = -1;
     public bool IsRunActive => currentNodeIndex >= 0 && currentNodeIndex < currentRunNodes.Length;
     public DeathDungeonNodeType CurrentNodeType => IsRunActive ? currentRunNodes[currentNodeIndex] : DeathDungeonNodeType.Boss;
@@ -72,8 +76,10 @@ public class DeathDungeonManager : MonoBehaviour
     // через PlayerPrefs (не просто в памяти) — иначе рестарт игры тривиально снимал бы недельный дебафф.
     private const string DebuffExpiryKey = "dd_retreat_debuff_expiry";
     private const string LockoutExpiryKey = "dd_retreat_lockout_expiry";
-    private const int RetreatDebuffDays = 5; // 7 -> 5, компромиссная цифра финального ребаланса (см. project_gem_economy_v2_redesign_pending)
-    private const int RetreatLockoutDays = 7;
+    // public — DeathDungeonMapUI.OnRetreated строит текст предупреждения по этим числам, а не хардкодит
+    // свои (найденный 2026-08-10 баг: текст говорил "1 week" на дебафф, когда тот давно 5 дней, а не 7).
+    public const int RetreatDebuffDays = 5; // 7 -> 5, компромиссная цифра финального ребаланса (см. project_gem_economy_v2_redesign_pending)
+    public const int RetreatLockoutDays = 7;
 
     public long retreatDebuffExpiryTicks;
     public long retreatLockoutExpiryTicks;
@@ -132,7 +138,7 @@ public class DeathDungeonManager : MonoBehaviour
 
     public void StartNewRun()
     {
-        currentRunNodes = DefaultNodeSequence;
+        currentRunNodes = (DeathDungeonNodeType[])DefaultNodeSequence.Clone();
         currentNodeIndex = 0;
         activeBuffs.Clear();
         carriedHeroHP.Clear();

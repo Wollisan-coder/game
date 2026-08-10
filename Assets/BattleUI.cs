@@ -54,6 +54,22 @@ public class BattleUI : MonoBehaviour
     private bool wasEnemyShielded;
     private bool wasEnemyDamageBuffed;
     private bool wasEnemyDamageDebuffed;
+    private bool wasEnemyMarkedForDamage;
+
+    // Delayed Damage Mark (Драконы T2, SkillEffectType.DelayedDamageMark) — иконка status_dot.png,
+    // грузится Resources.Load (не Inspector-поле, как остальные 4 — см. EnsureEnemyStatusIcons), потому
+    // что это новая иконка добавляется чисто кодом, без ручной правки сцены.
+    private Image enemyDelayedDamageIcon;
+
+    // Таймер-бейджи поверх всех 5 иконок врага — тот же паттерн, что и у HeroCardUI (см. StatusBadge там),
+    // размер/шрифт считаются от размера самой иконки (см. CreateBadge).
+    private class StatusBadge
+    {
+        public GameObject root;
+        public TMP_Text text;
+    }
+
+    private StatusBadge enemyStunBadge, enemyShieldBadge, enemyDamageBuffBadge, enemyDamageDebuffBadge, enemyDelayedDamageBadge;
 
     // Слоты вместо жёсткой привязки HeroData->текст: отряд собирается игроком из
     // произвольных героев, поэтому слот просто занимает i-й герой из activeHeroes,
@@ -148,6 +164,14 @@ public class BattleUI : MonoBehaviour
         enemyShieldIcon = CreateStatusIcon(containerRect, "ShieldIcon", enemyShieldIconSprite);
         enemyDamageBuffIcon = CreateStatusIcon(containerRect, "DamageBuffIcon", enemyDamageBuffIconSprite);
         enemyDamageDebuffIcon = CreateStatusIcon(containerRect, "DamageDebuffIcon", enemyDamageDebuffIconSprite);
+        // Resources.Load, а не Inspector-поле как остальные 4 — добавлена чисто кодом, без правки сцены.
+        enemyDelayedDamageIcon = CreateStatusIcon(containerRect, "DelayedDamageIcon", Resources.Load<Sprite>("UI/StatusIcons/status_dot"));
+
+        enemyStunBadge = CreateBadge(enemyStunIcon);
+        enemyShieldBadge = CreateBadge(enemyShieldIcon);
+        enemyDamageBuffBadge = CreateBadge(enemyDamageBuffIcon);
+        enemyDamageDebuffBadge = CreateBadge(enemyDamageDebuffIcon);
+        enemyDelayedDamageBadge = CreateBadge(enemyDelayedDamageIcon);
     }
 
     private static Image CreateStatusIcon(RectTransform parent, string name, Sprite sprite)
@@ -165,6 +189,56 @@ public class BattleUI : MonoBehaviour
         return image;
     }
 
+    // Маленький тёмный кружок-бейдж с числом в углу иконки — сидит НАД углом, а не внутри (иконки врага
+    // всего 18x18, число внутри физически не влезло бы). Тот же паттерн, что и HeroCardUI.CreateBadge.
+    // Правый ВЕРХНИЙ угол (было — нижний), размер/шрифт от реального размера иконки — тот же приём,
+    // что и в HeroCardUI.CreateBadge.
+    private static StatusBadge CreateBadge(Image icon)
+    {
+        if (icon == null) return null;
+
+        float iconSize = Mathf.Max(icon.rectTransform.sizeDelta.x, icon.rectTransform.sizeDelta.y);
+        float badgeSize = Mathf.Max(22f, iconSize * 0.55f);
+
+        var rootObj = new GameObject("Badge", typeof(RectTransform));
+        var rootRect = (RectTransform)rootObj.transform;
+        rootRect.SetParent(icon.transform, false);
+        rootRect.anchorMin = new Vector2(1, 1);
+        rootRect.anchorMax = new Vector2(1, 1);
+        rootRect.pivot = new Vector2(0.5f, 0.5f);
+        rootRect.sizeDelta = new Vector2(badgeSize, badgeSize);
+        rootRect.anchoredPosition = Vector2.zero;
+
+        var bg = rootObj.AddComponent<Image>();
+        bg.color = new Color(0f, 0f, 0f, 0.8f);
+        bg.raycastTarget = false;
+
+        var textObj = new GameObject("Text", typeof(RectTransform));
+        var textRect = (RectTransform)textObj.transform;
+        textRect.SetParent(rootRect, false);
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+        var text = textObj.AddComponent<TextMeshProUGUI>();
+        text.alignment = TextAlignmentOptions.Center;
+        text.fontSize = badgeSize * 0.65f;
+        text.color = Color.white;
+        text.raycastTarget = false;
+
+        rootObj.SetActive(false);
+        return new StatusBadge { root = rootObj, text = text };
+    }
+
+    private static void SetStatusBadge(StatusBadge badge, int value)
+    {
+        if (badge?.root == null) return;
+
+        bool show = value > 0;
+        badge.root.SetActive(show);
+        if (show) badge.text.text = value.ToString();
+    }
+
     private void RefreshEnemyStatusIcons()
     {
         if (battleManager == null) return;
@@ -173,22 +247,36 @@ public class BattleUI : MonoBehaviour
         bool isShielded = battleManager.enemyShield > 0;
         bool isDamageBuffed = battleManager.enemyDamageMultiplierTurnsRemaining > 0 && battleManager.enemyDamageMultiplier > 1f;
         bool isDamageDebuffed = battleManager.enemyDamageMultiplierTurnsRemaining > 0 && battleManager.enemyDamageMultiplier < 1f;
+        int soonestMarkTurns = battleManager.GetSoonestPendingDamageTurns();
+        bool isMarkedForDamage = soonestMarkTurns > 0;
 
         if (enemyStunIcon != null) enemyStunIcon.gameObject.SetActive(isStunned);
         if (enemyShieldIcon != null) enemyShieldIcon.gameObject.SetActive(isShielded);
         if (enemyDamageBuffIcon != null) enemyDamageBuffIcon.gameObject.SetActive(isDamageBuffed);
         if (enemyDamageDebuffIcon != null) enemyDamageDebuffIcon.gameObject.SetActive(isDamageDebuffed);
+        if (enemyDelayedDamageIcon != null) enemyDelayedDamageIcon.gameObject.SetActive(isMarkedForDamage);
+
+        // Бейджи — у Stun своего счётчика нет (enemyStunnedNextTurn — bool, ровно 1 ход), у Shield нет
+        // фиксированной длительности (показываем объём щита), у Delayed Damage Mark — ходы до ближайшего взрыва.
+        SetStatusBadge(enemyStunBadge, isStunned ? 1 : 0);
+        SetStatusBadge(enemyShieldBadge, battleManager.enemyShield);
+        SetStatusBadge(enemyDamageBuffBadge, isDamageBuffed ? battleManager.enemyDamageMultiplierTurnsRemaining : 0);
+        SetStatusBadge(enemyDamageDebuffBadge, isDamageDebuffed ? battleManager.enemyDamageMultiplierTurnsRemaining : 0);
+        SetStatusBadge(enemyDelayedDamageBadge, soonestMarkTurns);
 
         // Всплывающая иконка + звук — только в момент, когда эффект только что стал активным
         if (isStunned && !wasEnemyStunned) SpawnEnemyStatusPopup(enemyStunPopupSprite, enemyStunSound, enemyStunPopupSize);
         if (isShielded && !wasEnemyShielded) SpawnEnemyStatusPopup(enemyShieldPopupSprite, enemyShieldSound, enemyShieldPopupSize);
         if (isDamageBuffed && !wasEnemyDamageBuffed) SpawnEnemyStatusPopup(enemyDamageBuffPopupSprite, enemyDamageBuffSound, enemyDamageBuffPopupSize);
         if (isDamageDebuffed && !wasEnemyDamageDebuffed) SpawnEnemyStatusPopup(enemyDamageDebuffPopupSprite, enemyDamageDebuffSound, enemyDamageDebuffPopupSize);
+        if (isMarkedForDamage && !wasEnemyMarkedForDamage && enemyDelayedDamageIcon != null)
+            SpawnEnemyStatusPopup(enemyDelayedDamageIcon.sprite, null, enemyDelayedDamageIcon.rectTransform.sizeDelta.x);
 
         wasEnemyStunned = isStunned;
         wasEnemyShielded = isShielded;
         wasEnemyDamageBuffed = isDamageBuffed;
         wasEnemyDamageDebuffed = isDamageDebuffed;
+        wasEnemyMarkedForDamage = isMarkedForDamage;
     }
 
     private void SpawnEnemyStatusPopup(Sprite sprite, AudioClip sound, float size)
