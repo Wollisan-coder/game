@@ -32,8 +32,17 @@ MonoBehaviour:
     progressPoints: 30
     currency: []
     items: []
-  portrait: {fileID: 21300000, guid: 4b72a765ae2b31b49848e7e894cabbdf, type: 3}
+  portrait: {fileID: 21300000, guid: 931ee284ddd38c048b22c438d31eb7e2, type: 3}
   themeColor: {r: 0.0244749, g: 0.20754719, b: 0.050476167, a: 1}
-  idleFrames: []
-  attackFrames: []
+  idleFrames:
+  - {fileID: 21300000, guid: 931ee284ddd38c048b22c438d31eb7e2, type: 3}
+  attackFrames:
+  - {fileID: 21300000, guid: b3fa4a2423bd50a4985a2ad60b34dffb, type: 3}
+  - {fileID: 21300000, guid: 5e04f08c3b1636f418f30398e48c43e8, type: 3}
+  - {fileID: 21300000, guid: efd4226419c34094aab2f0aeb10eaa59, type: 3}
+  - {fileID: 21300000, guid: 662b7eb2b89ea804ea1c9319dd437f67, type: 3}
+  - {fileID: 21300000, guid: 320098921183d3c4cb5d6bb78467bd2b, type: 3}
+  - {fileID: 21300000, guid: fdb727bad75943a4cb23d11ed8c60215, type: 3}
+  - {fileID: 21300000, guid: 3b158c073cb6bd948b003f5466845fe6, type: 3}
+  - {fileID: 21300000, guid: b982aa1eb4a706f42a8fc002b2367965, type: 3}
   animationFPS: 12

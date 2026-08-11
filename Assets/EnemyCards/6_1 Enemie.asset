@@ -21,11 +21,9 @@ MonoBehaviour:
   damageMultiplier: 1
   price: 100
   skills: []
-  passives: []
-  harmfulTileSpawns:
-  - type: 6
-    count: 1
-    value: 0
+  passives:
+  - {fileID: 0}
+  harmfulTileSpawns: []
   loot:
     accountExperience: 20
     heroExperience: 20
@@ -45,5 +43,6 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 79b2ef1129708084d8d3c5a92dc82296, type: 3}
   - {fileID: 21300000, guid: 9dd221a6d3fca2c449025072d222c2fe, type: 3}
   - {fileID: 21300000, guid: 6ecbf0d124b0b7241aab2133031afeb6, type: 3}
-  - {fileID: 21300000, guid: 964b4da55af213047b9313e6baa76512, type: 3}
+  - {fileID: 21300000, guid: e4b6ffae6518f6e4e96a579609fd9d40, type: 3}
+  - {fileID: 21300000, guid: d837f5c16dbfcdd4ea5ea12306a2a5fc, type: 3}
   animationFPS: 12

@@ -49,8 +49,8 @@ MonoBehaviour:
   - {fileID: -1149938430, guid: babe70984279fa24eafece0ec7e61091, type: 3}
   - {fileID: 304713975, guid: 5257c881c1d575b478d182eeb8ec6149, type: 3}
   - {fileID: 1193595515, guid: 5257c881c1d575b478d182eeb8ec6149, type: 3}
+  - {fileID: 1193595515, guid: 5257c881c1d575b478d182eeb8ec6149, type: 3}
   - {fileID: 1620021627, guid: babe70984279fa24eafece0ec7e61091, type: 3}
-  - {fileID: -1149938430, guid: babe70984279fa24eafece0ec7e61091, type: 3}
-  - {fileID: 1998612748, guid: babe70984279fa24eafece0ec7e61091, type: 3}
-  - {fileID: -1544277945, guid: babe70984279fa24eafece0ec7e61091, type: 3}
-  animationFPS: 16
+  - {fileID: 1620021627, guid: babe70984279fa24eafece0ec7e61091, type: 3}
+  - {fileID: 936053979, guid: babe70984279fa24eafece0ec7e61091, type: 3}
+  animationFPS: 12
