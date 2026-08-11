@@ -53,4 +53,4 @@ MonoBehaviour:
   - {fileID: 1620021627, guid: babe70984279fa24eafece0ec7e61091, type: 3}
   - {fileID: 1620021627, guid: babe70984279fa24eafece0ec7e61091, type: 3}
   - {fileID: 936053979, guid: babe70984279fa24eafece0ec7e61091, type: 3}
-  animationFPS: 12
+  animationFPS: 14

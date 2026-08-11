@@ -35,13 +35,13 @@ MonoBehaviour:
   portrait: {fileID: 21300000, guid: 752d72efe07d86e4895c943fa2f7b0b2, type: 3}
   themeColor: {r: 0.0244749, g: 0.20754719, b: 0.050476167, a: 1}
   idleFrames:
-  - {fileID: 21300000, guid: 3772b98511d86cf4f90ec42c0c617aae, type: 3}
+  - {fileID: 21300000, guid: 752d72efe07d86e4895c943fa2f7b0b2, type: 3}
   attackFrames:
-  - {fileID: 21300000, guid: e5d998d6b614c7f4d91e36a11a72b85c, type: 3}
-  - {fileID: 21300000, guid: c255580e93d8a3f4a81a8e8059dad809, type: 3}
-  - {fileID: 21300000, guid: 8ec230e528fa0284097213609ac57169, type: 3}
-  - {fileID: 21300000, guid: 559a06c2f80dca54fa613cb474a13867, type: 3}
-  - {fileID: 21300000, guid: 0d6dd4e1554e23e4eb4f504699466a32, type: 3}
-  - {fileID: 21300000, guid: 4da07e1c6edfe024887c8ede296e90f1, type: 3}
-  - {fileID: 21300000, guid: b91e15bf8ad647e4f9fc6db6bb05d6dd, type: 3}
+  - {fileID: 21300000, guid: 0192b339ac4e7d947b9e57e68e40259a, type: 3}
+  - {fileID: 21300000, guid: 70bf885a696458843b8c32b7ef16405b, type: 3}
+  - {fileID: 21300000, guid: dc5d2755fb89cad40b7bd81ff19bdb04, type: 3}
+  - {fileID: 21300000, guid: 8211e34be61afd24495dffb6246f88a9, type: 3}
+  - {fileID: 21300000, guid: 25dd63c24358fb84caf5b34dbc8aee3f, type: 3}
+  - {fileID: 21300000, guid: dd3cf523ad9cc38449ee825be0ad7420, type: 3}
+  - {fileID: 21300000, guid: 770a239ad1f293847a7bf047f94e8cf9, type: 3}
   animationFPS: 12
