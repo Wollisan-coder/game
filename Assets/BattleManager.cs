@@ -1307,6 +1307,14 @@ public class BattleManager : MonoBehaviour
         if (rewardNode != null)
             heroXp = EnemyStatCurve.GetHeroExperience(rewardNode.territory, rewardNode.nodeIndex);
 
+        // Death Dungeon не имеет (territory, nodeIndex) — враг выбирается случайно (см. ResolveEnemy), не
+        // с карты. Раньше heroXp тут брался из статичного LootReward.heroExperience конкретного EnemyData
+        // (дефолт 20) и никогда не менялся вместе с правками кривой — гейт-разбор 2026-08-10 нашёл это как
+        // тихое расхождение. Теперь считаем по тому же коэффициенту, что и обычная кривая, но от реального
+        // enemyMaxHP этого боя (уже включает множитель Elite-узла из SetupDeathDungeonNode).
+        if (isDeathDungeon)
+            heroXp = EnemyStatCurve.GetHeroExperienceForHP(enemyMaxHP);
+
         if (rewardNode != null && rewardNode.isFarmNode)
             AchievementManager.Instance?.ReportFarmDungeonCompleted();
 

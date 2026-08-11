@@ -15,7 +15,9 @@ public enum EquipmentSlotType
 public enum ItemCategory
 {
     Equipment,
-    HeroExperience,
+    HeroExperience, // больше не выдаётся/не потребляется нигде в коде (пережиток старой системы предметов-опыта,
+                     // см. project_gem_economy_v2_redesign_pending) — НЕ удалять: HeroVoucher сериализован как
+                     // int 2 в реальных ассетах (HeroVoucherOrange/Purple.asset), удаление сдвинуло бы его на 1
     HeroVoucher
 }
 

@@ -114,16 +114,18 @@ public static class EnemyStatCurve
         return RampToCeiling(reg, nodeIndex, 17);
     }
 
-    // heroExperience растёт тем же коэффициентом, что и HP относительно T1-рядовых (baseHP=80) — см.
+    // heroExperience растёт тем же коэффициентом, что и HP относительно T1-рядовых (maxHP=360) — см.
     // "Вариант C" в памяти: accountExperience остаётся плоским (не отсюда), героям/луту — растёт по кривой.
     private const int BaseHeroXp = 20;
 
-    public static int GetHeroExperience(Race territory, int nodeIndex)
-    {
-        var stats = GetStats(territory, nodeIndex);
-        float ratio = stats.maxHP / (float)T1Reg.maxHP;
-        return Mathf.RoundToInt(BaseHeroXp * ratio);
-    }
+    public static int GetHeroExperience(Race territory, int nodeIndex) =>
+        GetHeroExperienceForHP(GetStats(territory, nodeIndex).maxHP);
+
+    // Тот же коэффициент, что и GetHeroExperience(territory, nodeIndex), но по сырому maxHP врага —
+    // для мест без (territory, nodeIndex)-контекста, например Death Dungeon (случайный враг, не нода
+    // карты), см. BattleManager.EndBattleVictory.
+    public static int GetHeroExperienceForHP(int enemyMaxHP) =>
+        Mathf.RoundToInt(BaseHeroXp * (enemyMaxHP / (float)T1Reg.maxHP));
 
     // Общий множитель ценности лута (Wood/Stone/Shards и т.п.) — применять к базовым суммам, авторимым
     // вручную на EnemyData.loot.currency[], та же логика, что и heroExperience.
