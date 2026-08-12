@@ -84,21 +84,19 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     [Header("Кнопка закрытия")]
     public Button closeButton;
 
-    private Button heroUpgradeButton; // строится программно — прокачать героя за валюту CurrencyType.HeroExperience
-    private Image heroUpgradeBg;
-    private TMP_Text heroUpgradeText;
-
-    // Конвертация банка ascensionGems — 1 кнопка над Upgrade (см. CreateGemConversionUIIfNeeded).
-    // ascensionGems тратятся ТОЛЬКО на AscendHero и на Hero Voucher (Orange-путь) — конвертация в опыт
-    // убрана полностью (см. project_gem_economy_v2_redesign_pending): единая валюта опыта копится сама
-    // по себе через HandleDuplicatePull/ProgressExchangeUI, а не выжимается из гемов вознесения.
-    private TMP_Text gemCountText;
-    private Button convertToVoucherButton;
-    private TMP_Text convertToVoucherText;
+    // Три шага прокачки за CurrencyType.HeroExperience — +1/+10/до потолка текущей ступени вознесения
+    // (см. OnUpgradeStepClicked). int.MaxValue как маркер "до конца", клампится в OnUpgradeStepClicked/
+    // RefreshUpgradeButtonVisibility. Раньше была одна кнопка "Upgrade", тратящая весь баланс разом —
+    // добавлено 2026-08-12 по явному запросу: пошаговая прокачка с превью стоимости на каждой кнопке.
+    private static readonly int[] UpgradeSteps = { 1, 10, int.MaxValue };
+    private static readonly string[] UpgradeStepLabels = { "+1", "+10", "Max" };
+    private readonly Button[] heroUpgradeButtons = new Button[UpgradeSteps.Length];
+    private readonly Image[] heroUpgradeBgs = new Image[UpgradeSteps.Length];
+    private readonly TMP_Text[] heroUpgradeTexts = new TMP_Text[UpgradeSteps.Length];
 
     // Ручной выбор портрета для маркера карты мира (см. HeroCollectionManager.mapAvatarHeroId /
     // PlayerMapMarkerUI) — кнопка видна только для героя на максимальном вознесении, тот же стек, ещё
-    // на шаг выше Gem Conversion.
+    // на шаг выше Upgrade.
     private Button mapAvatarButton;
     private TMP_Text mapAvatarButtonText;
 
@@ -144,7 +142,6 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
         CacheSkillButtonBaseWidths();
         CreateUpgradeButtonIfNeeded();
-        CreateGemConversionUIIfNeeded();
 
         // Панель уже сохранена выключенной в сцене (m_IsActive: 0) — не гасим её здесь ещё раз:
         // если вызвать SetActive(false) из Awake(), а Awake() впервые запускается ИМЕННО во время
@@ -240,7 +237,6 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         RefreshUpgradeButtonTheme();
         RefreshUpgradeButtonVisibility();
         RefreshAscendButton();
-        RefreshGemConversionUI();
         CreateMapAvatarButtonIfNeeded();
         RefreshMapAvatarButton();
     }
@@ -604,11 +600,17 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         PopulateItems();
     }
 
-    private void OnUpgradeClicked()
+    // levelStep — сколько уровней прокачать за клик (1, 10, или int.MaxValue как маркер "до потолка
+    // текущей ступени вознесения"). Тратит РОВНО столько CurrencyType.HeroExperience, сколько нужно, чтобы
+    // дойти до целевого уровня без остатка (см. GetExperienceNeededForLevel) — либо весь доступный баланс,
+    // если его не хватает на полный шаг (тот же принцип частичной траты, что был у старой единой кнопки).
+    private void OnUpgradeStepClicked(int levelStep)
     {
-        if (currentHero == null || HeroCollectionManager.Instance == null || PlayerCurrencies.Instance == null) return;
+        if (currentHero == null || currentOwnership == null || HeroCollectionManager.Instance == null || PlayerCurrencies.Instance == null) return;
 
-        int needed = HeroCollectionManager.Instance.GetExperienceNeededToCap(currentHero.heroId);
+        int levelCap = HeroAscensionUtility.GetLevelCap(currentHero.rarity, currentOwnership.ascensionLevel);
+        int targetLevel = levelStep >= levelCap ? levelCap : Mathf.Min(currentOwnership.level + levelStep, levelCap);
+        int needed = HeroCollectionManager.Instance.GetExperienceNeededForLevel(currentHero.heroId, targetLevel);
         if (needed <= 0) return;
 
         int balance = PlayerCurrencies.Instance.GetBalance(CurrencyType.HeroExperience);
@@ -622,71 +624,60 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         }
     }
 
-    // Кнопку "Upgrade" строим программно рядом с Close (копируя его трансформ),
-    // чтобы не редактировать вручную разметку панели героя в сцене.
+    // 3 кнопки в один ряд (тот же слот, что раньше занимала одна "Upgrade") строим программно рядом с
+    // Close (копируя его трансформ, поделённый на 3 колонки), чтобы не редактировать вручную разметку
+    // панели героя в сцене.
     private void CreateUpgradeButtonIfNeeded()
     {
-        if (heroUpgradeButton != null) return;
+        if (heroUpgradeButtons[0] != null) return;
 
         RectTransform referenceRect = closeButton != null ? closeButton.GetComponent<RectTransform>() : null;
         if (referenceRect == null) return;
 
-        var upgradeObj = new GameObject("HeroUpgradeButton", typeof(RectTransform));
-        var upgradeRect = (RectTransform)upgradeObj.transform;
-        upgradeRect.SetParent(referenceRect.parent, false);
-        upgradeRect.anchorMin = referenceRect.anchorMin;
-        upgradeRect.anchorMax = referenceRect.anchorMax;
-        upgradeRect.pivot = referenceRect.pivot;
-        upgradeRect.sizeDelta = referenceRect.sizeDelta;
-        upgradeRect.anchoredPosition = referenceRect.anchoredPosition + new Vector2(0, referenceRect.sizeDelta.y + 12f);
+        Vector2 rowPos = referenceRect.anchoredPosition + new Vector2(0, referenceRect.sizeDelta.y + 12f);
+        const float gap = 8f;
+        float btnWidth = (referenceRect.sizeDelta.x - gap * 2f) / 3f;
+        float height = referenceRect.sizeDelta.y;
 
-        heroUpgradeBg = upgradeObj.AddComponent<Image>();
-        heroUpgradeButton = upgradeObj.AddComponent<Button>();
-        heroUpgradeButton.onClick.AddListener(OnUpgradeClicked);
+        for (int i = 0; i < UpgradeSteps.Length; i++)
+        {
+            int step = UpgradeSteps[i]; // локальная копия — безопасна для замыкания кнопки ниже
+            float xOffset = (i - 1) * (btnWidth + gap);
 
-        var textObj = new GameObject("Text", typeof(RectTransform));
-        var textRect = (RectTransform)textObj.transform;
-        textRect.SetParent(upgradeRect, false);
-        textRect.anchorMin = Vector2.zero;
-        textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = Vector2.zero;
-        textRect.offsetMax = Vector2.zero;
-        heroUpgradeText = textObj.AddComponent<TextMeshProUGUI>();
-        heroUpgradeText.text = "Upgrade";
-        heroUpgradeText.alignment = TextAlignmentOptions.Center;
+            var upgradeObj = new GameObject($"HeroUpgradeButton_{UpgradeStepLabels[i]}", typeof(RectTransform));
+            var upgradeRect = (RectTransform)upgradeObj.transform;
+            upgradeRect.SetParent(referenceRect.parent, false);
+            upgradeRect.anchorMin = referenceRect.anchorMin;
+            upgradeRect.anchorMax = referenceRect.anchorMax;
+            upgradeRect.pivot = referenceRect.pivot;
+            upgradeRect.sizeDelta = new Vector2(btnWidth, height);
+            upgradeRect.anchoredPosition = rowPos + new Vector2(xOffset, 0);
 
-        heroUpgradeButton.gameObject.SetActive(false);
+            heroUpgradeBgs[i] = upgradeObj.AddComponent<Image>();
+            heroUpgradeButtons[i] = upgradeObj.AddComponent<Button>();
+            heroUpgradeButtons[i].onClick.AddListener(() => OnUpgradeStepClicked(step));
+
+            var textObj = new GameObject("Text", typeof(RectTransform));
+            var textRect = (RectTransform)textObj.transform;
+            textRect.SetParent(upgradeRect, false);
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = Vector2.zero;
+            textRect.offsetMax = Vector2.zero;
+            heroUpgradeTexts[i] = textObj.AddComponent<TextMeshProUGUI>();
+            heroUpgradeTexts[i].text = UpgradeStepLabels[i];
+            heroUpgradeTexts[i].alignment = TextAlignmentOptions.Center;
+            heroUpgradeTexts[i].enableAutoSizing = true;
+            heroUpgradeTexts[i].fontSizeMin = 10;
+            heroUpgradeTexts[i].fontSizeMax = 20;
+
+            upgradeObj.SetActive(false);
+        }
     }
 
-    // Счётчик + кнопка, ещё на 1 шаг выше Upgrade — потратить банк ascensionGems этого героя на Hero Voucher
-    // (см. HeroCollectionManager.ConvertGemToVoucher). Только для Purple/Orange — у остальных редкостей
-    // ascensionGems не копится вообще (см. HandleDuplicatePull).
-    private void CreateGemConversionUIIfNeeded()
-    {
-        if (convertToVoucherButton != null) return;
-
-        RectTransform referenceRect = closeButton != null ? closeButton.GetComponent<RectTransform>() : null;
-        if (referenceRect == null) return;
-
-        float stepY = referenceRect.sizeDelta.y + 12f;
-        Vector2 rowBase = referenceRect.anchoredPosition + new Vector2(0, stepY * 2.3f);
-
-        var countObj = new GameObject("AscensionGemCount", typeof(RectTransform));
-        var countRect = (RectTransform)countObj.transform;
-        countRect.SetParent(referenceRect.parent, false);
-        countRect.anchorMin = referenceRect.anchorMin;
-        countRect.anchorMax = referenceRect.anchorMax;
-        countRect.pivot = referenceRect.pivot;
-        countRect.sizeDelta = new Vector2(referenceRect.sizeDelta.x * 2.2f, referenceRect.sizeDelta.y * 0.6f);
-        countRect.anchoredPosition = rowBase + new Vector2(0, stepY * 0.75f);
-        gemCountText = countObj.AddComponent<TextMeshProUGUI>();
-        gemCountText.alignment = TextAlignmentOptions.Center;
-        gemCountText.fontSize = 18;
-        gemCountText.color = Color.white;
-
-        convertToVoucherButton = BuildGemConversionButton(referenceRect, rowBase, "+1 Voucher", OnConvertGemToVoucherClicked, out convertToVoucherText);
-    }
-
+    // Общий билдер подписанной кнопки в том же вертикальном стеке над Upgrade — использовался и гемом-в-
+    // ваучер (кнопка теперь на плитке AscensionGemTile, см. project_hero_experience_audit_2026_08_11 /
+    // AscensionGemTileUI.OnClicked), и Map Avatar ниже, остаётся общим ради второго.
     private Button BuildGemConversionButton(RectTransform referenceRect, Vector2 anchoredPos, string label, UnityEngine.Events.UnityAction onClick, out TMP_Text text)
     {
         var obj = new GameObject(label.Replace(" ", "").Replace("+", "") + "Button", typeof(RectTransform));
@@ -721,32 +712,11 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         return btn;
     }
 
-    private void OnConvertGemToVoucherClicked()
-    {
-        if (currentHero == null || HeroCollectionManager.Instance == null) return;
-
-        HeroCollectionManager.Instance.ConvertGemToVoucher(currentHero.heroId);
-        Refresh();
-    }
-
-    private void RefreshGemConversionUI()
-    {
-        if (gemCountText == null || currentHero == null || currentOwnership == null) return;
-
-        bool relevant = HeroAscensionUtility.GetMaxAscension(currentHero.rarity) > 0;
-        gemCountText.gameObject.SetActive(relevant);
-        convertToVoucherButton?.gameObject.SetActive(relevant && currentOwnership.voucherConversionUnlocked);
-        if (!relevant) return;
-
-        gemCountText.text = $"Ascension Gems: {currentOwnership.ascensionGems}";
-
-        if (convertToVoucherButton != null)
-            convertToVoucherButton.interactable = currentOwnership.ascensionGems >= 1;
-    }
-
     // Ручной выбор портрета для маркера карты мира — доступно только на максимальном вознесении (см.
     // HeroCollectionManager.mapAvatarHeroId / PlayerMapMarkerUI.RefreshHeroVisual). Переиспользует
     // BuildGemConversionButton — тот на самом деле общий билдер подписанной кнопки, не только для гемов.
+    // Позиция (2.3 шага) — та же, что раньше занимала кнопка "гем -> Voucher" (см. BuildGemConversionButton),
+    // освободившаяся после переноса той кнопки на плитку AscensionGemTile.
     private void CreateMapAvatarButtonIfNeeded()
     {
         if (mapAvatarButton != null) return;
@@ -755,7 +725,7 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         if (referenceRect == null) return;
 
         float stepY = referenceRect.sizeDelta.y + 12f;
-        Vector2 pos = referenceRect.anchoredPosition + new Vector2(0, stepY * 3.3f);
+        Vector2 pos = referenceRect.anchoredPosition + new Vector2(0, stepY * 2.3f);
 
         mapAvatarButton = BuildGemConversionButton(referenceRect, pos, "Set as Map Avatar", OnMapAvatarClicked, out mapAvatarButtonText);
     }
@@ -946,19 +916,35 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
     private void RefreshUpgradeButtonTheme()
     {
-        if (heroUpgradeBg != null) ConfirmationDialog.StyleAsButton(heroUpgradeBg);
-        if (heroUpgradeText != null) heroUpgradeText.color = ConfirmationDialog.ButtonTextColor;
+        foreach (var bg in heroUpgradeBgs)
+            if (bg != null) ConfirmationDialog.StyleAsButton(bg);
+        foreach (var text in heroUpgradeTexts)
+            if (text != null) text.color = ConfirmationDialog.ButtonTextColor;
     }
 
+    // Каждая из 3 кнопок показывает собственную цену (сколько HeroExperience нужно для ЭТОГО шага) и
+    // скрывается, если шаг уже недостижим (герой уже на потолке текущей ступени вознесения) — интерактивность
+    // отдельно от видимости, чтобы игрок видел точную цену, даже если валюты пока не хватает на неё.
     private void RefreshUpgradeButtonVisibility()
     {
-        if (heroUpgradeButton == null || currentHero == null
+        if (heroUpgradeButtons[0] == null || currentHero == null || currentOwnership == null
             || HeroCollectionManager.Instance == null || PlayerCurrencies.Instance == null) return;
 
-        int needed = HeroCollectionManager.Instance.GetExperienceNeededToCap(currentHero.heroId);
+        int levelCap = HeroAscensionUtility.GetLevelCap(currentHero.rarity, currentOwnership.ascensionLevel);
         int balance = PlayerCurrencies.Instance.GetBalance(CurrencyType.HeroExperience);
 
-        heroUpgradeButton.gameObject.SetActive(needed > 0 && balance > 0);
-        if (heroUpgradeText != null) heroUpgradeText.text = $"Upgrade ({Mathf.Min(needed, balance)})";
+        for (int i = 0; i < UpgradeSteps.Length; i++)
+        {
+            int targetLevel = UpgradeSteps[i] >= levelCap ? levelCap : Mathf.Min(currentOwnership.level + UpgradeSteps[i], levelCap);
+            int needed = HeroCollectionManager.Instance.GetExperienceNeededForLevel(currentHero.heroId, targetLevel);
+
+            bool visible = needed > 0;
+            heroUpgradeButtons[i].gameObject.SetActive(visible);
+            if (!visible) continue;
+
+            heroUpgradeButtons[i].interactable = balance > 0;
+            if (heroUpgradeTexts[i] != null)
+                heroUpgradeTexts[i].text = $"{UpgradeStepLabels[i]}\n({Mathf.Min(needed, balance)}/{needed})";
+        }
     }
 }

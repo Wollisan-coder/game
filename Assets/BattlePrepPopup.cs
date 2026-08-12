@@ -276,13 +276,25 @@ public static class BattlePrepPopup
         cellRect.sizeDelta = new Vector2(110, 110);
 
         var bg = cellObj.AddComponent<Image>();
-        bg.color = HarmfulTileUtility.GetColor(rule.type);
         var btn = cellObj.AddComponent<Button>();
         btn.targetGraphic = bg;
         var type = rule.type;
         int value = rule.value;
         btn.onClick.AddListener(() =>
             ConfirmationDialog.ShowInfo(popupRoot, HarmfulTileUtility.GetDescription(type, value), title: type.ToString()));
+
+        // Реальный арт, если он найден (см. HarmfulTileUtility.GetIcon) — иначе старая цветная плашка с
+        // коротким лейблом как fallback (типы, под которые своего арта ещё не завезли).
+        var sprite = HarmfulTileUtility.GetIcon(type);
+        if (sprite != null)
+        {
+            bg.sprite = sprite;
+            bg.color = Color.white;
+            bg.preserveAspect = true;
+            return;
+        }
+
+        bg.color = HarmfulTileUtility.GetColor(type);
 
         var textObj = new GameObject("Text", typeof(RectTransform));
         var textRect = (RectTransform)textObj.transform;
@@ -292,7 +304,7 @@ public static class BattlePrepPopup
         textRect.offsetMin = Vector2.zero;
         textRect.offsetMax = Vector2.zero;
         var text = textObj.AddComponent<TextMeshProUGUI>();
-        text.text = HarmfulTileUtility.GetShortLabel(rule.type);
+        text.text = HarmfulTileUtility.GetShortLabel(type);
         text.fontSize = ConfirmationDialog.MinTextFontSize;
         text.fontStyle = FontStyles.Bold;
         text.alignment = TextAlignmentOptions.Center;

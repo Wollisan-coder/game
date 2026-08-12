@@ -173,6 +173,54 @@ public static class ConfirmationDialog
         });
     }
 
+    // Как Show(), но с настраиваемым текстом кнопки подтверждения вместо фиксированного "Yes" — для
+    // конкретных именованных действий (например "Convert 1 Gem -> Voucher"), а не общего да/нет.
+    public static void ShowChoice(Transform parent, string message, string confirmLabel, System.Action onConfirm, string title = null, float windowHeight = MinWindowHeight)
+    {
+        var (overlay, windowRect) = BuildBase(parent, message, windowHeight, title);
+
+        CreateButton(windowRect, confirmLabel, new Vector2(0.27f, 0.12f), ButtonColor, () =>
+        {
+            Object.Destroy(overlay);
+            onConfirm?.Invoke();
+        });
+
+        CreateButton(windowRect, "Cancel", new Vector2(0.73f, 0.12f), ButtonColor, () =>
+        {
+            Object.Destroy(overlay);
+        });
+    }
+
+    // Как ShowChoice(), но с ЛЮБЫМ числом именованных НЕЗАВИСИМЫХ действий в один ряд (не да/нет-выбор,
+    // где одно действие обязательно отменяет другое) — например Wear/Disenchant на плитке Дивной брони
+    // (см. WondrousArmorTileUI.OnClicked), где оба видны сразу и клик по любому просто закрывает попап.
+    // action.interactable — например, "Wear" неактивна, если уже надето.
+    public static void ShowActions(Transform parent, string message, string title, (string label, bool interactable, System.Action onClick)[] actions, float windowHeight = MinWindowHeight)
+    {
+        var (overlay, windowRect) = BuildBase(parent, message, windowHeight, title);
+
+        const float btnWidth = 300f;
+        const float gap = 16f;
+        float totalWidth = actions.Length * btnWidth + (actions.Length - 1) * gap;
+        float startX = -totalWidth / 2f + btnWidth / 2f;
+
+        for (int i = 0; i < actions.Length; i++)
+        {
+            var action = actions[i];
+            float x = startX + i * (btnWidth + gap);
+            CreateActionButton(windowRect, action.label, x, btnWidth, action.interactable, () =>
+            {
+                Object.Destroy(overlay);
+                action.onClick?.Invoke();
+            });
+        }
+
+        CreateButton(windowRect, "Close", new Vector2(0.5f, 0.12f), ButtonColor, () =>
+        {
+            Object.Destroy(overlay);
+        });
+    }
+
     // Информационное сообщение с единственной кнопкой "Ok" — без варианта выбора.
     // windowHeight — по умолчанию 170 (старый расчёт под маленькое окно) — теперь это просто минимум,
     // реальная высота окна не бывает меньше MinWindowHeight, так что старые вызовы с 170/190/220
@@ -362,5 +410,41 @@ public static class ConfirmationDialog
         text.enableAutoSizing = true;
         text.fontSizeMin = 18;
         text.fontSizeMax = 34;
+    }
+
+    // Как CreateButton(), но с явной шириной (для N кнопок в ряд, см. ShowActions) и управляемой
+    // interactable — CreateButton не отдаёт наружу сам Button, тут это нужно.
+    private static void CreateActionButton(RectTransform parent, string label, float xOffset, float width, bool interactable, System.Action onClick)
+    {
+        var btnObj = new GameObject(label, typeof(RectTransform));
+        var btnRect = (RectTransform)btnObj.transform;
+        btnRect.SetParent(parent, false);
+        btnRect.anchorMin = new Vector2(0.5f, 0.28f);
+        btnRect.anchorMax = new Vector2(0.5f, 0.28f);
+        btnRect.pivot = new Vector2(0.5f, 0.5f);
+        btnRect.sizeDelta = new Vector2(width, 84);
+        btnRect.anchoredPosition = new Vector2(xOffset, 0);
+
+        var img = btnObj.AddComponent<Image>();
+        StyleAsButton(img);
+        var btn = btnObj.AddComponent<Button>();
+        btn.interactable = interactable;
+        btn.onClick.AddListener(() => onClick?.Invoke());
+
+        var textObj = new GameObject("Text", typeof(RectTransform));
+        var textRect = (RectTransform)textObj.transform;
+        textRect.SetParent(btnRect, false);
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+        var text = textObj.AddComponent<TextMeshProUGUI>();
+        text.text = label;
+        text.alignment = TextAlignmentOptions.Center;
+        text.color = ButtonTextColor;
+        text.fontStyle = FontStyles.Bold;
+        text.enableAutoSizing = true;
+        text.fontSizeMin = 14;
+        text.fontSizeMax = 30;
     }
 }

@@ -7,9 +7,45 @@ using TMPro;
 public static class ItemBadgeUtility
 {
     private const float FrameOutset = 4f;
+    private const int BorderTexSize = 16;
+    private const int BorderThicknessPx = 3;
+
+    private static Sprite borderSprite;
+
+    // Тонкая процедурная 9-slice рамка (полая, без заливки середины) — раньше ApplyRarityFrame красило
+    // сплошной прямоугольник позади иконки, что на предметах с прозрачными краями (много "воздуха" вокруг
+    // 3D-рендера) выглядело как грубая цветная плашка на весь тайл (жалоба пользователя 2026-08-12).
+    // Никакого нового арт-файла не нужно — текстура генерируется в рантайме один раз и кэшируется.
+    private static Sprite GetBorderSprite()
+    {
+        if (borderSprite != null) return borderSprite;
+
+        var tex = new Texture2D(BorderTexSize, BorderTexSize, TextureFormat.RGBA32, false);
+        tex.filterMode = FilterMode.Bilinear;
+        tex.wrapMode = TextureWrapMode.Clamp;
+
+        var pixels = new Color32[BorderTexSize * BorderTexSize];
+        for (int y = 0; y < BorderTexSize; y++)
+        {
+            for (int x = 0; x < BorderTexSize; x++)
+            {
+                bool onBorder = x < BorderThicknessPx || x >= BorderTexSize - BorderThicknessPx
+                    || y < BorderThicknessPx || y >= BorderTexSize - BorderThicknessPx;
+                pixels[y * BorderTexSize + x] = onBorder ? new Color32(255, 255, 255, 255) : new Color32(255, 255, 255, 0);
+            }
+        }
+        tex.SetPixels32(pixels);
+        tex.Apply();
+
+        borderSprite = Sprite.Create(tex, new Rect(0, 0, BorderTexSize, BorderTexSize), new Vector2(0.5f, 0.5f), 100f,
+            0, SpriteMeshType.FullRect, new Vector4(BorderThicknessPx, BorderThicknessPx, BorderThicknessPx, BorderThicknessPx));
+        return borderSprite;
+    }
 
     // Цветная рамка редкости позади иконки. Копирует трансформ иконки и немного "раздувает" её,
     // поэтому работает одинаково независимо от того, растянута ли иконка на всю ячейку или имеет фиксированный размер.
+    // frame остаётся обычным Image — можно красить через frame.color напрямую (см. AscensionGemTileUI.Setup),
+    // 9-slice спрайт просто заменяет заливку на полый контур того же цвета.
     public static void ApplyRarityFrame(Image icon, Color rarityColor, ref Image frame)
     {
         if (icon == null) return;
@@ -29,6 +65,8 @@ public static class ItemBadgeUtility
             frameRect.sizeDelta = iconRect.sizeDelta + new Vector2(FrameOutset * 2f, FrameOutset * 2f);
 
             frame = frameObj.GetComponent<Image>();
+            frame.sprite = GetBorderSprite();
+            frame.type = Image.Type.Sliced;
         }
 
         frame.color = rarityColor;

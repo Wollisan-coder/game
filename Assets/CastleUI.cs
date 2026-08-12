@@ -23,6 +23,7 @@ public class CastleUI : MonoBehaviour
 
     private CastleSummonUI summonUI;
     private ProgressExchangeUI exchangeUI;
+    private DebugConstructorUI debugConstructorUI;
     private DailyQuestUI dailyQuestUI;
     private AchievementUI achievementUI;
     private DeathDungeonEntryUI deathDungeonEntryUI;
@@ -186,12 +187,15 @@ public class CastleUI : MonoBehaviour
         // Second row above the first — keeps the already-working bottom row untouched instead of
         // squeezing a 5th button into it. Boss Training moved off this row onto its own map hotspot
         // (Training zone.png, see CreateTrainingZoneHotspot) once the user provided real art for it.
-        CreateNavButton(panelRect, "Exchange", new Vector2(0, 160), () => { exchangeUI?.Open(canvasRoot, Refresh); });
+        CreateNavButton(panelRect, "Shop", new Vector2(0, 160), () => { exchangeUI?.Open(canvasRoot, Refresh); });
+        // Debug Constructor (бэклог 2026-08-10 #6) — тестовый отряд/шмот без гринда, см. DebugConstructorUI.
+        CreateNavButton(panelRect, "Debug", new Vector2(220, 160), () => { debugConstructorUI?.Open(canvasRoot); });
         // Mines — обратно в Замок (была временно на World Map). Реальный арт — Resources/UI/Castle/Mines.png.
         CreateMinesIconButton(panelRect, new Vector2(486, 470));
 
         summonUI = gameObject.AddComponent<CastleSummonUI>();
         exchangeUI = gameObject.AddComponent<ProgressExchangeUI>();
+        debugConstructorUI = gameObject.AddComponent<DebugConstructorUI>();
         dailyQuestUI = gameObject.AddComponent<DailyQuestUI>();
         achievementUI = gameObject.AddComponent<AchievementUI>();
         deathDungeonEntryUI = gameObject.AddComponent<DeathDungeonEntryUI>();

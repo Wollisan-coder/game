@@ -14,7 +14,9 @@ public static class AscensionGemGridUtility
 
     // Возвращает true, если хотя бы одна плитка была создана — вызывающий использует это для показа
     // своего собственного empty-state лейбла (текст лейбла у каждого экрана свой, поэтому наружу).
-    public static bool Populate(Transform container, HeroCollectionManager manager)
+    // onChanged — зовётся после конвертации гема в Voucher прямо с плитки (см. AscensionGemTileUI), тот
+    // же приём, что и у WondrousArmorGridUtility.Populate — обычно это PopulateGrid вызывающего экрана.
+    public static bool Populate(Transform container, HeroCollectionManager manager, System.Action onChanged)
     {
         if (container == null || manager == null) return false;
 
@@ -31,7 +33,7 @@ public static class AscensionGemGridUtility
 
             GameObject tileObj = Object.Instantiate(tilePrefab, container);
             tileObj.name = hero.heroId + "_AscensionGem";
-            tileObj.GetComponent<AscensionGemTileUI>()?.Setup(hero, ownership);
+            tileObj.GetComponent<AscensionGemTileUI>()?.Setup(hero, ownership, onChanged);
         }
 
         return gemHolders.Count > 0;

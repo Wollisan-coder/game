@@ -21,6 +21,7 @@ public class ItemDetailUI : MonoBehaviour
     private ItemData currentItem;
     private ItemOwnershipData currentStack; // null = предмет не получен (locked)
     private Image rarityFrame;
+    private TMP_Text levelBadgeText; // маленький бедж уровня прямо на портрете (см. ItemBadgeUtility.ApplyLevelBadge) — уже был в карточках каталога/пикера, тут отсутствовал
     private TMP_Text infoText;      // Rarity + Lvl + прогресс Exp (или количество — для расходных предметов)
 
     private Button actionButton;    // "Redeem" (HeroVoucher) или "Sacrifice" (Equipment) — в зависимости от категории
@@ -115,6 +116,7 @@ public class ItemDetailUI : MonoBehaviour
             ownedStatusText.text = owned ? "Owned" : "Not owned";
 
         ItemBadgeUtility.ApplyRarityFrame(icon, item.GetRarityColor(), ref rarityFrame);
+        ItemBadgeUtility.ApplyLevelBadge(icon != null ? icon.rectTransform : null, owned ? ownership.level : 0, ref levelBadgeText);
 
         var manager = ItemCollectionManager.Instance;
         int maxLevel = item.GetMaxLevel();
@@ -198,6 +200,51 @@ public class ItemDetailUI : MonoBehaviour
         actionText.color = ConfirmationDialog.ButtonTextColor;
 
         actionButton.gameObject.SetActive(false);
+
+        // ownedStatusText не подключён в сцене (MainMenuScene.unity: ownedStatusText: {fileID: 0}) — "Owned"/
+        // "Not owned" из Refresh() никуда не писался. Тот же приём самодостаточной фолбэк-разметки, что и у
+        // infoText/actionButton выше — строим сами, если Inspector-поле пустое, не трогаем, если уже wired.
+        if (ownedStatusText == null)
+        {
+            var statusObj = new GameObject("OwnedStatusTextAuto", typeof(RectTransform));
+            var statusRect = (RectTransform)statusObj.transform;
+            statusRect.SetParent(panelRect, false);
+            statusRect.anchorMin = new Vector2(0, 1);
+            statusRect.anchorMax = new Vector2(0, 1);
+            statusRect.pivot = new Vector2(0, 1);
+            statusRect.sizeDelta = new Vector2(240, 50);
+            statusRect.anchoredPosition = new Vector2(40, -40);
+            ownedStatusText = statusObj.AddComponent<TextMeshProUGUI>();
+            ownedStatusText.fontSize = 28;
+            ownedStatusText.alignment = TextAlignmentOptions.TopLeft;
+            ownedStatusText.color = Color.white;
+        }
+
+        // descriptionText САМ подключён в сцене, но без фоновой панели (descriptionBg: {fileID: 0}) и без
+        // авто-масштабирования (фиксированный 36pt) — длинное авторское описание молча обрежется/вылезет
+        // за рамку, а на пёстром фоне карточки короткое может потеряться без подложки. Панель копирует
+        // трансформ текста (тот же приём, что ItemBadgeUtility.ApplyRarityFrame для иконки).
+        if (descriptionText != null && descriptionBg == null)
+        {
+            var descRect = descriptionText.rectTransform;
+
+            var bgObj = new GameObject("DescriptionBgAuto", typeof(RectTransform));
+            var bgRect = (RectTransform)bgObj.transform;
+            bgRect.SetParent(descRect.parent, false);
+            bgRect.SetSiblingIndex(descRect.GetSiblingIndex()); // позади текста
+            bgRect.anchorMin = descRect.anchorMin;
+            bgRect.anchorMax = descRect.anchorMax;
+            bgRect.pivot = descRect.pivot;
+            bgRect.anchoredPosition = descRect.anchoredPosition;
+            bgRect.sizeDelta = descRect.sizeDelta + new Vector2(24, 24);
+
+            descriptionBg = bgObj.AddComponent<Image>();
+            ConfirmationDialog.StyleAsDescriptionPanel(descriptionBg);
+
+            descriptionText.enableAutoSizing = true;
+            descriptionText.fontSizeMin = 16;
+            descriptionText.fontSizeMax = 36;
+        }
 
         sacrificeUI = gameObject.AddComponent<ItemSacrificeUI>();
         heroVoucherRedeemUI = gameObject.AddComponent<HeroVoucherRedeemUI>();

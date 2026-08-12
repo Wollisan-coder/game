@@ -1,12 +1,26 @@
 using UnityEngine;
 
-// Текстовые описания + цвет-заглушка для вредных фишек поля (см. HarmfulTileSpawnRule) — используется
+// Текстовые описания + иконки для вредных фишек поля (см. HarmfulTileSpawnRule) — используется
 // BattlePrepPopup (иконка + попап-описание перед боем) и годится для переиспользования где угодно ещё,
-// где нужно объяснить игроку конкретный тип вредной фишки. Реального 2D-арта под иконки пока нет —
-// цветная плашка с коротким лейблом, тот же приём, что и другие процедурные заглушки в проекте
-// (см. CastleUI.CreateMinesIconButton до того, как появился реальный арт).
+// где нужно объяснить игроку конкретный тип вредной фишки.
+// Реальный арт — Resources/UI/HarmfulTiles/<Type>.png (см. GetIcon), скопирован 2026-08-12 из
+// "Assets/3inrow base/" и переключён на Sprite (см. Editor/HarmfulTileIconImporter, Tools/Import Harmful
+// Tile Icons) — GetColor/GetShortLabel остаются как fallback на случай, если Resources.Load не найдёт
+// спрайт (например для будущих типов, под которые своего арта ещё не завезли).
 public static class HarmfulTileUtility
 {
+    private static readonly System.Collections.Generic.Dictionary<HarmfulTileType, Sprite> IconCache =
+        new System.Collections.Generic.Dictionary<HarmfulTileType, Sprite>();
+
+    public static Sprite GetIcon(HarmfulTileType type)
+    {
+        if (IconCache.TryGetValue(type, out var cached)) return cached;
+
+        var sprite = Resources.Load<Sprite>($"UI/HarmfulTiles/{type}");
+        IconCache[type] = sprite; // кэшируем и null — чтобы не повторять Resources.Load на каждый показ попапа для типов без арта
+        return sprite;
+    }
+
     public static string GetDescription(HarmfulTileType type, int value)
     {
         return type switch

@@ -15,9 +15,12 @@ public class AscensionGemTileUI : MonoBehaviour
     public TMP_Text quantityBadge;
     public Button button;
 
-    // Клика нет даже для запертых героев с гемом (см. HeroCollectionManager.GrantGemToHero) — призыв
-    // живёт ТОЛЬКО в HeroCollectionUI, эта плитка чисто витрина.
-    public void Setup(HeroData hero, HeroOwnershipData ownership)
+    // Клик теперь открывает попап с описанием + (если у героя voucherConversionUnlocked, т.е. хоть раз
+    // дошёл до 3-го вознесения) кнопку "гем -> Voucher" — раньше эта кнопка жила только в HeroInventoryUI
+    // (см. её CreateGemConversionUIIfNeeded), перенесена сюда 2026-08-12, чтобы действие было прямо на
+    // самой витрине банка гемов, а не спрятано в отдельном экране инвентаря героя. Призыв запертого героя
+    // по-прежнему НЕ отсюда — так и остаётся только в HeroCollectionUI (см. GrantGemToHero).
+    public void Setup(HeroData hero, HeroOwnershipData ownership, System.Action onChanged)
     {
         if (hero == null) return;
 
@@ -38,6 +41,50 @@ public class AscensionGemTileUI : MonoBehaviour
         if (quantityBadgeRoot != null) quantityBadgeRoot.SetActive(gems > 1);
         if (quantityBadge != null) quantityBadge.text = $"x{gems}";
 
-        if (button != null) button.interactable = false;
+        if (button != null)
+        {
+            button.interactable = true;
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(() => OnClicked(hero, ownership, onChanged));
+        }
+    }
+
+    private void OnClicked(HeroData hero, HeroOwnershipData ownership, System.Action onChanged)
+    {
+        if (hero == null || ownership == null) return;
+
+        var canvas = GetComponentInParent<Canvas>();
+        Transform canvasRoot = canvas != null ? canvas.transform : transform;
+
+        int gems = ownership.ascensionGems;
+        string plural = gems == 1 ? "" : "s";
+        string body = ownership.isUnlocked
+            ? $"{hero.heroName}\n{gems} Ascension Gem{plural}\n\n" +
+              "Earned from duplicate pulls of this hero after you already own it. Spend gems on Ascend " +
+              "(Hero Inventory — raises the level cap) or, once this hero has reached max ascension, " +
+              "convert them into a Hero Voucher of the same rarity."
+            : $"{hero.heroName} (locked)\n{gems} Ascension Gem{plural}\n\n" +
+              "This hero isn't unlocked yet — the gem bank carries over once you summon them.";
+
+        if (ownership.voucherConversionUnlocked && gems >= 1)
+        {
+            // ShowActions (не ShowChoice) — та же кнопка-примитив, что и у WondrousArmorTileUI.OnClicked,
+            // даёт контролируемую ширину кнопки (не обрезает "Convert 1 Gem -> Voucher") и вдвое более
+            // высокое окно (windowHeight: 1000) — жалоба пользователя 2026-08-12 была именно на это у
+            // соседнего попапа Wondrous Armor, тот же фикс применён и здесь для единообразия.
+            var actions = new (string label, bool interactable, System.Action onClick)[]
+            {
+                ("Convert 1 Gem -> Voucher", true, () =>
+                {
+                    HeroCollectionManager.Instance?.ConvertGemToVoucher(hero.heroId);
+                    onChanged?.Invoke();
+                }),
+            };
+            ConfirmationDialog.ShowActions(canvasRoot, body, "Ascension Gems", actions, windowHeight: 1000f);
+        }
+        else
+        {
+            ConfirmationDialog.ShowInfo(canvasRoot, body, title: "Ascension Gems");
+        }
     }
 }

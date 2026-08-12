@@ -41,8 +41,34 @@ public class ItemPickerUI : MonoBehaviour
 
         transform.SetAsLastSibling(); // иначе панель, из которой открыто (например, HeroInventoryUI), может перекрыть эту сверху
         gameObject.SetActive(true);
+        StylePanelChrome();
         RefreshUpgradeButtonTheme();
         Populate();
+    }
+
+    // Window/Close/Unequip были собраны в сцене на дефолтном Unity-спрайте (плоская белая заливка) —
+    // единственное место в инвентарном UI, не подхватившее общий ornate-стиль (ConfirmationDialog).
+    // Жалоба пользователя 2026-08-12. Перекрашиваем программно, не трогая саму сцену — тот же приём,
+    // что и RefreshUpgradeButtonTheme ниже (пере-стилизуется на каждый Open, чтобы правки палитры в коде
+    // сразу применялись без выхода из Play Mode).
+    private void StylePanelChrome()
+    {
+        var windowBg = transform.Find("Window")?.GetComponent<Image>();
+        if (windowBg != null) ConfirmationDialog.StyleAsPanel(windowBg);
+
+        StyleButton(closeButton);
+        StyleButton(unequipButton);
+    }
+
+    private static void StyleButton(Button button)
+    {
+        if (button == null) return;
+
+        var img = button.GetComponent<Image>();
+        if (img != null) ConfirmationDialog.StyleAsButton(img);
+
+        var text = button.GetComponentInChildren<TMP_Text>();
+        if (text != null) text.color = ConfirmationDialog.ButtonTextColor;
     }
 
     public void Close()

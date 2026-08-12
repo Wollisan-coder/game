@@ -34,6 +34,15 @@ MonoBehaviour:
     items: []
   portrait: {fileID: 21300000, guid: 275ba8f2e71ae0041bee5011a5aa440b, type: 3}
   themeColor: {r: 0.0244749, g: 0.20754719, b: 0.050476167, a: 1}
-  idleFrames: []
-  attackFrames: []
+  idleFrames:
+  - {fileID: 21300000, guid: 0fdd509f81b9c7a4ebb81d9fa79d0144, type: 3}
+  attackFrames:
+  - {fileID: 21300000, guid: 0fdd509f81b9c7a4ebb81d9fa79d0144, type: 3}
+  - {fileID: 21300000, guid: 184fe0d364ffa2c40a752a65fd9c40e4, type: 3}
+  - {fileID: 21300000, guid: e2e771dbb20ee3d4487de72d10e75fe2, type: 3}
+  - {fileID: 21300000, guid: c5dce0262799686449d42b0b50993f9b, type: 3}
+  - {fileID: 21300000, guid: ae3950c24a440be49b76f657421be8f5, type: 3}
+  - {fileID: 21300000, guid: 0f15ca2d5d0fa2745ac5e1cafd3b43ea, type: 3}
+  - {fileID: 21300000, guid: 5a5741859fb7090458f062bf6345dff2, type: 3}
+  - {fileID: 21300000, guid: ec8b0971b456b5445b52db7fb284a9d9, type: 3}
   animationFPS: 12

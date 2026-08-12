@@ -3,9 +3,12 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-// Runtime-built window that lets the player spend ОП (Progress Points) on CurrencyType.HeroExperience
-// (the same unified currency HeroCollectionManager hands out as duplicate-overflow reward for Green/Blue —
-// see project_gem_economy_v2_redesign_pending memory). Opened from a "Exchange" nav button in CastleUI.
+// Runtime-built shop window — two currency-exchange sections. Section A: ОП (Progress Points) into
+// CurrencyType.HeroExperience (the same unified currency HeroCollectionManager hands out as
+// duplicate-overflow reward for Green/Blue — see project_gem_economy_v2_redesign_pending memory).
+// Section B (added 2026-08-12): CurrencyType.SoulShards (Purple-duplicate overflow at max ascension,
+// see HeroCollectionManager.HandleDuplicatePull) into CurrencyType.SummonShards — SoulShards had zero
+// spend anywhere until now, this is their first sink. Opened from the "Shop" nav button in CastleUI.
 public class ProgressExchangeUI : MonoBehaviour
 {
     // (hero exp granted, cost in ОП). Flat 2 exp-per-1-ОП ratio, four tiers kept from the original
@@ -19,11 +22,19 @@ public class ProgressExchangeUI : MonoBehaviour
         (4000, 2000),
     };
 
+    // 1 Soul Shard -> 50 Summon Shards — half of a default single-pull cost (HeroSummonPoolData.shardCost
+    // = 100), so it's a real but not run-breaking bonus. Soul Shards trickle in one at a time (see
+    // HeroCollectionManager.HandleDuplicatePull), so this is a single repeatable exchange, not tiered
+    // packages like the ОП offers above.
+    private const int SoulShardExchangeRate = 50;
+
     private Transform canvasRoot;
     private System.Action onClosed;
 
     private GameObject overlayRoot;
     private TMP_Text balanceText;
+    private TMP_Text soulBalanceText;
+    private TMP_Text soulRowLabel;
     private readonly List<TMP_Text> rowLabels = new List<TMP_Text>();
 
     public void Open(Transform canvasRoot, System.Action onClosed)
@@ -77,7 +88,7 @@ public class ProgressExchangeUI : MonoBehaviour
         windowRect.anchorMin = new Vector2(0.5f, 0.5f);
         windowRect.anchorMax = new Vector2(0.5f, 0.5f);
         windowRect.pivot = new Vector2(0.5f, 0.5f);
-        windowRect.sizeDelta = new Vector2(520, 600);
+        windowRect.sizeDelta = new Vector2(520, 760);
         var windowBg = windowObj.AddComponent<Image>();
         ConfirmationDialog.StyleAsPanel(windowBg);
 
@@ -90,7 +101,7 @@ public class ProgressExchangeUI : MonoBehaviour
         titleRect.sizeDelta = new Vector2(0, 45);
         titleRect.anchoredPosition = new Vector2(0, -30);
         var titleText = titleObj.AddComponent<TextMeshProUGUI>();
-        titleText.text = "Exchange Progress Points";
+        titleText.text = "Shop";
         titleText.fontSize = 30;
         titleText.alignment = TextAlignmentOptions.Center;
         titleText.color = Color.white;
@@ -116,6 +127,36 @@ public class ProgressExchangeUI : MonoBehaviour
             CreateRow(windowRect, rowY, () => Buy(offerIndex));
             rowY -= 96f;
         }
+
+        // Divider + Soul Shards section (added 2026-08-12) — first spend sink for CurrencyType.SoulShards,
+        // see class header comment.
+        var dividerObj = new GameObject("Divider", typeof(RectTransform));
+        var dividerRect = (RectTransform)dividerObj.transform;
+        dividerRect.SetParent(windowRect, false);
+        dividerRect.anchorMin = new Vector2(0, 1);
+        dividerRect.anchorMax = new Vector2(1, 1);
+        dividerRect.pivot = new Vector2(0.5f, 1);
+        dividerRect.sizeDelta = new Vector2(-40, 2);
+        dividerRect.anchoredPosition = new Vector2(0, -490);
+        var dividerImg = dividerObj.AddComponent<Image>();
+        dividerImg.color = new Color(1, 1, 1, 0.15f);
+
+        var soulBalanceObj = new GameObject("SoulBalance", typeof(RectTransform));
+        var soulBalanceRect = (RectTransform)soulBalanceObj.transform;
+        soulBalanceRect.SetParent(windowRect, false);
+        soulBalanceRect.anchorMin = new Vector2(0, 1);
+        soulBalanceRect.anchorMax = new Vector2(1, 1);
+        soulBalanceRect.pivot = new Vector2(0.5f, 1);
+        soulBalanceRect.sizeDelta = new Vector2(0, 30);
+        soulBalanceRect.anchoredPosition = new Vector2(0, -500);
+        soulBalanceText = soulBalanceObj.AddComponent<TextMeshProUGUI>();
+        soulBalanceText.fontSize = 24;
+        soulBalanceText.alignment = TextAlignmentOptions.Center;
+        soulBalanceText.color = new Color(1, 1, 1, 0.85f);
+
+        CreateRow(windowRect, -534f, BuySoulShard);
+        soulRowLabel = rowLabels[rowLabels.Count - 1];
+        rowLabels.RemoveAt(rowLabels.Count - 1); // не часть Offers[] — обновляется отдельно в Refresh()
 
         var closeBtnObj = new GameObject("CloseButton", typeof(RectTransform));
         var closeBtnRect = (RectTransform)closeBtnObj.transform;
@@ -218,6 +259,12 @@ public class ProgressExchangeUI : MonoBehaviour
             var (expAmount, cost) = Offers[i];
             rowLabels[i].text = $"+{expAmount} Hero Exp\nCost: {cost} PP";
         }
+
+        int soulBalance = PlayerCurrencies.Instance != null ? PlayerCurrencies.Instance.GetBalance(CurrencyType.SoulShards) : 0;
+        if (soulBalanceText != null)
+            soulBalanceText.text = $"Your balance: {soulBalance} Soul Shards";
+        if (soulRowLabel != null)
+            soulRowLabel.text = $"+{SoulShardExchangeRate} Summon Shards\nCost: 1 Soul Shard";
     }
 
     private void Buy(int offerIndex)
@@ -235,6 +282,22 @@ public class ProgressExchangeUI : MonoBehaviour
 
         PlayerCurrencies.Instance.Add(CurrencyType.HeroExperience, expAmount);
         ConfirmationDialog.ShowInfo(canvasRoot, $"Bought +{expAmount} Hero Exp!");
+
+        Refresh();
+    }
+
+    private void BuySoulShard()
+    {
+        if (PlayerCurrencies.Instance == null) return;
+
+        if (!PlayerCurrencies.Instance.Spend(CurrencyType.SoulShards, 1))
+        {
+            ConfirmationDialog.ShowInfo(canvasRoot, "Not enough Soul Shards (needs 1).");
+            return;
+        }
+
+        PlayerCurrencies.Instance.Add(CurrencyType.SummonShards, SoulShardExchangeRate);
+        ConfirmationDialog.ShowInfo(canvasRoot, $"Bought +{SoulShardExchangeRate} Summon Shards!");
 
         Refresh();
     }

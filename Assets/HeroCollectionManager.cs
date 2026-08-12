@@ -353,6 +353,28 @@ public class HeroCollectionManager : MonoBehaviour
         return true;
     }
 
+    // Дебажный сеттер — напрямую выставляет уровень/вознесение героя, минуя обычную валюту/гемы (см.
+    // DebugConstructorUI). level/ascensionLevel клампятся под фактический потолок редкости, experience
+    // сбрасывается в 0 (как и после обычного AscendHero — банк опыта имеет смысл только относительно
+    // текущего уровня). Тот же порог voucherConversionUnlocked, что и у настоящего AscendHero.
+    public void DebugSetLevelAscension(string heroId, int level, int ascensionLevel)
+    {
+        var hero = allHeroes.FirstOrDefault(h => h.heroId == heroId);
+        var data = ownership.FirstOrDefault(o => o.heroId == heroId);
+        if (hero == null || data == null) return;
+
+        int maxAscension = HeroAscensionUtility.GetMaxAscension(hero.rarity);
+        data.ascensionLevel = Mathf.Clamp(ascensionLevel, 0, maxAscension);
+
+        int levelCap = HeroAscensionUtility.GetLevelCap(hero.rarity, data.ascensionLevel);
+        data.level = Mathf.Clamp(level, 1, levelCap);
+        data.experience = 0;
+
+        if (data.ascensionLevel >= 3) data.voucherConversionUnlocked = true;
+
+        SaveOwnership();
+    }
+
     // Сколько опыта нужно набрать герою на указанном уровне, чтобы подняться на следующий
     public int ExperienceToNextLevel(int level) => level * 100;
 
@@ -396,13 +418,26 @@ public class HeroCollectionManager : MonoBehaviour
         var data = ownership.FirstOrDefault(o => o.heroId == heroId);
         if (hero == null || data == null) return 0;
 
+        return GetExperienceNeededForLevel(heroId, HeroAscensionUtility.GetLevelCap(hero.rarity, data.ascensionLevel));
+    }
+
+    // Обобщение GetExperienceNeededToCap на произвольный промежуточный уровень (клампится потолком текущей
+    // ступени вознесения) — используется кнопками +1/+10/Max в HeroInventoryUI (см. UpgradeSteps), чтобы
+    // показать точную цену КАЖДОГО шага, а не только "докуда есть валюты" в один клик.
+    public int GetExperienceNeededForLevel(string heroId, int targetLevel)
+    {
+        var hero = allHeroes.FirstOrDefault(h => h.heroId == heroId);
+        var data = ownership.FirstOrDefault(o => o.heroId == heroId);
+        if (hero == null || data == null) return 0;
+
         int levelCap = HeroAscensionUtility.GetLevelCap(hero.rarity, data.ascensionLevel);
-        if (data.level >= levelCap) return 0;
+        targetLevel = Mathf.Min(targetLevel, levelCap);
+        if (data.level >= targetLevel) return 0;
 
         int needed = 0;
         int level = data.level;
         int banked = data.experience;
-        while (level < levelCap)
+        while (level < targetLevel)
         {
             needed += ExperienceToNextLevel(level) - banked;
             banked = 0;

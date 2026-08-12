@@ -67,6 +67,19 @@ public class ItemCollectionManager : MonoBehaviour
         SaveOwnedItems();
     }
 
+    // Дебажный грант — создаёт новый стек указанного предмета сразу на нужном уровне (level 1..GetMaxLevel()),
+    // опыт = 0. Используется DebugConstructorUI, чтобы не гриндить обычный путь "получи копию -> прокачай
+    // жертвоприношением" ради теста конкретного уровня экипировки. Возвращает instanceId нового стека.
+    public string GrantItemAtLevel(ItemData item, int level)
+    {
+        if (item == null) return null;
+
+        int clamped = Mathf.Clamp(level, 1, item.GetMaxLevel());
+        var stack = CreateStack(item.itemId, clamped, 0, 1);
+        SaveOwnedItems();
+        return stack.instanceId;
+    }
+
     private ItemOwnershipData CreateStack(string itemId, int level, int experience, int quantity)
     {
         var stack = new ItemOwnershipData
@@ -136,6 +149,12 @@ public class ItemCollectionManager : MonoBehaviour
     // Суммарный опыт, вложенный в предмет, чтобы он достиг указанного уровня (с нуля) — сумма
     // ExperienceToNextLevel(1..level-1). Используется в "мердже" редкости, см. CalculateSacrificeGain.
     private int CumulativeExperience(int level) => 25 * level * Mathf.Max(0, level - 1);
+
+    // Сколько опыта не хватает предмету, чтобы дойти РОВНО до targetLevel (без остатка) — используется
+    // кнопками быстрого выбора +1/+10/Max в ItemSacrificeUI (см. QuickSelectToLevel), чтобы посчитать,
+    // сколько донор-предметов набрать под конкретный шаг, не только "сколько дало бы текущее выделение".
+    public int ExperienceNeededForLevel(int fromLevel, int fromExperience, int targetLevel) =>
+        targetLevel <= fromLevel ? 0 : Mathf.Max(0, CumulativeExperience(targetLevel) - CumulativeExperience(fromLevel) - fromExperience);
 
     // Сколько опыта цель получит от ОДНОЙ единицы донора — общий расчёт для SacrificeItem (реальное
     // применение) и ItemSacrificeUI (превью до подтверждения), чтобы они не могли разойтись в цифрах.

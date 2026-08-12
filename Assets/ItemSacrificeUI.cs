@@ -28,6 +28,22 @@ public class ItemSacrificeUI : MonoBehaviour
     private Image closeBg;
     private TMP_Text closeButtonText;
 
+    // Степпер вокруг центрального индикатора уровня: -10 -1 [Level X/Y] +1 +10 Max. Значения — СДВИГ
+    // относительно текущего превью (не committed baseLevel), см. AdjustPreviewTarget — поэтому +1/+10
+    // можно жать многократно подряд, пока хватает донор-предметов (раньше был жёсткий baseLevel+шаг,
+    // из-за чего повторный клик по "+1" ничего не менял — жалоба пользователя 2026-08-12, здесь исправлено).
+    // Текст переехал с самих кнопок (было мелко/нечитаемо) в один общий центральный индикатор.
+    private static readonly int[] QuickSelectDeltas = { -10, -1, 1, 10 };
+    private static readonly string[] QuickSelectLabels = { "-10", "-1", "+1", "+10" };
+    private readonly Button[] quickSelectButtons = new Button[QuickSelectDeltas.Length];
+    private readonly Image[] quickSelectBgs = new Image[QuickSelectDeltas.Length];
+    private readonly TMP_Text[] quickSelectTexts = new TMP_Text[QuickSelectDeltas.Length];
+    private Button maxLevelButton;
+    private Image maxLevelBg;
+    private TMP_Text maxLevelText;
+    private Image centerLevelBg;
+    private TMP_Text centerLevelText;
+
     private string targetInstanceId;
     private ItemData targetItemData; // нужен для CalculateSacrificeGain (мердж редкости зависит от rarity цели)
     private System.Action onApplied;
@@ -85,6 +101,16 @@ public class ItemSacrificeUI : MonoBehaviour
         if (confirmButtonText != null) confirmButtonText.color = ConfirmationDialog.ButtonTextColor;
         if (closeBg != null) ConfirmationDialog.StyleAsButton(closeBg);
         if (closeButtonText != null) closeButtonText.color = ConfirmationDialog.ButtonTextColor;
+
+        foreach (var bg in quickSelectBgs)
+            if (bg != null) ConfirmationDialog.StyleAsButton(bg);
+        foreach (var text in quickSelectTexts)
+            if (text != null) text.color = ConfirmationDialog.ButtonTextColor;
+
+        if (maxLevelBg != null) ConfirmationDialog.StyleAsButton(maxLevelBg);
+        if (maxLevelText != null) maxLevelText.color = ConfirmationDialog.ButtonTextColor;
+
+        if (centerLevelBg != null) ConfirmationDialog.StyleAsDescriptionPanel(centerLevelBg);
     }
 
     public void Close()
@@ -149,7 +175,7 @@ public class ItemSacrificeUI : MonoBehaviour
         scrollRect.SetParent(windowRect, false);
         scrollRect.anchorMin = new Vector2(0, 0);
         scrollRect.anchorMax = new Vector2(1, 1);
-        scrollRect.offsetMin = new Vector2(20, 170);
+        scrollRect.offsetMin = new Vector2(20, 240);
         scrollRect.offsetMax = new Vector2(-20, -90);
 
         var scroll = scrollObj.AddComponent<ScrollRect>();
@@ -196,6 +222,96 @@ public class ItemSacrificeUI : MonoBehaviour
         emptyLabel.fontSize = 18;
         emptyLabelObj.SetActive(false);
         emptyLabelHolder = emptyLabelObj;
+
+        // Степпер: -10 -1 [Level X/Y индикатор] +1 +10 Max — между списком (сверху) и Summary/Confirm (снизу).
+        // Координаты по x — фиксированные смещения от центра окна, не формула по количеству кнопок (левая и
+        // правая половины не симметричны: 2 кнопки слева, 3 справа — см. class-level комментарий).
+        const float quickRowY = 205f;
+        const float stepRowHeight = 55f;
+        const float stepBtnWidth = 100f;
+        const float centerWidth = 240f;
+
+        var centerObj = new GameObject("LevelPreview", typeof(RectTransform));
+        var centerRect = (RectTransform)centerObj.transform;
+        centerRect.SetParent(windowRect, false);
+        centerRect.anchorMin = new Vector2(0.5f, 0);
+        centerRect.anchorMax = new Vector2(0.5f, 0);
+        centerRect.pivot = new Vector2(0.5f, 0);
+        centerRect.sizeDelta = new Vector2(centerWidth, stepRowHeight);
+        centerRect.anchoredPosition = new Vector2(0, quickRowY);
+        centerLevelBg = centerObj.AddComponent<Image>();
+        ConfirmationDialog.StyleAsDescriptionPanel(centerLevelBg);
+
+        var centerTextObj = new GameObject("Text", typeof(RectTransform));
+        var centerTextRect = (RectTransform)centerTextObj.transform;
+        centerTextRect.SetParent(centerRect, false);
+        centerTextRect.anchorMin = Vector2.zero;
+        centerTextRect.anchorMax = Vector2.one;
+        centerTextRect.offsetMin = Vector2.zero;
+        centerTextRect.offsetMax = Vector2.zero;
+        centerLevelText = centerTextObj.AddComponent<TextMeshProUGUI>();
+        centerLevelText.alignment = TextAlignmentOptions.Center;
+        centerLevelText.color = Color.white;
+        centerLevelText.enableAutoSizing = true;
+        centerLevelText.fontSizeMin = 14;
+        centerLevelText.fontSizeMax = 22;
+
+        float[] stepCenterX = { -286f, -178f, 178f, 286f }; // -10, -1, +1, +10 — симметрично вокруг центра
+        for (int i = 0; i < QuickSelectDeltas.Length; i++)
+        {
+            int delta = QuickSelectDeltas[i]; // локальная копия — безопасна для замыкания кнопки ниже
+
+            var qObj = new GameObject($"QuickStep_{QuickSelectLabels[i]}", typeof(RectTransform));
+            var qRect = (RectTransform)qObj.transform;
+            qRect.SetParent(windowRect, false);
+            qRect.anchorMin = new Vector2(0.5f, 0);
+            qRect.anchorMax = new Vector2(0.5f, 0);
+            qRect.pivot = new Vector2(0.5f, 0);
+            qRect.sizeDelta = new Vector2(stepBtnWidth, stepRowHeight);
+            qRect.anchoredPosition = new Vector2(stepCenterX[i], quickRowY);
+
+            quickSelectBgs[i] = qObj.AddComponent<Image>();
+            quickSelectButtons[i] = qObj.AddComponent<Button>();
+            quickSelectButtons[i].onClick.AddListener(() => AdjustPreviewTarget(delta));
+
+            var qTextObj = new GameObject("Text", typeof(RectTransform));
+            var qTextRect = (RectTransform)qTextObj.transform;
+            qTextRect.SetParent(qRect, false);
+            qTextRect.anchorMin = Vector2.zero;
+            qTextRect.anchorMax = Vector2.one;
+            qTextRect.offsetMin = Vector2.zero;
+            qTextRect.offsetMax = Vector2.zero;
+            quickSelectTexts[i] = qTextObj.AddComponent<TextMeshProUGUI>();
+            quickSelectTexts[i].text = QuickSelectLabels[i];
+            quickSelectTexts[i].alignment = TextAlignmentOptions.Center;
+            quickSelectTexts[i].fontSize = 26;
+            quickSelectTexts[i].color = Color.white;
+        }
+
+        var maxObj = new GameObject("QuickStep_Max", typeof(RectTransform));
+        var maxRect = (RectTransform)maxObj.transform;
+        maxRect.SetParent(windowRect, false);
+        maxRect.anchorMin = new Vector2(0.5f, 0);
+        maxRect.anchorMax = new Vector2(0.5f, 0);
+        maxRect.pivot = new Vector2(0.5f, 0);
+        maxRect.sizeDelta = new Vector2(stepBtnWidth, stepRowHeight);
+        maxRect.anchoredPosition = new Vector2(394f, quickRowY);
+        maxLevelBg = maxObj.AddComponent<Image>();
+        maxLevelButton = maxObj.AddComponent<Button>();
+        maxLevelButton.onClick.AddListener(() => QuickSelectToLevel(maxLevel));
+
+        var maxTextObj = new GameObject("Text", typeof(RectTransform));
+        var maxTextRect = (RectTransform)maxTextObj.transform;
+        maxTextRect.SetParent(maxRect, false);
+        maxTextRect.anchorMin = Vector2.zero;
+        maxTextRect.anchorMax = Vector2.one;
+        maxTextRect.offsetMin = Vector2.zero;
+        maxTextRect.offsetMax = Vector2.zero;
+        maxLevelText = maxTextObj.AddComponent<TextMeshProUGUI>();
+        maxLevelText.text = "Max";
+        maxLevelText.alignment = TextAlignmentOptions.Center;
+        maxLevelText.fontSize = 22;
+        maxLevelText.color = Color.white;
 
         var summaryObj = new GameObject("Summary", typeof(RectTransform));
         var summaryRect = (RectTransform)summaryObj.transform;
@@ -265,6 +381,21 @@ public class ItemSacrificeUI : MonoBehaviour
         overlayRoot.SetActive(false);
     }
 
+    // Общий фильтр кандидатов в доноры — используется и Populate() (список плиток), и QuickSelectToLevel()
+    // (жадный автоподбор под кнопки +1/+10/Max), чтобы оба места не могли разойтись в критериях.
+    private List<(ItemOwnershipData ownership, ItemData data)> GetCandidates()
+    {
+        var heroManager = HeroCollectionManager.Instance;
+
+        return itemCollectionManager.ownership
+            .Where(o => o.instanceId != targetInstanceId) // исключаем именно целевой СТЕК, а не весь itemId —
+                                                            // другой уровень того же предмета вполне годится как топливо
+            .Where(o => heroManager == null || !heroManager.IsItemEquippedAnywhere(o.instanceId)) // экипированные на герое предметы — не топливо
+            .Select(o => (ownership: o, data: itemCollectionManager.GetItemById(o.itemId)))
+            .Where(c => c.data != null && c.data.category == ItemCategory.Equipment) // предметы опыта героя сюда не годятся
+            .ToList();
+    }
+
     private void Populate()
     {
         foreach (Transform child in listContainer)
@@ -274,15 +405,7 @@ public class ItemSacrificeUI : MonoBehaviour
         donorBackgrounds.Clear();
         donorLabels.Clear();
 
-        var heroManager = HeroCollectionManager.Instance;
-
-        var candidates = itemCollectionManager.ownership
-            .Where(o => o.instanceId != targetInstanceId) // исключаем именно целевой СТЕК, а не весь itemId —
-                                                            // другой уровень того же предмета вполне годится как топливо
-            .Where(o => heroManager == null || !heroManager.IsItemEquippedAnywhere(o.instanceId)) // экипированные на герое предметы — не топливо
-            .Select(o => (ownership: o, data: itemCollectionManager.GetItemById(o.itemId)))
-            .Where(c => c.data != null && c.data.category == ItemCategory.Equipment) // предметы опыта героя сюда не годятся
-            .ToList();
+        var candidates = GetCandidates();
 
         if (emptyLabelHolder != null)
             emptyLabelHolder.SetActive(candidates.Count == 0);
@@ -292,6 +415,7 @@ public class ItemSacrificeUI : MonoBehaviour
 
         RefreshSelectionVisuals();
         UpdateSummary();
+        RefreshQuickSelectButtons();
     }
 
     private void CreateDonorEntry(ItemData donorData, ItemOwnershipData donorOwnership)
@@ -388,6 +512,57 @@ public class ItemSacrificeUI : MonoBehaviour
 
         RefreshSelectionVisuals();
         UpdateSummary();
+        RefreshQuickSelectButtons(); // центральный индикатор/степпер должен отражать и ручной выбор, не только QuickSelectToLevel
+    }
+
+    // Сдвигает превью (не committed baseLevel) на levelDelta ОТНОСИТЕЛЬНО уже выбранного сейчас — то есть
+    // повторные клики +1/+10/-1/-10 складываются друг с другом и с ручным выбором через IncrementDonor,
+    // а не сбрасываются на "baseLevel+шаг" при каждом клике. -1/-10 не уводят превью ниже baseLevel.
+    private void AdjustPreviewTarget(int levelDelta)
+    {
+        var preview = itemCollectionManager.SimulateExperienceGain(baseLevel, baseExperience, SumSelectedXp(), maxLevel);
+        QuickSelectToLevel(preview.level + levelDelta);
+    }
+
+    // Абсолютный целевой уровень — сбрасывает текущее выделение и жадно набирает донор-предметы заново.
+    // Самые дешёвые доноры (наименьший gain за единицу — обычно непрокачанный лежалый хлам) идут первыми,
+    // чтобы не сжигать ценные высокоуровневые предметы, когда хватает мусора. Итоговое выделение остаётся
+    // полностью видимым/редактируемым как обычно — Confirm всё ещё нужен явно.
+    private void QuickSelectToLevel(int targetLevel)
+    {
+        targetLevel = Mathf.Clamp(targetLevel, baseLevel, maxLevel);
+        selectedDonorCounts.Clear();
+
+        if (targetLevel > baseLevel)
+        {
+            int needed = itemCollectionManager.ExperienceNeededForLevel(baseLevel, baseExperience, targetLevel);
+
+            var pool = GetCandidates()
+                .Select(c => (c.ownership, c.data,
+                    gain: itemCollectionManager.CalculateSacrificeGain(c.data, c.ownership.level, c.ownership.experience, targetItemData)))
+                .Where(c => c.gain > 0)
+                .OrderBy(c => c.gain)
+                .ToList();
+
+            int accumulated = 0;
+            foreach (var candidate in pool)
+            {
+                if (accumulated >= needed) break;
+
+                int remaining = needed - accumulated;
+                int take = Mathf.Clamp(Mathf.CeilToInt(remaining / (float)candidate.gain), 1, candidate.ownership.quantity);
+
+                selectedDonorCounts[candidate.ownership.instanceId] = take;
+                accumulated += candidate.gain * take;
+            }
+
+            var result = itemCollectionManager.SimulateExperienceGain(baseLevel, baseExperience, SumSelectedXp(), maxLevel);
+            if (result.level < targetLevel)
+                ConfirmationDialog.ShowInfo(canvasRoot,
+                    $"Not enough items to reach level {targetLevel} — selected everything available (reaches level {result.level}).");
+        }
+
+        Populate();
     }
 
     private void RefreshSelectionVisuals()
@@ -403,22 +578,36 @@ public class ItemSacrificeUI : MonoBehaviour
         }
     }
 
+    // Уровень/опыт-превью теперь живёт в центральном индикаторе степпера (см. RefreshQuickSelectButtons) —
+    // здесь остался только счётчик выбранных предметов.
     private void UpdateSummary()
     {
-        var result = itemCollectionManager.SimulateExperienceGain(baseLevel, baseExperience, SumSelectedXp(), maxLevel);
-
-        if (selectedDonorCounts.Count == 0)
-        {
-            summaryText.text = $"Selected: 0\nCurrent level: {baseLevel}/{maxLevel}";
-        }
-        else
-        {
-            string expLine = result.level >= maxLevel ? "MAX" : $"{result.experience}/{itemCollectionManager.ExperienceToNextLevel(result.level)}";
-            summaryText.text = $"Selected: {SumSelectedItemCount()} item(s)\nPreview: level {result.level}/{maxLevel} ({expLine})";
-        }
+        summaryText.text = $"Selected: {SumSelectedItemCount()} item(s)";
 
         if (confirmButton != null)
             confirmButton.interactable = SumSelectedItemCount() > 0;
+    }
+
+    // Обновляет центральный индикатор "Level X/Y" + текущий опыт внутри уровня, и включает/выключает
+    // стрелки степпера по границам: -1/-10 доступны только если превью выше committed baseLevel (есть что
+    // убрать), +1/+10/Max — только если превью ниже maxLevel (есть куда расти).
+    private void RefreshQuickSelectButtons()
+    {
+        if (quickSelectButtons[0] == null || centerLevelText == null) return;
+
+        var preview = itemCollectionManager.SimulateExperienceGain(baseLevel, baseExperience, SumSelectedXp(), maxLevel);
+
+        string expLine = preview.level >= maxLevel ? "MAX" : $"{preview.experience}/{itemCollectionManager.ExperienceToNextLevel(preview.level)} Exp.";
+        centerLevelText.text = $"Level {preview.level}/{maxLevel}\n{expLine}";
+
+        bool canGoDown = preview.level > baseLevel;
+        bool canGoUp = preview.level < maxLevel;
+
+        for (int i = 0; i < QuickSelectDeltas.Length; i++)
+            quickSelectButtons[i].interactable = QuickSelectDeltas[i] < 0 ? canGoDown : canGoUp;
+
+        if (maxLevelButton != null)
+            maxLevelButton.interactable = canGoUp;
     }
 
     private void OnConfirmClicked()

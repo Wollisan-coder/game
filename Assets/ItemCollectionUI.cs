@@ -290,7 +290,11 @@ public class ItemCollectionUI : MonoBehaviour
         return item.rarity == RarityOptions[rarityFilterIndex - 1];
     }
 
-    private void PopulateGrid()
+    // public — MainMenuUI.ShowItemCollection() зовёт это явно при каждом открытии экрана (тот же приём,
+    // что и HeroCollectionUI.PopulateGrid/MainMenuUI.ShowCollection). Раньше грид строился только один
+    // раз из Start(), из-за чего предметы/гемы, полученные призывом, не появлялись в каталоге, пока
+    // вкладку/фильтр не тронуть вручную (найдено 2026-08-12).
+    public void PopulateGrid()
     {
         var collectionManager = ItemCollectionManager.Instance;
         if (collectionManager == null) return;
@@ -345,7 +349,7 @@ public class ItemCollectionUI : MonoBehaviour
         {
             CreateHeroExperienceTile();
             CreateArmorShardsTile();
-            AscensionGemGridUtility.Populate(gridContainer, heroManager);
+            AscensionGemGridUtility.Populate(gridContainer, heroManager, PopulateGrid);
             WondrousArmorGridUtility.Populate(gridContainer, heroManager, PopulateGrid);
         }
     }

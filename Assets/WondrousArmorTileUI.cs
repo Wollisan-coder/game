@@ -2,32 +2,24 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-// Компонент готового префаба плитки Дивной брони (Resources/UI/WondrousArmorTile.prefab) — по одной на
-// героя с wondrousArmorUnwornCount > 0, показывается в ItemCollectionUI (вкладка Consumables). В отличие
-// от AscensionGemTile, тут ДВЕ кнопки прямо на плитке — Wear (надеть, необратимо) и Disenchant (распылить,
-// +2 ArmorShards), поэтому отдельный префаб/компонент, а не переиспользование той же плитки.
+// Клик по плитке открывает попап с описанием и двумя независимыми действиями — Wear/Disenchant (см.
+// ConfirmationDialog.ShowActions). Раньше обе кнопки сидели прямо на плитке (см. git-историю/старый
+// WondrousArmorTilePrefabBuilder) — перенесены в попап 2026-08-12 по явному запросу, тот же приём, что и
+// перенос "гем -> Voucher" с HeroInventoryUI на AscensionGemTile в этом же файле-соседе.
 public class WondrousArmorTileUI : MonoBehaviour
 {
     public Image icon;
     public TMP_Text label;
     public GameObject quantityBadgeRoot;
     public TMP_Text quantityBadge;
-    public Button wearButton;
-    public TMP_Text wearButtonText;
-    public Button disenchantButton;
+    public Button button;
 
     [Header("Дивная броня — общий ассет WondrousArmorSkinSet на всю игру")]
     public WondrousArmorSkinSet skinSet;
 
-    private string heroId;
-    private System.Action onChanged;
-
     public void Setup(HeroData hero, HeroOwnershipData ownership, System.Action onChanged)
     {
         if (hero == null || ownership == null) return;
-
-        heroId = hero.heroId;
-        this.onChanged = onChanged;
 
         // Показываем ИНВЕНТАРНУЮ картинку скина (если для героя она уже нарисована в базе) — не ту же,
         // что накладывается на портрет героя (см. WondrousArmorSkinSet.GetHeroOverlaySprite/Apply). Тут это
@@ -48,32 +40,43 @@ public class WondrousArmorTileUI : MonoBehaviour
         if (quantityBadgeRoot != null) quantityBadgeRoot.SetActive(ownership.wondrousArmorUnwornCount > 1);
         if (quantityBadge != null) quantityBadge.text = $"x{ownership.wondrousArmorUnwornCount}";
 
+        if (button != null)
+        {
+            button.interactable = true;
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(() => OnClicked(hero, ownership, onChanged));
+        }
+    }
+
+    private void OnClicked(HeroData hero, HeroOwnershipData ownership, System.Action onChanged)
+    {
+        if (hero == null || ownership == null) return;
+
+        var canvas = GetComponentInParent<Canvas>();
+        Transform canvasRoot = canvas != null ? canvas.transform : transform;
+
         bool alreadyWorn = ownership.wondrousArmorWorn;
-        if (wearButton != null)
+        int unworn = ownership.wondrousArmorUnwornCount;
+
+        string body = $"{hero.heroName}\n{unworn} unworn Wondrous Armor skin{(unworn == 1 ? "" : "s")}" +
+            (alreadyWorn ? "\nAlready wearing a skin on this hero — Wear only applies to a hero with none worn yet." : "") +
+            "\n\nWear: puts on one skin permanently — squad-wide damage bonus, cannot be undone or swapped.\n" +
+            "Disenchant: melts one unworn skin into +2 Armor Shards.";
+
+        var actions = new (string label, bool interactable, System.Action onClick)[]
         {
-            wearButton.interactable = !alreadyWorn;
-            wearButton.onClick.RemoveAllListeners();
-            wearButton.onClick.AddListener(OnWearClicked);
-        }
-        if (wearButtonText != null)
-            wearButtonText.text = alreadyWorn ? "Already Worn" : "Wear";
+            ("Wear", !alreadyWorn && unworn > 0, () =>
+            {
+                HeroCollectionManager.Instance?.WearWondrousArmor(hero.heroId);
+                onChanged?.Invoke();
+            }),
+            ("Disenchant (+2)", unworn > 0, () =>
+            {
+                HeroCollectionManager.Instance?.DisenchantWondrousArmor(hero.heroId);
+                onChanged?.Invoke();
+            }),
+        };
 
-        if (disenchantButton != null)
-        {
-            disenchantButton.onClick.RemoveAllListeners();
-            disenchantButton.onClick.AddListener(OnDisenchantClicked);
-        }
-    }
-
-    private void OnWearClicked()
-    {
-        HeroCollectionManager.Instance?.WearWondrousArmor(heroId);
-        onChanged?.Invoke();
-    }
-
-    private void OnDisenchantClicked()
-    {
-        HeroCollectionManager.Instance?.DisenchantWondrousArmor(heroId);
-        onChanged?.Invoke();
+        ConfirmationDialog.ShowActions(canvasRoot, body, "Wondrous Armor", actions, windowHeight: 1000f);
     }
 }

@@ -20,11 +20,14 @@ public class MainMenuUI : MonoBehaviour
     private CastleUI castleUI; // строится программно — см. EnsureCastleUI()
     private MineThreatMapHotspots mineThreatHotspots; // строится программно — см. EnsureMineThreatHotspots()
     private HeroCollectionUI heroCollectionUI; // ищется сам в Start() — см. ниже, без ручной привязки в Inspector
+    private ItemCollectionUI itemCollectionUI; // тот же приём, что и heroCollectionUI выше
 
     private void Start()
     {
         if (collectionPanel != null)
             heroCollectionUI = collectionPanel.GetComponentInChildren<HeroCollectionUI>(true);
+        if (itemCollectionPanel != null)
+            itemCollectionUI = itemCollectionPanel.GetComponentInChildren<ItemCollectionUI>(true);
 
         // Если бой был запущен с ноды карты (currentNodeId выставляется в WorldMapManager.SelectNode),
         // значит мы вернулись именно с боя — открываем карту, а не сбрасываем на Collection по умолчанию.
@@ -172,6 +175,7 @@ public class MainMenuUI : MonoBehaviour
         squadPanel.SetActive(false);
         if (enemyCollectionPanel != null) enemyCollectionPanel.SetActive(false);
         if (itemCollectionPanel != null) itemCollectionPanel.SetActive(true);
+        itemCollectionUI?.PopulateGrid();
         HideAllMapPanels();
         castleUI?.Hide();
     }
