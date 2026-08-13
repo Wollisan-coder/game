@@ -45,9 +45,10 @@ MonoBehaviour:
   - {fileID: 21300000, guid: f67c71b0c252f654e9090f87f6086b9f, type: 3}
   - {fileID: 21300000, guid: 380dc471541dff14abd46f985041c829, type: 3}
   - {fileID: 21300000, guid: ef228fef363a8ab4ab22018270709502, type: 3}
-  - {fileID: 21300000, guid: 43731a5b3f423c846b772280090cf8b6, type: 3}
   - {fileID: 21300000, guid: 1ae27b85007792148bd9aaf828673041, type: 3}
   - {fileID: 21300000, guid: afb9d6e709d652a4f8b3388a9e90a975, type: 3}
   - {fileID: 21300000, guid: 4a390509c2a65794681ff70bb5dfc3b9, type: 3}
+  - {fileID: 21300000, guid: 825b1b38dffffe14d833ea84f3dec719, type: 3}
+  - {fileID: 21300000, guid: 9b7cf875117dbae4691dde4bc1212ef5, type: 3}
   - {fileID: 21300000, guid: a522c11811b535545bcd0d671516668b, type: 3}
-  animationFPS: 16
+  animationFPS: 12
