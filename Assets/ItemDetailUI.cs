@@ -170,7 +170,7 @@ public class ItemDetailUI : MonoBehaviour
 
         infoText = infoObj.AddComponent<TextMeshProUGUI>();
         infoText.enableAutoSizing = true; // имя+тип+стата разной длины — фиксированный размер либо мелкий, либо не влезает в рамку
-        infoText.fontSizeMin = 14;
+        infoText.fontSizeMin = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize (было 14 — пред-существующее нарушение, замечено при сегодняшней зачистке)
         infoText.fontSizeMax = 36;
         infoText.alignment = TextAlignmentOptions.TopRight;
 
@@ -242,7 +242,7 @@ public class ItemDetailUI : MonoBehaviour
             ConfirmationDialog.StyleAsDescriptionPanel(descriptionBg);
 
             descriptionText.enableAutoSizing = true;
-            descriptionText.fontSizeMin = 16;
+            descriptionText.fontSizeMin = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
             descriptionText.fontSizeMax = 36;
         }
 

@@ -194,7 +194,7 @@ public class ItemSacrificeUI : MonoBehaviour
         contentRect.sizeDelta = new Vector2(0, 0);
 
         var grid = contentObj.AddComponent<GridLayoutGroup>();
-        grid.cellSize = new Vector2(218, 230);
+        grid.cellSize = new Vector2(218, 300); // 230 -> 300: 28pt-минимум текста (донор-лейбл, до 3 строк) не влезал в старую высоту
         grid.spacing = new Vector2(14, 14);
         grid.padding = new RectOffset(24, 6, 6, 6);
 
@@ -219,7 +219,7 @@ public class ItemSacrificeUI : MonoBehaviour
         emptyLabel.text = "No other items available to sacrifice";
         emptyLabel.alignment = TextAlignmentOptions.Center;
         emptyLabel.color = new Color(1, 1, 1, 0.6f);
-        emptyLabel.fontSize = 18;
+        emptyLabel.fontSize = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
         emptyLabelObj.SetActive(false);
         emptyLabelHolder = emptyLabelObj;
 
@@ -253,8 +253,8 @@ public class ItemSacrificeUI : MonoBehaviour
         centerLevelText.alignment = TextAlignmentOptions.Center;
         centerLevelText.color = Color.white;
         centerLevelText.enableAutoSizing = true;
-        centerLevelText.fontSizeMin = 14;
-        centerLevelText.fontSizeMax = 22;
+        centerLevelText.fontSizeMin = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
+        centerLevelText.fontSizeMax = 30;
 
         float[] stepCenterX = { -286f, -178f, 178f, 286f }; // -10, -1, +1, +10 — симметрично вокруг центра
         for (int i = 0; i < QuickSelectDeltas.Length; i++)
@@ -284,7 +284,7 @@ public class ItemSacrificeUI : MonoBehaviour
             quickSelectTexts[i] = qTextObj.AddComponent<TextMeshProUGUI>();
             quickSelectTexts[i].text = QuickSelectLabels[i];
             quickSelectTexts[i].alignment = TextAlignmentOptions.Center;
-            quickSelectTexts[i].fontSize = 26;
+            quickSelectTexts[i].fontSize = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
             quickSelectTexts[i].color = Color.white;
         }
 
@@ -310,7 +310,7 @@ public class ItemSacrificeUI : MonoBehaviour
         maxLevelText = maxTextObj.AddComponent<TextMeshProUGUI>();
         maxLevelText.text = "Max";
         maxLevelText.alignment = TextAlignmentOptions.Center;
-        maxLevelText.fontSize = 22;
+        maxLevelText.fontSize = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
         maxLevelText.color = Color.white;
 
         var summaryObj = new GameObject("Summary", typeof(RectTransform));
@@ -325,8 +325,8 @@ public class ItemSacrificeUI : MonoBehaviour
         summaryText.alignment = TextAlignmentOptions.Center;
         summaryText.color = Color.white;
         summaryText.enableAutoSizing = true; // "Selected: N" + "Current level: X/Y" — длина плавает
-        summaryText.fontSizeMin = 16;
-        summaryText.fontSizeMax = 24;
+        summaryText.fontSizeMin = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
+        summaryText.fontSizeMax = 30;
 
         var confirmObj = new GameObject("ConfirmButton", typeof(RectTransform));
         var confirmRect = (RectTransform)confirmObj.transform;
@@ -426,8 +426,8 @@ public class ItemSacrificeUI : MonoBehaviour
         icon.sprite = donorData.icon;
 
         label.enableAutoSizing = true; // строка = имя+уровень+опыт, а при выборе ещё и "Selected: X/Y" — длина плавает
-        label.fontSizeMin = 14;
-        label.fontSizeMax = 22;
+        label.fontSizeMin = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize (было 14/22 — пред-существующее нарушение, замечено при сегодняшней зачистке)
+        label.fontSizeMax = 30;
         label.color = donorData.GetRarityColor();
 
         Image rarityFrame = null;

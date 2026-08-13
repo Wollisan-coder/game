@@ -20,6 +20,13 @@ public static class UIAssetImportSetup
         // Плоская прямоугольная рамка без вырезанных углов (1438x736, полностью непрозрачная) — под
         // текстовые описания. Тонкий орнаментальный бордюр по всем 4 краям, оценка на глаз ~55px.
         SetupSprite("Assets/Resources/UI/DialogDescriptionPanel.png", new Vector4(55, 55, 55, 55));
+        // Windo.png (200x350, портретная рамка пользователя, 2026-08-12) — под прямоугольные/портретные
+        // карточки, где DialogHeaderFrame растягивается некрасиво (его border 35/10 сделан под широкие
+        // низкие кнопки, см. MutationDungeonNodeChoiceUI). Замерено по альфа-каналу: тело карточки
+        // x=[28,176] из 200 (border left/right отсюда), "шип"-орнамент сверху/снизу торчит за пределы
+        // основного прямоугольника ~25px — border 30 сверху/снизу с небольшим запасом. border — (left,
+        // bottom, right, top), см. ConfirmationDialog.StyleAsRectFrame.
+        SetupSprite("Assets/Resources/UI/Windo.png", new Vector4(28, 30, 24, 30));
 
         // Castle 2D-база (Option B) — обычные спрайты, без 9-slice (border 0), рисуются как есть с preserveAspect.
         SetupSprite("Assets/Resources/UI/Castle/BaseBackground.png", Vector4.zero);

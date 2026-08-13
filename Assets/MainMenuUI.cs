@@ -63,10 +63,21 @@ public class MainMenuUI : MonoBehaviour
         if (AccountManager.Instance != null)
             AccountManager.Instance.returningFromMineDefense = false;
 
+        // Тот же приём — после узла Mutation Dungeon возвращаемся в Замок и сразу переоткрываем экран
+        // выбора следующего узла (если ран ещё активен — см. MutationDungeonManager.IsRunActive).
+        bool returningFromMutationDungeon = AccountManager.Instance != null && AccountManager.Instance.returningFromMutationDungeon;
+        if (AccountManager.Instance != null)
+            AccountManager.Instance.returningFromMutationDungeon = false;
+
         if (returningFromDeathDungeon)
         {
             ShowCastle();
             castleUI.ReopenDeathDungeonMapIfActive();
+        }
+        else if (returningFromMutationDungeon)
+        {
+            ShowCastle();
+            castleUI.ReopenMutationDungeonIfActive();
         }
         else if (returningFromBossTraining)
         {

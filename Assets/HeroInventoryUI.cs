@@ -668,8 +668,8 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
             heroUpgradeTexts[i].text = UpgradeStepLabels[i];
             heroUpgradeTexts[i].alignment = TextAlignmentOptions.Center;
             heroUpgradeTexts[i].enableAutoSizing = true;
-            heroUpgradeTexts[i].fontSizeMin = 10;
-            heroUpgradeTexts[i].fontSizeMax = 20;
+            heroUpgradeTexts[i].fontSizeMin = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
+            heroUpgradeTexts[i].fontSizeMax = 30;
 
             upgradeObj.SetActive(false);
         }
@@ -706,8 +706,8 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         text.alignment = TextAlignmentOptions.Center;
         text.color = ConfirmationDialog.ButtonTextColor;
         text.enableAutoSizing = true;
-        text.fontSizeMin = 12;
-        text.fontSizeMax = 22;
+        text.fontSizeMin = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
+        text.fontSizeMax = 30;
 
         return btn;
     }

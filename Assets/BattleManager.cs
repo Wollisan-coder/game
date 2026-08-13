@@ -128,6 +128,19 @@ public class BattleManager : MonoBehaviour
     [Header("Debug — тест Death Dungeon без похода через Замок (жать Play прямо в SampleScene)")]
     public bool debugForceDeathDungeon;
 
+    // Mutation Dungeon (roguelike C+A — мутация поля + ветвящийся путь, см. MutationDungeonManager) —
+    // В ОТЛИЧИЕ от Death Dungeon выше, статы НЕ уравниваются: обычная экипировка/уровень/вознесение героя
+    // работают как в кампании. Мутация — свойство узла (currentMutation*), не врага; враг переиспользуется
+    // случайным уже разблокированным, тот же приём, что и у Death Dungeon (ResolveEnemy).
+    [Header("Mutation Dungeon — обычная экипировка/статы (см. project_future_backlog #7)")]
+    public bool isMutationDungeon;
+    public MutationDungeonNodeType currentMutationNodeType;
+    public BoardMutationType currentMutation;
+    public int currentMutationValue;
+
+    [Header("Debug — тест Mutation Dungeon без похода через Замок (жать Play прямо в SampleScene)")]
+    public bool debugForceMutationDungeon;
+
     [Header("Boss Training (см. project_boss_training_mechanic_concept) — игрок управляет боссом, ИИ играет доску за тренируемого героя")]
     public bool isBossTraining;
     // ОЦЕНКА, не измерено живым тестом — см. project_campaign_difficulty_curve для методологии перекалибровки после плейтеста.
@@ -175,7 +188,9 @@ public class BattleManager : MonoBehaviour
         // Death Dungeon — случайный уже разблокированный враг на каждый узел (не всегда один и тот же
         // selectedEnemy) — см. project_death_dungeon_concept ("без уникального контента под каждую
         // комнату, переиспользуем обычных врагов"). "Corrupted"-перекраска — визуальный полиш, не сделана.
-        if (isDeathDungeon && EnemyCollectionManager.Instance != null && EnemyCollectionManager.Instance.allEnemies != null)
+        // Mutation Dungeon — тот же принцип, что и Death Dungeon чуть выше: без уникального контента под
+        // каждый узел, переиспользуем обычных врагов случайно.
+        if ((isDeathDungeon || isMutationDungeon) && EnemyCollectionManager.Instance != null && EnemyCollectionManager.Instance.allEnemies != null)
         {
             var unlockedEnemies = EnemyCollectionManager.Instance.allEnemies
                 .Where(e => e != null && EnemyCollectionManager.Instance.IsUnlocked(e))
@@ -229,6 +244,12 @@ public class BattleManager : MonoBehaviour
             AccountManager.Instance.pendingMineDefense = false; // одноразовый сигнал, гасим сразу
         }
 
+        // Тот же одноразовый pending-сигнал приём, что и у isDeathDungeon/isMineDefense выше.
+        isMutationDungeon = debugForceMutationDungeon ||
+            (AccountManager.Instance != null && AccountManager.Instance.pendingMutationDungeon);
+        if (AccountManager.Instance != null)
+            AccountManager.Instance.pendingMutationDungeon = false;
+
         currentEnemy = ResolveEnemy();
         if (currentEnemy != null)
         {
@@ -247,17 +268,37 @@ public class BattleManager : MonoBehaviour
             enemyMaxAttack = Mathf.RoundToInt(enemyMaxAttack * 1.3f);
         }
 
+        // Mutation Dungeon — читает выбранный узел из MutationDungeonManager (SelectNode уже вызван UI'ем
+        // ДО загрузки боевой сцены), применяет Elite-множитель (тот же, что у Mine Defense/Death Dungeon
+        // Elite выше — не новый баланс) и саму мутацию поля (см. ApplyMutationToGrid).
+        if (isMutationDungeon && MutationDungeonManager.Instance != null)
+        {
+            currentMutationNodeType = MutationDungeonManager.Instance.CurrentNodeType;
+            currentMutation = MutationDungeonManager.Instance.CurrentMutation;
+            currentMutationValue = MutationDungeonManager.Instance.CurrentMutationValue;
+
+            if (currentMutationNodeType == MutationDungeonNodeType.Elite)
+            {
+                enemyMaxHP = Mathf.RoundToInt(enemyMaxHP * 1.5f);
+                enemyMinAttack = Mathf.RoundToInt(enemyMinAttack * 1.3f);
+                enemyMaxAttack = Mathf.RoundToInt(enemyMaxAttack * 1.3f);
+            }
+
+            ApplyMutationToGrid();
+        }
+
         // Нода на карте перекрывает числа из EnemyData процедурной кривой (EnemyStatCurve) — EnemyData
         // остаётся архетипом (портрет/скиллы/лут), а HP/атака считаются из (территория, номер ноды).
         // Не трогает FarmNode/повторные бои без node-контекста и debug-тесты без WorldMapManager — тогда
-        // просто остаются сырые значения EnemyData/инспектора, как раньше. Mine Defense И Death Dungeon
-        // тоже пропускают это — currentNode тут может быть залипшим от последнего ОБЫЧНОГО боя на карте
-        // и не имеет отношения к этому бою (ни один из них не идёт через WorldMapManager.SelectNode).
-        // Баг был найден 2026-08-10: guard стоял только на isMineDefense, из-за чего Death Dungeon реально
-        // считал статы врага по чужой залипшей ноде — ломало весь смысл "уравненного гаунтлета".
+        // просто остаются сырые значения EnemyData/инспектора, как раньше. Mine Defense, Death Dungeon И
+        // Mutation Dungeon тоже пропускают это — currentNode тут может быть залипшим от последнего
+        // ОБЫЧНОГО боя на карте и не имеет отношения к этому бою (ни один из них не идёт через
+        // WorldMapManager.SelectNode). Баг был найден 2026-08-10: guard стоял только на isMineDefense, из-за
+        // чего Death Dungeon реально считал статы врага по чужой залипшей ноде — ломало весь смысл
+        // "уравненного гаунтлета"; тот же класс бага заранее закрыт тут и для Mutation Dungeon.
         // !node.isTutorialNode — самый первый бой игры (Base.asset) намеренно легче кривой, см. MapNodeData.
         var node = WorldMapManager.Instance != null ? WorldMapManager.Instance.currentNode : null;
-        if (node != null && !isMineDefense && !isDeathDungeon && !node.isTutorialNode)
+        if (node != null && !isMineDefense && !isDeathDungeon && !isMutationDungeon && !node.isTutorialNode)
         {
             var curveStats = EnemyStatCurve.GetStats(node.territory, node.nodeIndex);
             enemyMaxHP = curveStats.maxHP;
@@ -296,6 +337,18 @@ public class BattleManager : MonoBehaviour
             // касается только пункта ниже — это не экипировка, а перманентный аккаунт-прогресс отряда).
             if (HeroCollectionManager.Instance != null)
                 heroState.damageMultiplier += HeroCollectionManager.Instance.GetWondrousArmorSquadBonus();
+
+            // PowerSurge/Weakened (Mutation Dungeon) — флэт-бонус/штраф урона на каждого героя, тот же
+            // приём (аддитивно в damageMultiplier), что и Wondrous Armor выше — НЕ через глобальный
+            // BattleManager.damageMultiplier (тот поле с турн-каунтдауном под скиллы-баффы, см.
+            // damageMultiplierTurnsRemaining, — перезапись оттуда конфликтовала бы с мутацией).
+            if (isMutationDungeon)
+            {
+                if (currentMutation == BoardMutationType.PowerSurge)
+                    heroState.damageMultiplier += currentMutationValue / 100f;
+                else if (currentMutation == BoardMutationType.Weakened)
+                    heroState.damageMultiplier -= currentMutationValue / 100f;
+            }
 
             // Бонусы от экипированных предметов (не меняют сам ассет HeroData, только эту копию на бой) —
             // в Death Dungeon статы уравниваются на входе, экипировка не даёт ничего (см.
@@ -348,6 +401,17 @@ public class BattleManager : MonoBehaviour
                     DeathDungeonManager.Instance.GetCarriedHP(hero.heroId, heroState.maxHealth));
                 heroState.currentResource = Mathf.Min(heroState.maxResource,
                     DeathDungeonManager.Instance.GetCarriedMana(hero.heroId, heroState.maxResource));
+            }
+
+            // Mutation Dungeon — тот же перенос HP/маны между узлами ОДНОГО рана, что и Death Dungeon выше
+            // (см. её комментарий) — только тут ещё и Rest-узлы лечат между боями (см. UI), а не только
+            // фиксированный тип узла Heal.
+            if (isMutationDungeon && MutationDungeonManager.Instance != null)
+            {
+                heroState.currentHealth = Mathf.Min(heroState.maxHealth,
+                    MutationDungeonManager.Instance.GetCarriedHP(hero.heroId, heroState.maxHealth));
+                heroState.currentResource = Mathf.Min(heroState.maxResource,
+                    MutationDungeonManager.Instance.GetCarriedMana(hero.heroId, heroState.maxResource));
             }
 
             activeHeroes.Add(heroState);
@@ -448,6 +512,43 @@ public class BattleManager : MonoBehaviour
                     extraBoardFlipUses += Mathf.RoundToInt(buff.value);
                     break;
             }
+        }
+    }
+
+    // Применяет currentMutation к GridManager ДО того, как тот сгенерирует доску в своём Start() (Unity
+    // гарантирует все Awake() раньше любого Start() — см. BattleManager.Awake(), вызывается оттуда). Только
+    // FrozenStart/Overrun/CrampedBoard/MissingColor/LockedAffinity — PowerSurge/Weakened трогают не сетку,
+    // а heroState.damageMultiplier (см. цикл по activeHeroes выше).
+    private void ApplyMutationToGrid()
+    {
+        if (gridManager == null) return;
+
+        switch (currentMutation)
+        {
+            case BoardMutationType.CrampedBoard:
+                gridManager.width = currentMutationValue;
+                gridManager.height = currentMutationValue;
+                break;
+
+            case BoardMutationType.MissingColor:
+            case BoardMutationType.LockedAffinity:
+                if (gridManager.itemPrefabs != null && gridManager.itemPrefabs.Length > 1)
+                    gridManager.excludedItemType = Random.Range(0, gridManager.itemPrefabs.Length);
+                break;
+
+            case BoardMutationType.FrozenStart:
+                gridManager.extraHarmfulTileSpawns = new[]
+                {
+                    new HarmfulTileSpawnRule { type = HarmfulTileType.Ice, count = currentMutationValue, value = 3 }
+                };
+                break;
+
+            case BoardMutationType.Overrun:
+                gridManager.extraHarmfulTileSpawns = new[]
+                {
+                    new HarmfulTileSpawnRule { type = HarmfulTileType.Spike, count = currentMutationValue, value = 5 }
+                };
+                break;
         }
     }
 
@@ -989,7 +1090,7 @@ public class BattleManager : MonoBehaviour
 
         foreach (var p in currentEnemy.passives)
         {
-            if (p.effectType != EnemyPassiveEffectType.Regen) continue;
+            if (p == null || p.effectType != EnemyPassiveEffectType.Regen) continue;
 
             int healAmount = Mathf.RoundToInt(enemyMaxHP * p.percent);
             if (healAmount <= 0 || enemyHP >= enemyMaxHP) continue;
@@ -1005,7 +1106,7 @@ public class BattleManager : MonoBehaviour
         if (currentEnemy?.passives == null) return mult;
 
         foreach (var p in currentEnemy.passives)
-            if (p.effectType == EnemyPassiveEffectType.DamageReduction)
+            if (p != null && p.effectType == EnemyPassiveEffectType.DamageReduction)
                 mult *= Mathf.Clamp01(1f - p.percent);
 
         return mult;
@@ -1017,7 +1118,7 @@ public class BattleManager : MonoBehaviour
 
         foreach (var p in currentEnemy.passives)
         {
-            if (p.effectType != EnemyPassiveEffectType.Reflect) continue;
+            if (p == null || p.effectType != EnemyPassiveEffectType.Reflect) continue;
 
             int reflected = Mathf.RoundToInt(damageTaken * p.percent);
             if (reflected > 0)
@@ -1034,7 +1135,7 @@ public class BattleManager : MonoBehaviour
 
         foreach (var p in currentEnemy.passives)
         {
-            if (p.effectType == EnemyPassiveEffectType.ColorAbsorb &&
+            if (p != null && p.effectType == EnemyPassiveEffectType.ColorAbsorb &&
                 activeHeroes.Any(h => h.currentHealth > 0 && (int)h.data.resourceType == p.absorbColorType))
             {
                 mult += p.absorbDamageBonus;
@@ -1303,7 +1404,7 @@ public class BattleManager : MonoBehaviour
         // тот же баг 2026-08-10, что и у enemyMaxHP выше: currentNode мог залипнуть от последнего обычного
         // боя и не имеет отношения к этому забегу; без guard'а Death Dungeon получал героя-XP/Wood/Stone/
         // фарм-лут по чужой ноде вместо честного LootReward данжевого врага.
-        var rewardNode = (WorldMapManager.Instance != null && !isDeathDungeon) ? WorldMapManager.Instance.currentNode : null;
+        var rewardNode = (WorldMapManager.Instance != null && !isDeathDungeon && !isMutationDungeon) ? WorldMapManager.Instance.currentNode : null;
         if (rewardNode != null)
             heroXp = EnemyStatCurve.GetHeroExperience(rewardNode.territory, rewardNode.nodeIndex);
 
@@ -1312,7 +1413,9 @@ public class BattleManager : MonoBehaviour
         // (дефолт 20) и никогда не менялся вместе с правками кривой — гейт-разбор 2026-08-10 нашёл это как
         // тихое расхождение. Теперь считаем по тому же коэффициенту, что и обычная кривая, но от реального
         // enemyMaxHP этого боя (уже включает множитель Elite-узла из SetupDeathDungeonNode).
-        if (isDeathDungeon)
+        // Mutation Dungeon — тот же приём, что и Death Dungeon выше (нет (territory, nodeIndex), считаем
+        // по реальному enemyMaxHP этого боя, уже включает Elite-множитель из Awake()).
+        if (isDeathDungeon || isMutationDungeon)
             heroXp = EnemyStatCurve.GetHeroExperienceForHP(enemyMaxHP);
 
         if (rewardNode != null && rewardNode.isFarmNode)
@@ -1382,13 +1485,16 @@ public class BattleManager : MonoBehaviour
         bool alreadyCompleted = WorldMapManager.Instance != null
             && WorldMapManager.Instance.completedNodeIds.Contains(WorldMapManager.Instance.currentNodeId);
 
-        if (progressPoints > 0 && !alreadyCompleted && !isDeathDungeon)
+        if (progressPoints > 0 && !alreadyCompleted && !isDeathDungeon && !isMutationDungeon)
         {
             PlayerCurrencies.Instance?.Add(CurrencyType.ProgressPoints, progressPoints);
             rewardLines.Add($"Progress Points +{progressPoints}");
         }
 
-        WorldMapManager.Instance?.CompleteCurrentNode();
+        // Mutation Dungeon тоже пропускает — та же причина, что у ОП-гейта выше: currentNodeId может быть
+        // залипшим от последнего обычного боя на карте, помечать его пройденным тут было бы неверно.
+        if (!isMutationDungeon)
+            WorldMapManager.Instance?.CompleteCurrentNode();
 
         Transform root = ResolveDialogRoot();
 
@@ -1398,7 +1504,65 @@ public class BattleManager : MonoBehaviour
             return;
         }
 
+        if (isMutationDungeon)
+        {
+            EndMutationDungeonNodeVictory(rewardLines, root);
+            return;
+        }
+
         string summary = "Victory!\n" + string.Join("\n", rewardLines);
+        OnBattleLog?.Invoke(summary.Replace("\n", " | "));
+
+        ConfirmationDialog.ShowInfo(root, summary, 260, () => SceneManager.LoadScene(mainMenuSceneName));
+    }
+
+    // Хвост EndBattleVictory для Mutation Dungeon — сохраняет перенесённое HP/ману отряда, Elite узел даёт
+    // бонус-предмет (тот же принцип, что Reward-узел Death Dungeon), продвигает ран и либо завершает его
+    // победой (Boss — ОП тем же приёмом, что и у Death Dungeon, один раз за полный ран), либо просто ведёт
+    // назад в Замок — CastleUI сам переоткроет экран выбора следующего узла (см.
+    // ReopenMutationDungeonIfActive/returningFromMutationDungeon), никакого отдельного "выбора баффа"
+    // тут нет — сам следующий узел УЖЕ выбор игрока, в отличие от фиксированной последовательности Death Dungeon.
+    private void EndMutationDungeonNodeVictory(List<string> rewardLines, Transform root)
+    {
+        var dungeon = MutationDungeonManager.Instance;
+
+        if (dungeon != null)
+        {
+            foreach (var h in activeHeroes)
+            {
+                dungeon.SetCarriedHP(h.data.heroId, h.currentHealth);
+                dungeon.SetCarriedMana(h.data.heroId, h.currentResource);
+            }
+
+            if (currentMutationNodeType == MutationDungeonNodeType.Elite)
+            {
+                var catalog = ItemCollectionManager.Instance != null ? ItemCollectionManager.Instance.allItems : null;
+                if (catalog != null && catalog.Length > 0)
+                {
+                    var bonusItem = catalog[Random.Range(0, catalog.Length)];
+                    ItemCollectionManager.Instance.AddItemCopy(bonusItem);
+                    rewardLines.Add($"Elite bonus: {bonusItem.itemName} +1");
+                }
+            }
+        }
+
+        bool runComplete = dungeon != null && dungeon.AdvanceAfterWin();
+
+        if (runComplete)
+        {
+            int dungeonProgressPoints = currentEnemy != null && currentEnemy.loot != null ? currentEnemy.loot.progressPoints : 0;
+            if (dungeonProgressPoints > 0)
+            {
+                PlayerCurrencies.Instance?.Add(CurrencyType.ProgressPoints, dungeonProgressPoints);
+                rewardLines.Add($"Progress Points +{dungeonProgressPoints}");
+            }
+        }
+
+        if (AccountManager.Instance != null)
+            AccountManager.Instance.returningFromMutationDungeon = true;
+
+        string summary = "Victory!\n" + string.Join("\n", rewardLines)
+            + (runComplete ? "\n\nThe run is complete — you reached the end!" : "");
         OnBattleLog?.Invoke(summary.Replace("\n", " | "));
 
         ConfirmationDialog.ShowInfo(root, summary, 260, () => SceneManager.LoadScene(mainMenuSceneName));
@@ -1550,6 +1714,14 @@ public class BattleManager : MonoBehaviour
             HeroCollectionManager.Instance?.PermadeleteSquad();
             DeathDungeonManager.Instance?.AbandonRun();
             summary = "Your squad has fallen...\nThose heroes are gone forever.";
+        }
+
+        // Mutation Dungeon — НЕ permadeath (см. class-комментарий BattleManager.isMutationDungeon и
+        // MutationDungeonManager) — поражение просто заканчивает ран, герои целы, никакого штрафа.
+        if (isMutationDungeon)
+        {
+            MutationDungeonManager.Instance?.EndRun();
+            summary = "Run ended.\nYour heroes are safe — try again anytime.";
         }
 
         // Mine Defense — поражение здесь НЕ штрафуется (см. project_death_dungeon_concept piece 5), угроза

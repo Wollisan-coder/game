@@ -115,7 +115,7 @@ public class ProgressExchangeUI : MonoBehaviour
         balanceRect.sizeDelta = new Vector2(0, 30);
         balanceRect.anchoredPosition = new Vector2(0, -70);
         balanceText = balanceObj.AddComponent<TextMeshProUGUI>();
-        balanceText.fontSize = 24;
+        balanceText.fontSize = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
         balanceText.alignment = TextAlignmentOptions.Center;
         balanceText.color = new Color(1, 1, 1, 0.85f);
 
@@ -150,7 +150,7 @@ public class ProgressExchangeUI : MonoBehaviour
         soulBalanceRect.sizeDelta = new Vector2(0, 30);
         soulBalanceRect.anchoredPosition = new Vector2(0, -500);
         soulBalanceText = soulBalanceObj.AddComponent<TextMeshProUGUI>();
-        soulBalanceText.fontSize = 24;
+        soulBalanceText.fontSize = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
         soulBalanceText.alignment = TextAlignmentOptions.Center;
         soulBalanceText.color = new Color(1, 1, 1, 0.85f);
 
@@ -215,9 +215,9 @@ public class ProgressExchangeUI : MonoBehaviour
         var label = labelObj.AddComponent<TextMeshProUGUI>();
         label.alignment = TextAlignmentOptions.MidlineLeft;
         label.color = Color.white;
-        label.enableAutoSizing = true; // 3 строки (имя/эффект/цена) в фиксированной высоте строки — на 22pt впритык налезали на строку ниже
-        label.fontSizeMin = 12;
-        label.fontSizeMax = 20;
+        label.enableAutoSizing = true; // 2 строки в фиксированной высоте строки
+        label.fontSizeMin = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
+        label.fontSizeMax = 30;
         rowLabels.Add(label);
 
         var btnObj = new GameObject("BuyButton", typeof(RectTransform));
@@ -243,7 +243,7 @@ public class ProgressExchangeUI : MonoBehaviour
         btnTextRect.offsetMax = Vector2.zero;
         var btnText = btnTextObj.AddComponent<TextMeshProUGUI>();
         btnText.text = "Buy";
-        btnText.fontSize = 22;
+        btnText.fontSize = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
         btnText.alignment = TextAlignmentOptions.Center;
         btnText.color = ConfirmationDialog.ButtonTextColor; // тёмный текст был под старую светлую заливку, на новой тёмно-синей рамке нужен светлый
     }

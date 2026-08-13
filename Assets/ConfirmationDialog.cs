@@ -37,6 +37,7 @@ public static class ConfirmationDialog
     private static Sprite windowSprite;
     private static Sprite headerSprite;
     private static Sprite descriptionSprite;
+    private static Sprite rectFrameSprite;
     private static bool spritesLoaded;
 
     // Реальные border-значения нарезки (см. Assets/Editor/UIAssetImportSetup.cs) — кнопка/панель мельче
@@ -49,6 +50,8 @@ public static class ConfirmationDialog
     private const float MinSpriteButtonHeight = 30f;
     private const float MinSpritePanelSize = 160f;  // border окна — 70 со всех сторон (студы по всем 4 краям), порог с запасом
     private const float MinSpriteDescriptionSize = 120f; // border панели описания — 55 со всех сторон, порог с запасом
+    private const float MinRectFrameWidth = 60f;  // border Windo.png — 28/24 слева/справа, порог с запасом
+    private const float MinRectFrameHeight = 70f; // border Windo.png — 30/30 сверху/снизу, порог с запасом
 
     private static void EnsureSpritesLoaded()
     {
@@ -57,6 +60,7 @@ public static class ConfirmationDialog
         windowSprite = Resources.Load<Sprite>("UI/DialogWindowFrame");
         headerSprite = Resources.Load<Sprite>("UI/DialogHeaderFrame");
         descriptionSprite = Resources.Load<Sprite>("UI/DialogDescriptionPanel");
+        rectFrameSprite = Resources.Load<Sprite>("UI/Windo");
     }
 
     // Общие хелперы для остального проекта — чтобы кнопки/панели вне ConfirmationDialog (CastleUI,
@@ -71,6 +75,27 @@ public static class ConfirmationDialog
         if (headerSprite != null && bigEnough)
         {
             img.sprite = headerSprite;
+            img.type = Image.Type.Sliced;
+            img.color = Color.white;
+        }
+        else
+        {
+            img.sprite = null;
+            img.color = fallbackColor ?? ButtonColor;
+        }
+    }
+
+    // Портретная/сильно прямоугольная рамка (Windo.png, 200x350) — StyleAsButton's DialogHeaderFrame
+    // нарезан под широкие НИЗКИЕ кнопки (border 35/10), на высоких карточках (MutationDungeonNodeChoiceUI)
+    // растягивался некрасиво. Отдельный спрайт под такие пропорции вместо перенарезки общего.
+    public static void StyleAsRectFrame(Image img, Color? fallbackColor = null)
+    {
+        EnsureSpritesLoaded();
+        var size = img.rectTransform.rect;
+        bool bigEnough = size.width >= MinRectFrameWidth && size.height >= MinRectFrameHeight;
+        if (rectFrameSprite != null && bigEnough)
+        {
+            img.sprite = rectFrameSprite;
             img.type = Image.Type.Sliced;
             img.color = Color.white;
         }

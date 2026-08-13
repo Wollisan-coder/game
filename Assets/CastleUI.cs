@@ -28,6 +28,8 @@ public class CastleUI : MonoBehaviour
     private AchievementUI achievementUI;
     private DeathDungeonEntryUI deathDungeonEntryUI;
     private DeathDungeonMapUI deathDungeonMapUI;
+    private MutationDungeonEntryUI mutationDungeonEntryUI;
+    private MutationDungeonNodeChoiceUI mutationDungeonNodeChoiceUI;
     private TerritoryMinesUI territoryMinesUI;
     private GameObject questsBadge;
     private GameObject achieveBadge;
@@ -190,6 +192,10 @@ public class CastleUI : MonoBehaviour
         CreateNavButton(panelRect, "Shop", new Vector2(0, 160), () => { exchangeUI?.Open(canvasRoot, Refresh); });
         // Debug Constructor (бэклог 2026-08-10 #6) — тестовый отряд/шмот без гринда, см. DebugConstructorUI.
         CreateNavButton(panelRect, "Debug", new Vector2(220, 160), () => { debugConstructorUI?.Open(canvasRoot); });
+        // Mutation Dungeon (бэклог 2026-08-10 #7, вариант C+A) — roguelike с мутацией поля + ветвящимся
+        // путём, см. MutationDungeonManager. Обычная текстовая кнопка, как Shop/Debug выше — своего
+        // арта под хотспот на карте (как у Death Dungeon/Training Zone) пока нет.
+        CreateNavButton(panelRect, "Trial", new Vector2(-220, 160), () => { OnMutationDungeonClicked(); });
         // Mines — обратно в Замок (была временно на World Map). Реальный арт — Resources/UI/Castle/Mines.png.
         CreateMinesIconButton(panelRect, new Vector2(486, 470));
 
@@ -201,6 +207,11 @@ public class CastleUI : MonoBehaviour
         deathDungeonEntryUI = gameObject.AddComponent<DeathDungeonEntryUI>();
         deathDungeonMapUI = gameObject.AddComponent<DeathDungeonMapUI>();
         gameObject.AddComponent<DeathDungeonRetreatSelectionUI>();
+        // Порядок важен: MutationDungeonEntryUI.Open() ищет MutationDungeonNodeChoiceUI через
+        // GetComponent на том же GameObject — оба должны быть добавлены (порядок между собой не важен,
+        // GetComponent находит по типу, не по порядку добавления), просто держим их рядом для читаемости.
+        mutationDungeonEntryUI = gameObject.AddComponent<MutationDungeonEntryUI>();
+        mutationDungeonNodeChoiceUI = gameObject.AddComponent<MutationDungeonNodeChoiceUI>();
         territoryMinesUI = gameObject.AddComponent<TerritoryMinesUI>();
 
         panelRoot.SetActive(false);
@@ -749,6 +760,17 @@ public class CastleUI : MonoBehaviour
     {
         if (DeathDungeonManager.Instance != null && DeathDungeonManager.Instance.IsRunActive)
             deathDungeonMapUI?.Open(canvasRoot, owner);
+    }
+
+    private void OnMutationDungeonClicked() => mutationDungeonEntryUI?.Open(canvasRoot, owner);
+
+    // Тот же приём, что и ReopenDeathDungeonMapIfActive выше — вызывается MainMenuUI.Start() после
+    // возврата с узла (returningFromMutationDungeon), сразу показывает экран выбора следующего узла,
+    // если ран ещё активен, вместо голого Замка.
+    public void ReopenMutationDungeonIfActive()
+    {
+        if (MutationDungeonManager.Instance != null && MutationDungeonManager.Instance.IsRunActive)
+            mutationDungeonNodeChoiceUI?.Open(canvasRoot, owner);
     }
 
     // Маленький кликабельный маркер здания прямо на фоне сцены (вместо целой карточки в сетке) —

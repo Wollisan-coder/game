@@ -71,6 +71,15 @@ public class AccountManager : MonoBehaviour
     // панель, откуда кликнул хотспот угрозы, а не на Коллекцию по умолчанию.
     public bool returningFromMineDefense;
 
+    // Одноразовый сигнал перед загрузкой боевой сцены, тот же приём, что и pendingDeathDungeon выше — но
+    // НЕ permadeath: поражение тут просто заканчивает ран (см. MutationDungeonManager), герои целы.
+    [Header("Mutation Dungeon (roguelike C+A — мутация поля + ветвящийся путь)")]
+    public bool pendingMutationDungeon;
+
+    // Обратный сигнал — читается MainMenuUI.Start() (и сразу гасится), чтобы после узла вернуться в Замок
+    // и сразу переоткрыть экран выбора следующего узла (если ран ещё активен), а не Коллекцию по умолчанию.
+    public bool returningFromMutationDungeon;
+
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }

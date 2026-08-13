@@ -23,6 +23,27 @@ public class GridManager : MonoBehaviour
     [Header("Бой")]
     public BattleManager battleManager;
 
+    // Мутация поля нового roguelike-режима (см. BoardMutationType/BattleManager.currentMutation) — оба
+    // поля выставляются BattleManager.Awake() ДО генерации доски, GridManager сам ничего не решает про
+    // мутации, только применяет то, что ему передали. -1/null = без ограничений (обычный бой).
+    [Header("Мутация поля (см. BoardMutationType) — выставляется BattleManager, не трогать вручную")]
+    public int excludedItemType = -1;
+    public HarmfulTileSpawnRule[] extraHarmfulTileSpawns;
+
+    // Общий "безопасный" рандом типа — учитывает excludedItemType, если он задан. Используется везде, где
+    // раньше был голый Random.Range(0, itemPrefabs.Length) (Chaos-перекраска соседей, респавн после каскада,
+    // гарантированный матч при решафле) — чтобы MissingColor/LockedAffinity действовал одинаково на ВСЕХ
+    // путях появления новых фишек, а не только на первичную генерацию доски (см. GetValidRandomType).
+    private int GetRandomItemType()
+    {
+        if (excludedItemType < 0 || itemPrefabs.Length <= 1)
+            return Random.Range(0, itemPrefabs.Length);
+
+        int result;
+        do { result = Random.Range(0, itemPrefabs.Length); } while (result == excludedItemType);
+        return result;
+    }
+
     [Header("Тип 'Red' в массиве itemPrefabs")]
 public int redTypeIndex = 0; // проверь, что Element 0 = RedGem в твоём массиве
 
@@ -313,12 +334,16 @@ private IEnumerator PopInAnimation(Transform t)
     }
 
     // Разово в начале боя размечает случайные существующие фишки как вредные согласно currentEnemy.harmfulTileSpawns
+    // + extraHarmfulTileSpawns (мутация узла нового roguelike-режима, см. поле выше — накладывается ПОВЕРХ
+    // обычных правил врага, не вместо них).
     private void SpawnHarmfulTilesFromEnemy()
     {
-        if (battleManager == null || battleManager.currentEnemy == null) return;
+        var enemyRules = battleManager != null && battleManager.currentEnemy != null
+            ? battleManager.currentEnemy.harmfulTileSpawns : null;
 
-        HarmfulTileSpawnRule[] rules = battleManager.currentEnemy.harmfulTileSpawns;
-        if (rules == null) return;
+        IEnumerable<HarmfulTileSpawnRule> rules = (enemyRules ?? System.Array.Empty<HarmfulTileSpawnRule>())
+            .Concat(extraHarmfulTileSpawns ?? System.Array.Empty<HarmfulTileSpawnRule>());
+        if (!rules.Any()) return;
 
         List<Item> available = new List<Item>();
         for (int x = 0; x < width; x++)
@@ -387,6 +412,11 @@ private IEnumerator PopInAnimation(Transform t)
     {
         List<int> validTypes = new List<int>();
         for (int i = 0; i < itemPrefabs.Length; i++) validTypes.Add(i);
+
+        // MissingColor/LockedAffinity — см. excludedItemType выше. Кламп на Count>1 чисто защитный (с 6
+        // цветами игры сюда никогда не попадёт), не даёт списку опустеть в теории.
+        if (excludedItemType >= 0 && validTypes.Count > 1)
+            validTypes.Remove(excludedItemType);
 
         // Проверка по горизонтали
         if (x >= 2)
@@ -606,7 +636,7 @@ public IEnumerator PlayDestroyAnimation()
                 continue;
 
             int nx = neighbor.x, ny = neighbor.y;
-            int newType = Random.Range(0, itemPrefabs.Length);
+            int newType = GetRandomItemType();
             Destroy(neighbor.gameObject);
             SpawnItem(nx, ny, newType);
         }
@@ -833,7 +863,7 @@ public IEnumerator PlayDestroyAnimation()
 
                 if (grid[x, y] == null)
                 {
-                    int randomType = Random.Range(0, itemPrefabs.Length);
+                    int randomType = GetRandomItemType();
                     SpawnItem(x, y, randomType);
 
                     grid[x, y].transform.position = GetWorldPosition(x, height);
@@ -1094,7 +1124,7 @@ public IEnumerator ExecuteFavorableReshuffleSkill()
     yield return new WaitForSeconds(0.25f);
 
     // Форсируем гарантированный матч 4-в-ряд в случайной строке
-    int guaranteedType = Random.Range(0, itemPrefabs.Length);
+    int guaranteedType = GetRandomItemType();
     int rowY = Random.Range(0, height);
     int startX = Random.Range(0, width - 3);
 
