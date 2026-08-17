@@ -141,7 +141,7 @@ public class ItemDetailUI : MonoBehaviour
             else
             {
                 bool canSacrifice = owned && ownership != null && ownership.level < maxLevel
-                    && manager != null && manager.ownership.Any(o => o.instanceId != ownership.instanceId);
+                    && manager != null && manager.HasSacrificeCandidates(ownership.instanceId);
 
                 actionButton.gameObject.SetActive(canSacrifice);
                 if (actionText != null) actionText.text = "Upgrade";

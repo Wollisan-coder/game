@@ -23,6 +23,18 @@ public class ItemCollectionManager : MonoBehaviour
 
     public bool IsOwned(ItemData item) => item != null && ownership.Any(o => o.itemId == item.itemId);
 
+    // Есть ли реальный кандидат на жертву для апгрейда стека excludeInstanceId — та же фильтрация, что
+    // использует ItemSacrificeUI.GetCandidates (исключаем сам стек, экипированные где-либо предметы и
+    // не-Equipment категории). Общий источник правды для любой кнопки "Upgrade", чтобы она не включалась,
+    // когда ItemSacrificeUI на самом деле откроется на пустой экран.
+    public bool HasSacrificeCandidates(string excludeInstanceId)
+    {
+        var heroManager = HeroCollectionManager.Instance;
+        return ownership.Any(o => o.instanceId != excludeInstanceId
+            && (heroManager == null || !heroManager.IsItemEquippedAnywhere(o.instanceId))
+            && GetItemById(o.itemId)?.category == ItemCategory.Equipment);
+    }
+
     // Все стеки конкретного предмета (может быть несколько — по одному на каждый уникальный уровень/опыт)
     public List<ItemOwnershipData> GetStacks(string itemId)
     {

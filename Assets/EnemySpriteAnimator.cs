@@ -23,6 +23,8 @@ public class EnemySpriteAnimator : MonoBehaviour
     private RectTransform rectTransform;
     private Vector2 basePosition;
     private bool basePositionCaptured;
+    private Color baseColor;
+    private bool baseColorCaptured;
     private Coroutine hitRoutine;
 
     public void SetEnemy(EnemyData enemy)
@@ -110,8 +112,15 @@ public class EnemySpriteAnimator : MonoBehaviour
             basePosition = rectTransform.anchoredPosition;
             basePositionCaptured = true;
         }
+        // Захватываем цвет ОДИН раз, как и позицию выше — иначе при пересечении двух вспышек (например,
+        // пассивка Драконорождённых тикает в тот же ход, что и урон от совпадений) вторая корутина брала бы
+        // текущий, уже подкрашенный target.color за "базовый", и враг оставался бы красным до конца боя.
+        if (!baseColorCaptured)
+        {
+            baseColor = target.color;
+            baseColorCaptured = true;
+        }
 
-        Color baseColor = target.color;
         Color flashColor = new Color(1f, 0.25f, 0.25f, baseColor.a);
 
         const float duration = 0.25f;

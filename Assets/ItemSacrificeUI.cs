@@ -272,6 +272,7 @@ public class ItemSacrificeUI : MonoBehaviour
 
             quickSelectBgs[i] = qObj.AddComponent<Image>();
             quickSelectButtons[i] = qObj.AddComponent<Button>();
+            quickSelectButtons[i].targetGraphic = quickSelectBgs[i]; // без этого interactable=false ничего не красит
             quickSelectButtons[i].onClick.AddListener(() => AdjustPreviewTarget(delta));
 
             var qTextObj = new GameObject("Text", typeof(RectTransform));
@@ -298,6 +299,7 @@ public class ItemSacrificeUI : MonoBehaviour
         maxRect.anchoredPosition = new Vector2(394f, quickRowY);
         maxLevelBg = maxObj.AddComponent<Image>();
         maxLevelButton = maxObj.AddComponent<Button>();
+        maxLevelButton.targetGraphic = maxLevelBg; // без этого interactable=false ничего не красит
         maxLevelButton.onClick.AddListener(() => QuickSelectToLevel(maxLevel));
 
         var maxTextObj = new GameObject("Text", typeof(RectTransform));
@@ -339,6 +341,7 @@ public class ItemSacrificeUI : MonoBehaviour
         confirmBg = confirmObj.AddComponent<Image>();
         ConfirmationDialog.StyleAsButton(confirmBg);
         confirmButton = confirmObj.AddComponent<Button>();
+        confirmButton.targetGraphic = confirmBg; // без этого interactable=false ничего не красит
         confirmButton.onClick.AddListener(OnConfirmClicked);
 
         var confirmTextObj = new GameObject("Text", typeof(RectTransform));

@@ -91,7 +91,7 @@ public class DeathDungeonRetreatSelectionUI : MonoBehaviour
         totalRect.sizeDelta = new Vector2(0, 36);
         totalRect.anchoredPosition = new Vector2(0, -70);
         totalText = totalObj.AddComponent<TextMeshProUGUI>();
-        totalText.fontSize = 22;
+        totalText.fontSize = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
         totalText.alignment = TextAlignmentOptions.Center;
         totalText.color = new Color(1, 1, 1, 0.85f);
 
@@ -119,7 +119,7 @@ public class DeathDungeonRetreatSelectionUI : MonoBehaviour
         contentRect.sizeDelta = new Vector2(0, 0);
 
         var grid = contentObj.AddComponent<GridLayoutGroup>();
-        grid.cellSize = new Vector2(150, 200);
+        grid.cellSize = new Vector2(190, 230); // увеличено под 28pt-пол в подписях плиток (было 150x200 под 13pt)
         grid.spacing = new Vector2(14, 14);
         grid.padding = new RectOffset(10, 10, 10, 10);
 
@@ -155,7 +155,7 @@ public class DeathDungeonRetreatSelectionUI : MonoBehaviour
         confirmTextRect.offsetMax = Vector2.zero;
         var confirmText = confirmTextObj.AddComponent<TextMeshProUGUI>();
         confirmText.text = "Confirm Retreat";
-        confirmText.fontSize = 24;
+        confirmText.fontSize = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
         confirmText.fontStyle = FontStyles.Bold;
         confirmText.alignment = TextAlignmentOptions.Center;
         confirmText.color = ConfirmationDialog.ButtonTextColor;
@@ -182,7 +182,7 @@ public class DeathDungeonRetreatSelectionUI : MonoBehaviour
         cancelTextRect.offsetMax = Vector2.zero;
         var cancelText = cancelTextObj.AddComponent<TextMeshProUGUI>();
         cancelText.text = "Cancel";
-        cancelText.fontSize = 24;
+        cancelText.fontSize = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
         cancelText.alignment = TextAlignmentOptions.Center;
         cancelText.color = ConfirmationDialog.ButtonTextColor;
 
@@ -227,7 +227,9 @@ public class DeathDungeonRetreatSelectionUI : MonoBehaviour
 
         int selected = gemSelection.TryGetValue(hero.heroId, out int sel) ? sel : 0;
         label.text = $"{hero.heroName}\nGem {selected}/{ownership.ascensionGems}";
-        label.fontSize = 13;
+        label.enableAutoSizing = true;
+        label.fontSizeMin = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
+        label.fontSizeMax = 34;
         label.color = selected > 0 ? Color.yellow : hero.GetRarityColor();
 
         bg.color = selected > 0 ? new Color(1f, 0.85f, 0.3f, 0.35f) : new Color(1, 1, 1, 0.06f);
@@ -247,8 +249,13 @@ public class DeathDungeonRetreatSelectionUI : MonoBehaviour
         ItemBadgeUtility.ApplyRarityFrame(icon, hero.GetRarityColor(), ref rarityFrame);
 
         bool selected = cardSelection.Contains(hero.heroId);
-        label.text = selected ? $"{hero.heroName}\nSACRIFICED" : $"{hero.heroName}\n(tap to sacrifice)";
-        label.fontSize = 13;
+        // Убрали инструктивную вторую строку "(tap to sacrifice)" у невыбранного состояния — не влезает даже
+        // на жёстком полу 28pt при разумном размере плитки, а сам факт кликабельности плитки + заголовок
+        // экрана "Choose Your Sacrifice" уже достаточно объясняют механику; SACRIFICED остаётся, это статус.
+        label.text = selected ? $"{hero.heroName}\nSACRIFICED" : hero.heroName;
+        label.enableAutoSizing = true;
+        label.fontSizeMin = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
+        label.fontSizeMax = 34;
         label.color = selected ? new Color(1f, 0.3f, 0.3f) : hero.GetRarityColor();
 
         bg.color = selected ? new Color(0.9f, 0.2f, 0.2f, 0.4f) : new Color(1, 1, 1, 0.06f);

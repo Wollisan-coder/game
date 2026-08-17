@@ -101,7 +101,7 @@ public class DeathDungeonMapUI : MonoBehaviour
         var closeText = closeTextObj.AddComponent<TextMeshProUGUI>();
         // НЕ выход из забега — просто прячет карту (например, чтобы глянуть отряд/инвентарь), забег продолжается.
         closeText.text = "Hide Map";
-        closeText.fontSize = 24;
+        closeText.fontSize = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
         closeText.fontStyle = FontStyles.Bold;
         closeText.alignment = TextAlignmentOptions.Center;
         closeText.color = ConfirmationDialog.ButtonTextColor;
@@ -133,8 +133,8 @@ public class DeathDungeonMapUI : MonoBehaviour
         retreatText.alignment = TextAlignmentOptions.Center;
         retreatText.color = ConfirmationDialog.ButtonTextColor;
         retreatText.enableAutoSizing = true;
-        retreatText.fontSizeMin = 14;
-        retreatText.fontSizeMax = 22;
+        retreatText.fontSizeMin = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
+        retreatText.fontSizeMax = 32;
 
         overlayRoot.SetActive(false);
     }

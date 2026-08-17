@@ -203,7 +203,7 @@ public class ItemPickerUI : MonoBehaviour
 
         bool canUpgrade = equippedData != null && equippedStack != null
             && equippedStack.level < equippedData.GetMaxLevel()
-            && ItemCollectionManager.Instance.ownership.Any(o => o.instanceId != equippedStack.instanceId);
+            && ItemCollectionManager.Instance.HasSacrificeCandidates(equippedStack.instanceId);
 
         upgradeButton.gameObject.SetActive(canUpgrade);
     }

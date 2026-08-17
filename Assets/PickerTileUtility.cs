@@ -18,6 +18,7 @@ public static class PickerTileUtility
         bg = entryObj.AddComponent<Image>();
         bg.color = bgColor;
         button = entryObj.AddComponent<Button>();
+        button.targetGraphic = bg; // без этого interactable=false ничего не красит — плитка выглядит активной
 
         var iconObj = new GameObject("Icon", typeof(RectTransform));
         var iconRect = (RectTransform)iconObj.transform;

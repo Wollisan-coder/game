@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Video;
 
 [CreateAssetMenu(fileName = "NewHero", menuName = "Battle/Hero")]
 public class HeroData : ScriptableObject
@@ -18,6 +19,10 @@ public class HeroData : ScriptableObject
     [Header("Визуал")]
     public Sprite portrait;          // общая маленькая карточка (Collection + Squad)
     public Sprite inventoryPortrait; // крупный портрет для окна инвентаря — черновое поле, не финал
+    // Анимированный портрет для окна инвентаря (опционально) — если задан, HeroInventoryUI проигрывает
+    // его поверх inventoryPortrait/portrait вместо статичной картинки. inventoryPortrait всё равно нужен
+    // как статичный фолбэк — используется на маленьких карточках (Collection/Squad), там видео не крутим.
+    public VideoClip inventoryPortraitVideo;
     public Color themeColor = Color.white;
     public ResourceType resourceType;
 

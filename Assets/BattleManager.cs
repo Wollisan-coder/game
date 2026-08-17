@@ -283,6 +283,14 @@ public class BattleManager : MonoBehaviour
                 enemyMinAttack = Mathf.RoundToInt(enemyMinAttack * 1.3f);
                 enemyMaxAttack = Mathf.RoundToInt(enemyMaxAttack * 1.3f);
             }
+            else if (currentMutationNodeType == MutationDungeonNodeType.Boss)
+            {
+                // Тот же принцип, что и у Death Dungeon Boss (SetupDeathDungeonNode) — финальный узел рана
+                // должен быть тяжелее Elite выше, а не тем же переиспользованным врагом без надбавки.
+                enemyMaxHP = Mathf.RoundToInt(enemyMaxHP * 2f);
+                enemyMinAttack = Mathf.RoundToInt(enemyMinAttack * 1.5f);
+                enemyMaxAttack = Mathf.RoundToInt(enemyMaxAttack * 1.5f);
+            }
 
             ApplyMutationToGrid();
         }
@@ -471,6 +479,16 @@ public class BattleManager : MonoBehaviour
             enemyMaxHP = Mathf.RoundToInt(enemyMaxHP * 1.5f);
             enemyMinAttack = Mathf.RoundToInt(enemyMinAttack * 1.3f);
             enemyMaxAttack = Mathf.RoundToInt(enemyMaxAttack * 1.3f);
+            enemyHP = enemyMaxHP;
+        }
+        else if (currentDungeonNodeType == DeathDungeonNodeType.Boss)
+        {
+            // Финальный бой забега должен быть заметно тяжелее Elite выше, а не тем же переиспользованным
+            // врагом без надбавки — иначе "финальный уникальный босс" по факту мог оказаться слабее
+            // предыдущего узла (см. ReportFindings 2026-08-13).
+            enemyMaxHP = Mathf.RoundToInt(enemyMaxHP * 2f);
+            enemyMinAttack = Mathf.RoundToInt(enemyMinAttack * 1.5f);
+            enemyMaxAttack = Mathf.RoundToInt(enemyMaxAttack * 1.5f);
             enemyHP = enemyMaxHP;
         }
         else if (currentDungeonNodeType == DeathDungeonNodeType.Gamble)
@@ -1150,12 +1168,14 @@ public class BattleManager : MonoBehaviour
         if (currentEnemy == null || currentEnemy.skills == null || currentEnemy.skills.Length == 0)
             return null;
 
-        float totalWeight = currentEnemy.skills.Sum(s => Mathf.Max(0.0001f, s.weight));
+        float totalWeight = currentEnemy.skills.Sum(s => s == null ? 0f : Mathf.Max(0.0001f, s.weight));
         float roll = Random.Range(0f, totalWeight);
         float cumulative = 0f;
 
         foreach (var skill in currentEnemy.skills)
         {
+            if (skill == null) continue; // тот же класс бага, что был у passives (см. фикс выше в этом файле)
+
             cumulative += Mathf.Max(0.0001f, skill.weight);
             if (roll <= cumulative)
                 return skill;
@@ -1491,9 +1511,9 @@ public class BattleManager : MonoBehaviour
             rewardLines.Add($"Progress Points +{progressPoints}");
         }
 
-        // Mutation Dungeon тоже пропускает — та же причина, что у ОП-гейта выше: currentNodeId может быть
-        // залипшим от последнего обычного боя на карте, помечать его пройденным тут было бы неверно.
-        if (!isMutationDungeon)
+        // Mutation Dungeon и Death Dungeon тоже пропускают — та же причина, что у ОП-гейта выше: currentNodeId
+        // может быть залипшим от последнего обычного боя на карте, помечать его пройденным тут было бы неверно.
+        if (!isMutationDungeon && !isDeathDungeon)
             WorldMapManager.Instance?.CompleteCurrentNode();
 
         Transform root = ResolveDialogRoot();
@@ -1522,6 +1542,17 @@ public class BattleManager : MonoBehaviour
     // назад в Замок — CastleUI сам переоткроет экран выбора следующего узла (см.
     // ReopenMutationDungeonIfActive/returningFromMutationDungeon), никакого отдельного "выбора баффа"
     // тут нет — сам следующий узел УЖЕ выбор игрока, в отличие от фиксированной последовательности Death Dungeon.
+    // Общий "выдать один случайный предмет из каталога" — переиспользуется бонусами Elite/Weakened ниже.
+    private string GrantRandomBonusItem()
+    {
+        var catalog = ItemCollectionManager.Instance != null ? ItemCollectionManager.Instance.allItems : null;
+        if (catalog == null || catalog.Length == 0) return null;
+
+        var bonusItem = catalog[Random.Range(0, catalog.Length)];
+        ItemCollectionManager.Instance.AddItemCopy(bonusItem);
+        return bonusItem.itemName;
+    }
+
     private void EndMutationDungeonNodeVictory(List<string> rewardLines, Transform root)
     {
         var dungeon = MutationDungeonManager.Instance;
@@ -1536,13 +1567,16 @@ public class BattleManager : MonoBehaviour
 
             if (currentMutationNodeType == MutationDungeonNodeType.Elite)
             {
-                var catalog = ItemCollectionManager.Instance != null ? ItemCollectionManager.Instance.allItems : null;
-                if (catalog != null && catalog.Length > 0)
-                {
-                    var bonusItem = catalog[Random.Range(0, catalog.Length)];
-                    ItemCollectionManager.Instance.AddItemCopy(bonusItem);
-                    rewardLines.Add($"Elite bonus: {bonusItem.itemName} +1");
-                }
+                string bonusName = GrantRandomBonusItem();
+                if (bonusName != null) rewardLines.Add($"Elite bonus: {bonusName} +1");
+            }
+
+            // Weakened обещает "лучшую награду" за -N% урона своей же карточкой (см. MutationUtility.GetDescription) —
+            // отдельный от Elite бонус выше, оба могут сработать вместе, если Weakened выпал на Elite-узел.
+            if (currentMutation == BoardMutationType.Weakened)
+            {
+                string bonusName = GrantRandomBonusItem();
+                if (bonusName != null) rewardLines.Add($"Weakened bonus: {bonusName} +1");
             }
         }
 

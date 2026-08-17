@@ -100,10 +100,10 @@ public class HeroVoucherRedeemUI : MonoBehaviour
         titleRect.anchorMin = new Vector2(0, 1);
         titleRect.anchorMax = new Vector2(1, 1);
         titleRect.pivot = new Vector2(0.5f, 1);
-        titleRect.sizeDelta = new Vector2(0, 40);
+        titleRect.sizeDelta = new Vector2(0, 48);
         titleRect.anchoredPosition = new Vector2(0, -8);
         titleText = titleObj.AddComponent<TextMeshProUGUI>();
-        titleText.fontSize = 24;
+        titleText.fontSize = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
         titleText.alignment = TextAlignmentOptions.Center;
         titleText.color = Color.white;
 
@@ -131,7 +131,7 @@ public class HeroVoucherRedeemUI : MonoBehaviour
         contentRect.sizeDelta = new Vector2(0, 0);
 
         var grid = contentObj.AddComponent<GridLayoutGroup>();
-        grid.cellSize = new Vector2(100, 120);
+        grid.cellSize = new Vector2(150, 190); // увеличено под 28pt-пол в подписи плитки (было 100x120 под 12pt)
         grid.spacing = new Vector2(10, 10);
         grid.padding = new RectOffset(6, 6, 6, 6);
 
@@ -156,7 +156,7 @@ public class HeroVoucherRedeemUI : MonoBehaviour
         emptyLabel.text = "No heroes of this rarity exist";
         emptyLabel.alignment = TextAlignmentOptions.Center;
         emptyLabel.color = new Color(1, 1, 1, 0.6f);
-        emptyLabel.fontSize = 18;
+        emptyLabel.fontSize = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
         emptyLabelObj.SetActive(false);
         emptyLabelHolder = emptyLabelObj;
 
@@ -217,7 +217,9 @@ public class HeroVoucherRedeemUI : MonoBehaviour
 
         bool unlocked = heroCollectionManager.IsUnlocked(hero);
         label.text = unlocked ? hero.heroName : $"{hero.heroName}\n(locked)";
-        label.fontSize = 12;
+        label.enableAutoSizing = true;
+        label.fontSizeMin = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
+        label.fontSizeMax = 32;
         label.color = hero.themeColor;
 
         btn.onClick.AddListener(() => OnHeroSelected(hero));

@@ -194,7 +194,7 @@ public class SquadUI : MonoBehaviour
         textRect.offsetMax = Vector2.zero;
         var text = textObj.AddComponent<TextMeshProUGUI>();
         text.text = label;
-        text.fontSize = 26;
+        text.fontSize = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
         text.alignment = TextAlignmentOptions.Center;
         text.color = ConfirmationDialog.ButtonTextColor;
 

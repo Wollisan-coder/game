@@ -126,11 +126,39 @@ public class MutationDungeonNodeChoiceUI : MonoBehaviour
         cardsLayout.childControlHeight = true;
         cardsContainer = cardsRect;
 
+        // Тот же приём, что и DeathDungeonMapUI.Close/"Hide Map" — прячет оверлей, НЕ трогая ран, чтобы
+        // можно было глянуть отряд/инвентарь в Замке и вернуться (клик по кнопке Mutation Dungeon в Замке
+        // снова открывает этот же экран, пока ран активен, см. MutationDungeonEntryUI.Open).
+        var hideObj = new GameObject("HideButton", typeof(RectTransform));
+        var hideRect = (RectTransform)hideObj.transform;
+        hideRect.SetParent(windowRect, false);
+        hideRect.anchorMin = new Vector2(0.28f, 0);
+        hideRect.anchorMax = new Vector2(0.28f, 0);
+        hideRect.pivot = new Vector2(0.5f, 0);
+        hideRect.sizeDelta = new Vector2(260, 50);
+        hideRect.anchoredPosition = new Vector2(0, 25);
+        var hideImg = hideObj.AddComponent<Image>();
+        ConfirmationDialog.StyleAsButton(hideImg);
+        var hideBtn = hideObj.AddComponent<Button>();
+        hideBtn.onClick.AddListener(Close);
+
+        var hideTextObj = new GameObject("Text", typeof(RectTransform));
+        var hideTextRect = (RectTransform)hideTextObj.transform;
+        hideTextRect.SetParent(hideRect, false);
+        hideTextRect.anchorMin = Vector2.zero;
+        hideTextRect.anchorMax = Vector2.one;
+        hideTextRect.offsetMin = Vector2.zero;
+        hideTextRect.offsetMax = Vector2.zero;
+        var hideText = hideTextObj.AddComponent<TextMeshProUGUI>();
+        hideText.text = "Hide";
+        hideText.alignment = TextAlignmentOptions.Center;
+        hideText.color = ConfirmationDialog.ButtonTextColor;
+
         var abandonObj = new GameObject("AbandonButton", typeof(RectTransform));
         var abandonRect = (RectTransform)abandonObj.transform;
         abandonRect.SetParent(windowRect, false);
-        abandonRect.anchorMin = new Vector2(0.5f, 0);
-        abandonRect.anchorMax = new Vector2(0.5f, 0);
+        abandonRect.anchorMin = new Vector2(0.72f, 0);
+        abandonRect.anchorMax = new Vector2(0.72f, 0);
         abandonRect.pivot = new Vector2(0.5f, 0);
         abandonRect.sizeDelta = new Vector2(260, 50);
         abandonRect.anchoredPosition = new Vector2(0, 25);

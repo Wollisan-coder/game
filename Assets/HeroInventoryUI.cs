@@ -2,6 +2,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using UnityEngine.Video;
 using TMPro;
 
 public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
@@ -190,9 +191,70 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         Refresh();
     }
 
+    // Вызывается при закрытии этого попапа — чтобы экран коллекции позади мог перестроить сетку
+    // (например, если левелап/вознесение внутри попапа изменили уровень/грейд героя)
+    public System.Action OnClosed;
+
     public void Close()
     {
         gameObject.SetActive(false);
+        StopPortraitVideo(); // не тратим декод впустую, пока попап скрыт
+        OnClosed?.Invoke();
+    }
+
+    // Оверлей поверх portraitImage — RawImage+VideoPlayer, растянутый на весь родительский Image ребёнком
+    // (значит, автоматически наследует его позицию/размер, отдельно копировать RectTransform не нужно).
+    // Строится один раз лениво, дальше переиспользуется под любого героя с inventoryPortraitVideo.
+    private RawImage portraitVideoImage;
+    private VideoPlayer portraitVideoPlayer;
+    private RenderTexture portraitRenderTexture;
+
+    private void EnsurePortraitVideoBuilt()
+    {
+        if (portraitVideoImage != null || portraitImage == null) return;
+
+        var videoObj = new GameObject("PortraitVideo", typeof(RectTransform));
+        var videoRect = (RectTransform)videoObj.transform;
+        videoRect.SetParent(portraitImage.transform, false);
+        videoRect.anchorMin = Vector2.zero;
+        videoRect.anchorMax = Vector2.one;
+        videoRect.offsetMin = Vector2.zero;
+        videoRect.offsetMax = Vector2.zero;
+
+        portraitVideoImage = videoObj.AddComponent<RawImage>();
+
+        portraitVideoPlayer = videoObj.AddComponent<VideoPlayer>();
+        portraitVideoPlayer.renderMode = VideoRenderMode.RenderTexture;
+        portraitVideoPlayer.source = VideoSource.VideoClip;
+        portraitVideoPlayer.isLooping = true;
+        portraitVideoPlayer.playOnAwake = false;
+        portraitVideoPlayer.audioOutputMode = VideoAudioOutputMode.None; // тихий портрет-луп, не ждём звука в клипе
+    }
+
+    // Разные герои могут прислать видео разного разрешения — RenderTexture пересоздаём под нативный
+    // размер клипа только когда он реально отличается, не на каждый Refresh.
+    private void PlayPortraitVideo(VideoClip clip)
+    {
+        EnsurePortraitVideoBuilt();
+        if (portraitVideoPlayer == null) return;
+
+        if (portraitRenderTexture == null || portraitRenderTexture.width != (int)clip.width || portraitRenderTexture.height != (int)clip.height)
+        {
+            if (portraitRenderTexture != null) portraitRenderTexture.Release();
+            portraitRenderTexture = new RenderTexture((int)clip.width, (int)clip.height, 0);
+            portraitVideoImage.texture = portraitRenderTexture;
+            portraitVideoPlayer.targetTexture = portraitRenderTexture;
+        }
+
+        portraitVideoPlayer.clip = clip;
+        portraitVideoImage.gameObject.SetActive(true);
+        portraitVideoPlayer.Play();
+    }
+
+    private void StopPortraitVideo()
+    {
+        if (portraitVideoPlayer != null) portraitVideoPlayer.Stop();
+        if (portraitVideoImage != null) portraitVideoImage.gameObject.SetActive(false);
     }
 
     private void Refresh()
@@ -200,6 +262,11 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         if (currentHero == null) return;
 
         if (portraitImage != null) portraitImage.sprite = HeroAscensionUtility.GetInventoryPortrait(currentHero, currentOwnership);
+
+        if (currentHero.inventoryPortraitVideo != null)
+            PlayPortraitVideo(currentHero.inventoryPortraitVideo);
+        else
+            StopPortraitVideo();
         if (heroNameText != null) heroNameText.text = currentHero.heroName;
         if (healthText != null) healthText.text = $"HP: {currentHero.maxHealth}";
         if (descriptionText != null) descriptionText.text = currentHero.description;
@@ -655,6 +722,7 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
             heroUpgradeBgs[i] = upgradeObj.AddComponent<Image>();
             heroUpgradeButtons[i] = upgradeObj.AddComponent<Button>();
+            heroUpgradeButtons[i].targetGraphic = heroUpgradeBgs[i]; // без этого interactable=false ничего не красит
             heroUpgradeButtons[i].onClick.AddListener(() => OnUpgradeStepClicked(step));
 
             var textObj = new GameObject("Text", typeof(RectTransform));

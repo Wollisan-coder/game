@@ -916,9 +916,15 @@ public class CastleUI : MonoBehaviour
             addCostRow = row => BuildCostIconRow(row, costWood, costStone);
             addActions = actionRow => CreateActionButton(actionRow, "Build", new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 160), () =>
             {
-                manager.Build(building);
-                CloseBuildingDetailPopup();
-                Refresh();
+                if (manager.Build(building))
+                {
+                    CloseBuildingDetailPopup();
+                    Refresh();
+                }
+                else
+                {
+                    ConfirmationDialog.ShowInfo(canvasRoot, "Not enough resources to build this.");
+                }
             });
         }
         else
@@ -945,9 +951,15 @@ public class CastleUI : MonoBehaviour
                     var (wood, stone) = building.GetUpgradeCost(level + 1);
                     addActions = actionRow => CreateActionButton(actionRow, $"Upgrade\n({wood}W/{stone}S)", new Vector2(0, 0), new Vector2(1, 0), new Vector2(0, 160), () =>
                     {
-                        manager.UpgradeBuilding(building);
-                        CloseBuildingDetailPopup();
-                        Refresh();
+                        if (manager.UpgradeBuilding(building))
+                        {
+                            CloseBuildingDetailPopup();
+                            Refresh();
+                        }
+                        else
+                        {
+                            ConfirmationDialog.ShowInfo(canvasRoot, "Not enough resources to upgrade this.");
+                        }
                     });
                 }
                 else
@@ -979,9 +991,15 @@ public class CastleUI : MonoBehaviour
 
                         CreateActionButton(actionRow, $"Upgrade\n({wood}W/{stone}S)", new Vector2(0.52f, 0), new Vector2(1, 0), new Vector2(0, 160), () =>
                         {
-                            manager.UpgradeBuilding(building);
-                            CloseBuildingDetailPopup();
-                            Refresh();
+                            if (manager.UpgradeBuilding(building))
+                            {
+                                CloseBuildingDetailPopup();
+                                Refresh();
+                            }
+                            else
+                            {
+                                ConfirmationDialog.ShowInfo(canvasRoot, "Not enough resources to upgrade this.");
+                            }
                         });
                     };
                 }

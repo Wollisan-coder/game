@@ -158,6 +158,7 @@ public class CastleSummonUI : MonoBehaviour
         var img = btnObj.AddComponent<Image>();
         ConfirmationDialog.StyleAsButton(img);
         button = btnObj.AddComponent<Button>();
+        button.targetGraphic = img; // без этого interactable=false ничего не красит — кнопка выглядит активной
         button.onClick.AddListener(onClick);
 
         var textObj = new GameObject("Text", typeof(RectTransform));
@@ -171,7 +172,7 @@ public class CastleSummonUI : MonoBehaviour
         text.alignment = TextAlignmentOptions.Center;
         text.color = ConfirmationDialog.ButtonTextColor; // тёмный текст был под старую светлую заливку, на новой тёмно-синей рамке нужен светлый
         text.enableAutoSizing = true; // подпись пула разной длины (x1/x10, разные валюты и суммы)
-        text.fontSizeMin = 18;
+        text.fontSizeMin = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
         text.fontSizeMax = 30;
 
         return text;

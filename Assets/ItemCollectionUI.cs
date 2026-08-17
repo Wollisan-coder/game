@@ -11,9 +11,9 @@ public class ItemCollectionUI : MonoBehaviour
     public ItemDetailUI detailUI;
 
     private const float TitleReservedHeight = 100f; // высота существующего заголовка панели (чтобы вкладки не наезжали на него)
-    private const float TabBarHeight = 40f;
+    private const float TabBarHeight = 56f; // увеличено под 28pt-пол в тексте вкладок (было 40 под 14pt)
     private const float TabBarTopGap = 4f;
-    private const float FilterBarHeight = 50f;
+    private const float FilterBarHeight = 56f; // увеличено под 28pt-пол (было 50)
     private const float FilterBarTopGap = 4f;
 
     private enum TopFilter { All, Equipment, Consumables }
@@ -52,8 +52,7 @@ public class ItemCollectionUI : MonoBehaviour
         "- Ascend: raise their ascension level (HeroInventoryUI) — higher level cap, a stat bonus every step, " +
         "and (Orange only) a stronger race passive at the final step.\n" +
         "- Hero Voucher: convert 1 gem into 1 Voucher of that rarity — only once the hero has reached max " +
-        "ascension. 3 Vouchers grant 1 gem to ANY hero of that rarity, or unlock a locked one.\n" +
-        "- Hero Experience: convert 1 gem into 1 Hero Experience item, always available.\n\n" +
+        "ascension. 3 Vouchers grant 1 gem to ANY hero of that rarity, or unlock a locked one.\n\n" +
         "Gems are also spent as Death Dungeon retreat currency — a safe retreat costs a mix of banked gems " +
         "and/or benched heroes (permanently sacrificed, your choice which). Gems survive a hero being lost " +
         "or reset — only their level/skills/gear don't.";
@@ -166,7 +165,9 @@ public class ItemCollectionUI : MonoBehaviour
             var text = textObj.AddComponent<TextMeshProUGUI>();
             text.text = tabs[i].label;
             text.alignment = TextAlignmentOptions.Center;
-            text.fontSize = 14;
+            text.enableAutoSizing = true;
+            text.fontSizeMin = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
+            text.fontSizeMax = 34;
             text.color = ConfirmationDialog.ButtonTextColor;
 
             tabBackgrounds.Add(bg);
@@ -221,8 +222,8 @@ public class ItemCollectionUI : MonoBehaviour
         textRect.offsetMax = Vector2.zero;
         var text = textObj.AddComponent<TextMeshProUGUI>();
         text.enableAutoSizing = true;
-        text.fontSizeMin = 12;
-        text.fontSizeMax = 22;
+        text.fontSizeMin = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
+        text.fontSizeMax = 32;
         text.alignment = TextAlignmentOptions.Center;
         text.color = ConfirmationDialog.ButtonTextColor;
 

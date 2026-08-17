@@ -75,7 +75,7 @@ public class DebugConstructorUI : MonoBehaviour
         windowRect.anchorMin = new Vector2(0.5f, 0.5f);
         windowRect.anchorMax = new Vector2(0.5f, 0.5f);
         windowRect.pivot = new Vector2(0.5f, 0.5f);
-        windowRect.sizeDelta = new Vector2(1200, 1500);
+        windowRect.sizeDelta = new Vector2(1000, 1700);
         var windowBg = windowObj.AddComponent<Image>();
         ConfirmationDialog.StyleAsPanel(windowBg);
 
@@ -216,6 +216,7 @@ public class DebugConstructorUI : MonoBehaviour
             var btnImg = btnObj.AddComponent<Image>();
             ConfirmationDialog.StyleAsButton(btnImg, unlocked ? new Color(0.2f, 0.35f, 0.2f) : (Color?)null);
             var btn = btnObj.AddComponent<Button>();
+            btn.targetGraphic = btnImg; // без этого interactable=false ничего не красит — кнопка выглядит активной
             btn.interactable = !unlocked;
 
             var textObj = new GameObject("Text", typeof(RectTransform));

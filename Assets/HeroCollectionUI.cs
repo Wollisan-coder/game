@@ -39,6 +39,11 @@ public class HeroCollectionUI : MonoBehaviour
     {
         BuildFilterBar();
         RefreshFilterLabels();
+
+        // Перестраиваем сетку, когда закрывается попап инвентаря героя — иначе левелап/вознесение,
+        // сделанные внутри попапа, не будут видны в каталоге, пока фильтр/сортировку не тронуть вручную.
+        if (inventoryUI != null)
+            inventoryUI.OnClosed += PopulateGrid;
     }
 
     // Карточка — общий 450x600 префаб (HeroMiniCard, тот же, что и в Squad), масштабированный тут
@@ -100,7 +105,7 @@ public class HeroCollectionUI : MonoBehaviour
         btnRect.anchorMin = new Vector2(0.5f, 0);
         btnRect.anchorMax = new Vector2(0.5f, 0);
         btnRect.pivot = new Vector2(0.5f, 0);
-        btnRect.sizeDelta = new Vector2(130, 34);
+        btnRect.sizeDelta = new Vector2(150, 44); // увеличено под 28pt-пол в подписи (было 130x34 под 16pt)
         btnRect.anchoredPosition = new Vector2(0, 8);
 
         var bg = btnObj.AddComponent<Image>();
@@ -117,7 +122,7 @@ public class HeroCollectionUI : MonoBehaviour
         textRect.offsetMax = Vector2.zero;
         var text = textObj.AddComponent<TextMeshProUGUI>();
         text.text = "Summon";
-        text.fontSize = 16;
+        text.fontSize = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
         text.fontStyle = FontStyles.Bold;
         text.alignment = TextAlignmentOptions.Center;
         text.color = ConfirmationDialog.ButtonTextColor;
@@ -516,7 +521,7 @@ public class HeroCollectionUI : MonoBehaviour
         placeholderRect.offsetMax = Vector2.zero;
         var placeholder = placeholderObj.AddComponent<TextMeshProUGUI>();
         placeholder.text = "Search by name...";
-        placeholder.fontSize = 26;
+        placeholder.fontSize = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
         placeholder.fontStyle = FontStyles.Italic;
         placeholder.color = new Color(0, 0, 0, 0.4f);
         placeholder.alignment = TextAlignmentOptions.MidlineLeft;
@@ -529,7 +534,7 @@ public class HeroCollectionUI : MonoBehaviour
         textRect.offsetMin = Vector2.zero;
         textRect.offsetMax = Vector2.zero;
         var text = textObj.AddComponent<TextMeshProUGUI>();
-        text.fontSize = 26;
+        text.fontSize = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
         text.color = Color.black;
         text.alignment = TextAlignmentOptions.MidlineLeft;
 

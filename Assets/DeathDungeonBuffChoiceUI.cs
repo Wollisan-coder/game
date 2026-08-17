@@ -76,6 +76,8 @@ public class DeathDungeonBuffChoiceUI : MonoBehaviour
         optionsLayout.spacing = 24;
         optionsLayout.childForceExpandWidth = false;
         optionsLayout.childForceExpandHeight = false;
+        optionsLayout.childControlWidth = true; // false игнорирует LayoutElement.preferredWidth/Height у карточек — падают на дефолтный 100x100
+        optionsLayout.childControlHeight = true;
         optionsLayout.childAlignment = TextAnchor.MiddleCenter;
         optionsContainer = optionsRect;
 
@@ -124,8 +126,8 @@ public class DeathDungeonBuffChoiceUI : MonoBehaviour
         nameText.alignment = TextAlignmentOptions.Center;
         nameText.color = ConfirmationDialog.ButtonTextColor;
         nameText.enableAutoSizing = true;
-        nameText.fontSizeMin = 20;
-        nameText.fontSizeMax = 30;
+        nameText.fontSizeMin = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
+        nameText.fontSizeMax = 32;
 
         var descObj = new GameObject("Description", typeof(RectTransform));
         var descRect = (RectTransform)descObj.transform;
@@ -139,8 +141,8 @@ public class DeathDungeonBuffChoiceUI : MonoBehaviour
         descText.alignment = TextAlignmentOptions.Center;
         descText.color = new Color(1, 1, 1, 0.9f);
         descText.enableAutoSizing = true;
-        descText.fontSizeMin = 16;
-        descText.fontSizeMax = 24;
+        descText.fontSizeMin = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
+        descText.fontSizeMax = 32;
     }
 
     private void OnOptionClicked(DeathDungeonBuffData buff)

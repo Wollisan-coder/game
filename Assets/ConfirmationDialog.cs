@@ -453,6 +453,7 @@ public static class ConfirmationDialog
         var img = btnObj.AddComponent<Image>();
         StyleAsButton(img);
         var btn = btnObj.AddComponent<Button>();
+        btn.targetGraphic = img; // без этого interactable=false ничего не красит — кнопка выглядит активной
         btn.interactable = interactable;
         btn.onClick.AddListener(() => onClick?.Invoke());
 
@@ -469,7 +470,7 @@ public static class ConfirmationDialog
         text.color = ButtonTextColor;
         text.fontStyle = FontStyles.Bold;
         text.enableAutoSizing = true;
-        text.fontSizeMin = 14;
+        text.fontSizeMin = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
         text.fontSizeMax = 30;
     }
 }
