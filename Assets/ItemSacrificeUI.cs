@@ -18,6 +18,9 @@ public class ItemSacrificeUI : MonoBehaviour
     private Transform canvasRoot;
 
     private GameObject overlayRoot;
+    private RectTransform windowRect;
+    private Image commitFlashOverlay;
+    private Coroutine commitFlashRoutine;
     private Transform listContainer;
     private TMP_Text summaryText;
     private Button confirmButton;
@@ -147,7 +150,7 @@ public class ItemSacrificeUI : MonoBehaviour
         closeAreaBtn.onClick.AddListener(Close);
 
         var windowObj = new GameObject("Window", typeof(RectTransform));
-        var windowRect = (RectTransform)windowObj.transform;
+        windowRect = (RectTransform)windowObj.transform;
         windowRect.SetParent(overlayRect, false);
         windowRect.anchorMin = new Vector2(0.5f, 0.5f);
         windowRect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -271,6 +274,7 @@ public class ItemSacrificeUI : MonoBehaviour
             qRect.anchoredPosition = new Vector2(stepCenterX[i], quickRowY);
 
             quickSelectBgs[i] = qObj.AddComponent<Image>();
+            ConfirmationDialog.StyleAsStepperButton(quickSelectBgs[i]);
             quickSelectButtons[i] = qObj.AddComponent<Button>();
             quickSelectButtons[i].targetGraphic = quickSelectBgs[i]; // без этого interactable=false ничего не красит
             quickSelectButtons[i].onClick.AddListener(() => AdjustPreviewTarget(delta));
@@ -298,6 +302,7 @@ public class ItemSacrificeUI : MonoBehaviour
         maxRect.sizeDelta = new Vector2(stepBtnWidth, stepRowHeight);
         maxRect.anchoredPosition = new Vector2(394f, quickRowY);
         maxLevelBg = maxObj.AddComponent<Image>();
+        ConfirmationDialog.StyleAsStepperButton(maxLevelBg);
         maxLevelButton = maxObj.AddComponent<Button>();
         maxLevelButton.targetGraphic = maxLevelBg; // без этого interactable=false ничего не красит
         maxLevelButton.onClick.AddListener(() => QuickSelectToLevel(maxLevel));
@@ -433,9 +438,6 @@ public class ItemSacrificeUI : MonoBehaviour
         label.fontSizeMax = 30;
         label.color = donorData.GetRarityColor();
 
-        Image rarityFrame = null;
-        ItemBadgeUtility.ApplyRarityFrame(icon, donorData.GetRarityColor(), ref rarityFrame);
-
         TMP_Text quantityBadge = null;
         ItemBadgeUtility.ApplyQuantityBadge(icon.rectTransform, donorOwnership.quantity, ref quantityBadge);
 
@@ -506,7 +508,7 @@ public class ItemSacrificeUI : MonoBehaviour
             if (afterResult.wastedExperience > 0)
             {
                 ConfirmationDialog.ShowInfo(canvasRoot,
-                    $"Level {maxLevel} will be reached.\nExperience above the cap ({afterResult.wastedExperience}) will be lost.");
+                    $"Lv. {maxLevel} will be reached.\nExperience above the cap ({afterResult.wastedExperience}) will be lost.");
             }
         }
 
@@ -585,11 +587,44 @@ public class ItemSacrificeUI : MonoBehaviour
     // здесь остался только счётчик выбранных предметов.
     private void UpdateSummary()
     {
-        summaryText.text = $"Selected: {SumSelectedItemCount()} item(s)";
+        int selectedCount = SumSelectedItemCount();
+        string summary = $"Selected: {selectedCount} item(s)";
+
+        // "Было -> стало" для стата, который реально даёт этот слот — живой, обновляется на каждый тап
+        // донора (превью уже пересчитан выше по стеку вызовов, см. RefreshQuickSelectButtons).
+        if (targetItemData != null)
+        {
+            var preview = itemCollectionManager.SimulateExperienceGain(baseLevel, baseExperience, SumSelectedXp(), maxLevel);
+            if (preview.level != baseLevel)
+            {
+                float oldValue = EquipmentStatCurve.GetValue(targetItemData.slotType, targetItemData.rarity, baseLevel);
+                float newValue = EquipmentStatCurve.GetValue(targetItemData.slotType, targetItemData.rarity, preview.level);
+                summary += "\n" + UpgradeFeedbackUtility.FormatBeforeAfter(GetStatLabelForSlot(targetItemData.slotType),
+                    FormatStatValue(targetItemData.slotType, oldValue), FormatStatValue(targetItemData.slotType, newValue));
+            }
+        }
+
+        summaryText.text = summary;
 
         if (confirmButton != null)
-            confirmButton.interactable = SumSelectedItemCount() > 0;
+            confirmButton.interactable = selectedCount > 0;
     }
+
+    // Один слот = один стат (см. HeroStatUtility.CalculateEquipmentBonuses) — та же привязка, просто с
+    // человекочитаемым именем для UI.
+    private static string GetStatLabelForSlot(EquipmentSlotType slot) => slot switch
+    {
+        EquipmentSlotType.Armor => "HP",
+        EquipmentSlotType.Trinket => "Mana",
+        EquipmentSlotType.Weapon => "Attack",
+        EquipmentSlotType.Accessory => "Armor",
+        _ => "Stat",
+    };
+
+    // Weapon даёт damageMultiplier (доля, напр. 0.05) — общий ×100 приём отображения с героем
+    // (см. UpgradeFeedbackUtility.AttackDisplayValue), чтобы "Attack" везде читался одинаково, не 0.05 против 100.
+    private static string FormatStatValue(EquipmentSlotType slot, float value) =>
+        slot == EquipmentSlotType.Weapon ? UpgradeFeedbackUtility.AttackDisplayValue(value).ToString() : Mathf.RoundToInt(value).ToString();
 
     // Обновляет центральный индикатор "Level X/Y" + текущий опыт внутри уровня, и включает/выключает
     // стрелки степпера по границам: -1/-10 доступны только если превью выше committed baseLevel (есть что
@@ -601,7 +636,7 @@ public class ItemSacrificeUI : MonoBehaviour
         var preview = itemCollectionManager.SimulateExperienceGain(baseLevel, baseExperience, SumSelectedXp(), maxLevel);
 
         string expLine = preview.level >= maxLevel ? "MAX" : $"{preview.experience}/{itemCollectionManager.ExperienceToNextLevel(preview.level)} Exp.";
-        centerLevelText.text = $"Level {preview.level}/{maxLevel}\n{expLine}";
+        centerLevelText.text = $"Lv. {preview.level}/{maxLevel}\n{expLine}";
 
         bool canGoDown = preview.level > baseLevel;
         bool canGoUp = preview.level < maxLevel;
@@ -626,6 +661,10 @@ public class ItemSacrificeUI : MonoBehaviour
 
     private void ApplySacrifice()
     {
+        int levelBefore = baseLevel;
+        float statBefore = targetItemData != null
+            ? EquipmentStatCurve.GetValue(targetItemData.slotType, targetItemData.rarity, levelBefore) : 0f;
+
         int totalWasted = 0;
         var countsToSacrifice = new Dictionary<string, int>(selectedDonorCounts);
 
@@ -658,7 +697,45 @@ public class ItemSacrificeUI : MonoBehaviour
         Populate();
         onApplied?.Invoke();
 
+        // Момент-победа только на КОММИТЕ (не на каждом промежуточном тапе степпера — иначе было бы навязчиво
+        // мигать при любом +1/-1). targetItemData уже мог замениться на новый инстанс (SacrificeItem split/merge
+        // выше), но slotType/rarity предмета не меняются, так что statBefore остаётся корректной точкой отсчёта.
+        if (targetItemData != null && baseLevel != levelBefore)
+        {
+            float statAfter = EquipmentStatCurve.GetValue(targetItemData.slotType, targetItemData.rarity, baseLevel);
+
+            EnsureCommitFlashOverlay();
+            if (commitFlashRoutine != null) StopCoroutine(commitFlashRoutine);
+            commitFlashRoutine = UpgradeFeedbackUtility.FlashPanel(this, commitFlashOverlay, FloatingDamageText.PositiveGainColor);
+
+            if (windowRect != null)
+                FloatingDamageText.Spawn(windowRect, $"+{FormatStatValue(targetItemData.slotType, statAfter - statBefore)}", FloatingDamageText.PositiveGainColor);
+
+            HapticsUtility.PlayLightTap();
+            AudioManager.Instance?.PlayUpgradeSound();
+        }
+
         if (totalWasted > 0)
             ConfirmationDialog.ShowInfo(canvasRoot, $"Experience above max level lost: {totalWasted}");
+    }
+
+    // Отдельный прозрачный слой поверх окна — НЕ трогаем сам windowBg напрямую (он стилизован через
+    // ConfirmationDialog.StyleAsPanel и должен оставаться видимым всегда; вспышка гасит альфу до 0, что
+    // сделало бы весь фон попапа невидимым, если бы красили его настоящий фон).
+    private void EnsureCommitFlashOverlay()
+    {
+        if (commitFlashOverlay != null || windowRect == null) return;
+
+        var overlayObj = new GameObject("CommitFlashOverlay", typeof(RectTransform));
+        var overlayImgRect = (RectTransform)overlayObj.transform;
+        overlayImgRect.SetParent(windowRect, false);
+        overlayImgRect.anchorMin = Vector2.zero;
+        overlayImgRect.anchorMax = Vector2.one;
+        overlayImgRect.offsetMin = Vector2.zero;
+        overlayImgRect.offsetMax = Vector2.zero;
+
+        commitFlashOverlay = overlayObj.AddComponent<Image>();
+        commitFlashOverlay.color = new Color(0, 0, 0, 0);
+        commitFlashOverlay.raycastTarget = false;
     }
 }

@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
@@ -85,15 +86,14 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     [Header("Кнопка закрытия")]
     public Button closeButton;
 
-    // Три шага прокачки за CurrencyType.HeroExperience — +1/+10/до потолка текущей ступени вознесения
-    // (см. OnUpgradeStepClicked). int.MaxValue как маркер "до конца", клампится в OnUpgradeStepClicked/
-    // RefreshUpgradeButtonVisibility. Раньше была одна кнопка "Upgrade", тратящая весь баланс разом —
-    // добавлено 2026-08-12 по явному запросу: пошаговая прокачка с превью стоимости на каждой кнопке.
-    private static readonly int[] UpgradeSteps = { 1, 10, int.MaxValue };
-    private static readonly string[] UpgradeStepLabels = { "+1", "+10", "Max" };
-    private readonly Button[] heroUpgradeButtons = new Button[UpgradeSteps.Length];
-    private readonly Image[] heroUpgradeBgs = new Image[UpgradeSteps.Length];
-    private readonly TMP_Text[] heroUpgradeTexts = new TMP_Text[UpgradeSteps.Length];
+    // Один "Upgrade", открывающий HeroUpgradeUI (отложенный превью уровня + подтверждение) — заменил собой
+    // 3 инлайн-кнопки +1/+10/Max прямого списания (было 2026-08-12..2026-08-17), по прямой просьбе
+    // пользователя после живого просмотра: экран прокачки должен показывать было/стало по уровню и
+    // отдельное окно, а не тратить валюту сразу по тапу.
+    private Button heroUpgradeButton;
+    private Image heroUpgradeBg;
+    private TMP_Text heroUpgradeText;
+    private HeroUpgradeUI heroUpgradeUI;
 
     // Ручной выбор портрета для маркера карты мира (см. HeroCollectionManager.mapAvatarHeroId /
     // PlayerMapMarkerUI) — кнопка видна только для героя на максимальном вознесении, тот же стек, ещё
@@ -120,7 +120,7 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
             racePassiveToggleButton.onClick.AddListener(OnRacePassiveToggleClicked);
 
         if (ascendButton != null)
-            ascendButton.onClick.AddListener(OnAscendClicked);
+            ascendButton.onClick.AddListener(OpenAscendPopup);
 
         if (ascendGlow != null)
         {
@@ -142,7 +142,9 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         if (racePassiveInfoBg != null) ConfirmationDialog.StyleAsDescriptionPanel(racePassiveInfoBg);
 
         CacheSkillButtonBaseWidths();
+        heroUpgradeUI = gameObject.AddComponent<HeroUpgradeUI>(); // само-создаётся, не Inspector-поле — новый компонент, вайрить в сцене нечему
         CreateUpgradeButtonIfNeeded();
+        CreateEquipBestButtonIfNeeded();
 
         // Панель уже сохранена выключенной в сцене (m_IsActive: 0) — не гасим её здесь ещё раз:
         // если вызвать SetActive(false) из Awake(), а Awake() впервые запускается ИМЕННО во время
@@ -183,8 +185,11 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     {
         if (hero == null || HeroCollectionManager.Instance == null) return;
 
+        heroUpgradeUI?.Close(); // свайп на другого героя (NavigateHero) не должен оставлять попап прокачки открытым на данных ПРЕЖНЕГО героя
+
         currentHero = hero;
         currentOwnership = HeroCollectionManager.Instance.ownership.Find(o => o.heroId == hero.heroId);
+        HeroCollectionManager.Instance.MarkUpgradeBadgeSeen(hero.heroId); // "видел" — бейдж в Collection/Squad погаснет на их следующем Refresh
 
         transform.SetAsLastSibling(); // поднимаем над другими панелями (Squad, Collection и т.д.), иначе они перехватывают клик
         gameObject.SetActive(true);
@@ -291,11 +296,11 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
             if (currentOwnership != null && HeroCollectionManager.Instance != null)
             {
                 int nextThreshold = HeroCollectionManager.Instance.ExperienceToNextLevel(level);
-                levelText.text = $"Level: {level} ({currentOwnership.experience}/{nextThreshold} Exp)";
+                levelText.text = $"Lv. {level} ({currentOwnership.experience}/{nextThreshold} Exp)";
             }
             else
             {
-                levelText.text = $"Level: {level}";
+                levelText.text = $"Lv. {level}";
             }
         }
 
@@ -438,10 +443,53 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         }
     }
 
+    private const int SkillSummaryMaxChars = 80;
+
+    // Текстовая стена в основном виде — то, чего просит избегать UX-бриф. Показываем короткую версию
+    // (авторскую SkillData.shortSummary, либо автообрезку description до SkillSummaryMaxChars), полный
+    // текст — по тапу на сам блок, тот же приём "короткий лейбл -> ConfirmationDialog.ShowInfo", что уже
+    // используется в BattlePrepPopup для пассивок/вредных фишек.
     private static void SetSkillInfoText(TMP_Text label, SkillData skill)
     {
         if (label == null) return;
-        label.text = skill != null ? $"Mana: {skill.cost}\n{skill.description}" : "";
+
+        if (skill == null)
+        {
+            label.text = "";
+            SetSkillInfoButton(label, null);
+            return;
+        }
+
+        string full = $"Mana: {skill.cost}\n{skill.description}";
+        bool hasCustomSummary = !string.IsNullOrEmpty(skill.shortSummary);
+        bool descriptionTruncated = !hasCustomSummary && skill.description != null && skill.description.Length > SkillSummaryMaxChars;
+
+        label.text = hasCustomSummary
+            ? $"Mana: {skill.cost}\n{skill.shortSummary} (tap for more)"
+            : descriptionTruncated
+                ? $"Mana: {skill.cost}\n{skill.description.Substring(0, SkillSummaryMaxChars)}... (tap for more)"
+                : full;
+
+        SetSkillInfoButton(label, hasCustomSummary || descriptionTruncated
+            ? () => ConfirmationDialog.ShowInfo(FindAnyObjectByType<Canvas>()?.transform, full, title: skill.skillName)
+            : null);
+    }
+
+    // Лениво добавляет Button на весь текстовый блок один раз, дальше только переустанавливает onClick —
+    // иначе при каждой смене навыка копились бы старые обработчики с устаревшим skill в замыкании.
+    // onClick == null — блок не кликабелен (короткий текст и так виден целиком, тапать некуда).
+    private static void SetSkillInfoButton(TMP_Text label, System.Action onClick)
+    {
+        var btn = label.GetComponent<Button>();
+        if (btn == null)
+        {
+            btn = label.gameObject.AddComponent<Button>();
+            btn.transition = Selectable.Transition.None;
+            btn.targetGraphic = label;
+        }
+        btn.onClick.RemoveAllListeners();
+        if (onClick != null) btn.onClick.AddListener(() => onClick());
+        btn.interactable = onClick != null;
     }
 
     private void OnActiveSkillTabClicked(int index)
@@ -602,44 +650,239 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         _ => null
     };
 
+    private Button equipBestButton;
+
+    // Заменяет "зайти в слот -> открыть пикер -> выбрать -> закрыть" x4 одним тапом (см. UX-бриф про
+    // избыточную вложенность). Никогда не трогает вещи, экипированные на ДРУГИХ героях — это одноразовое
+    // "надень лучшее из уже свободного", не грабёж чужого отряда.
+    private void CreateEquipBestButtonIfNeeded()
+    {
+        if (equipBestButton != null || itemsContainer == null) return;
+
+        var referenceRect = (RectTransform)itemsContainer;
+
+        var btnObj = new GameObject("EquipBestButton", typeof(RectTransform));
+        var btnRect = (RectTransform)btnObj.transform;
+        btnRect.SetParent(referenceRect.parent, false);
+        btnRect.anchorMin = referenceRect.anchorMin;
+        btnRect.anchorMax = referenceRect.anchorMax;
+        btnRect.pivot = new Vector2(0.5f, 1);
+        btnRect.sizeDelta = new Vector2(260, 60);
+        btnRect.anchoredPosition = referenceRect.anchoredPosition + new Vector2(0, -(referenceRect.sizeDelta.y + 16f));
+
+        var btnImg = btnObj.AddComponent<Image>();
+        ConfirmationDialog.StyleAsButton(btnImg);
+        equipBestButton = btnObj.AddComponent<Button>();
+        equipBestButton.targetGraphic = btnImg;
+        equipBestButton.onClick.AddListener(OnEquipBestClicked);
+
+        var textObj = new GameObject("Text", typeof(RectTransform));
+        var textRect = (RectTransform)textObj.transform;
+        textRect.SetParent(btnRect, false);
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+        var text = textObj.AddComponent<TextMeshProUGUI>();
+        text.text = "Equip Best";
+        text.fontStyle = FontStyles.Bold;
+        text.alignment = TextAlignmentOptions.Center;
+        text.enableAutoSizing = true;
+        text.fontSizeMin = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
+        text.fontSizeMax = 32;
+        text.color = ConfirmationDialog.ButtonTextColor;
+    }
+
+    private void OnEquipBestClicked()
+    {
+        if (currentHero == null || currentOwnership == null || ItemCollectionManager.Instance == null || HeroCollectionManager.Instance == null) return;
+
+        var manager = ItemCollectionManager.Instance;
+        var heroManager = HeroCollectionManager.Instance;
+        int equippedCount = 0;
+
+        foreach (var slotType in AllSlotTypes)
+        {
+            string currentInstanceId = currentOwnership.GetEquippedItemInstanceId(slotType);
+            var currentStack = !string.IsNullOrEmpty(currentInstanceId) ? manager.GetStackByInstanceId(currentInstanceId) : null;
+            var currentItem = currentStack != null ? manager.GetItemById(currentStack.itemId) : null;
+            float bestValue = currentItem != null ? EquipmentStatCurve.GetValue(slotType, currentItem.rarity, currentStack.level) : 0f;
+
+            ItemOwnershipData bestStack = null;
+
+            // Кандидаты — как ItemSacrificeUI.GetCandidates: владеем, и НИГДЕ не экипировано (в т.ч. и у
+            // этого героя в другом слоте) — кнопка никогда не ворует шмот с другого героя молча.
+            foreach (var item in manager.GetItemsOfType(slotType))
+            {
+                foreach (var stack in manager.GetStacks(item.itemId))
+                {
+                    if (heroManager.IsItemEquippedAnywhere(stack.instanceId)) continue;
+
+                    float value = EquipmentStatCurve.GetValue(slotType, item.rarity, stack.level);
+                    if (value > bestValue)
+                    {
+                        bestValue = value;
+                        bestStack = stack;
+                    }
+                }
+            }
+
+            if (bestStack == null) continue; // уже лучшее из доступного (или пусто) — не трогаем
+
+            string toEquip = manager.SplitOneForEquip(bestStack.instanceId) ?? bestStack.instanceId;
+            heroManager.UnequipItemFromAllHeroes(toEquip, currentHero.heroId);
+            currentOwnership.SetEquippedItem(slotType, toEquip);
+            equippedCount++;
+        }
+
+        var canvas = FindAnyObjectByType<Canvas>();
+        if (equippedCount > 0)
+        {
+            heroManager.SaveOwnership();
+            PopulateItems(); // один общий Refresh на весь батч, а не по разу на каждый слот (см. EquipItem)
+            HapticsUtility.PlayLightTap();
+            AudioManager.Instance?.PlayUpgradeSound();
+        }
+        else if (canvas != null)
+        {
+            ConfirmationDialog.ShowInfo(canvas.transform, "Already wearing the best available gear.");
+        }
+    }
+
     // База героя + сумма бонусов от текущей экипировки (через общий HeroStatUtility — тот же расчёт,
     // что использует BattleManager при старте боя, чтобы цифры в меню совпадали с реальными в бою).
     private void RefreshStats()
     {
         if (statsText == null || currentHero == null) return;
 
-        var baseStats = HeroStatUtility.CalculateBaseStats(currentHero,
-            currentOwnership != null ? currentOwnership.level : 1,
-            currentOwnership != null ? currentOwnership.ascensionLevel : 0);
-        var bonuses = HeroStatUtility.CalculateEquipmentBonuses(currentOwnership);
-
-        int totalHealth = baseStats.health + bonuses.health;
-        float totalDamage = baseStats.damageMultiplier + bonuses.damageMultiplier;
-
-        statsText.text =
-            $"HP: {totalHealth}\n" +
-            $"Mana: {GetTotalMaxMana()}\n" +
-            $"Damage x{totalDamage:0.00}\n" +
-            $"Armor: {baseStats.armor + bonuses.armor}";
+        var s = ComputeDisplayedStats();
+        statsText.text = $"HP: {s.hp}\nMana: {s.mana}\nAttack: {UpgradeFeedbackUtility.AttackDisplayValue(s.dmg)}\nArmor: {s.armor}";
     }
 
-    // Итоговый максимум маны героя (база*бонус уровня + бонус экипировки) — используется и для отображения
-    // статов, и для проверки "хватит ли маны" при выборе активного/пассивного навыка (раньше эти проверки
-    // сверялись с "голым" currentHero.maxResource без бонусов, из-за чего расходились с панелью статов).
-    private int GetTotalMaxMana()
+    // Вынесено из RefreshStats — переиспользуется AnimateStatGain для снимка "было"/"стало" без дублирования
+    // самого расчёта (тот же HeroStatUtility, что и раньше, ничего в цифрах не поменялось). overrideAscensionLevel
+    // — для превью "а что если вознестись" (см. OpenAscendPopup) БЕЗ реальной мутации currentOwnership.
+    private (int hp, int mana, float dmg, int armor) ComputeDisplayedStats(int? overrideAscensionLevel = null)
+    {
+        if (currentHero == null) return (0, 0, 0f, 0);
+
+        var baseStats = HeroStatUtility.CalculateBaseStats(currentHero,
+            currentOwnership != null ? currentOwnership.level : 1,
+            overrideAscensionLevel ?? (currentOwnership != null ? currentOwnership.ascensionLevel : 0));
+        var bonuses = HeroStatUtility.CalculateEquipmentBonuses(currentOwnership); // экипировка не зависит от вознесения
+
+        return (baseStats.health + bonuses.health, GetTotalMaxMana(overrideAscensionLevel),
+            baseStats.damageMultiplier + bonuses.damageMultiplier, baseStats.armor + bonuses.armor);
+    }
+
+    // "Было -> стало" — короткая, самоотменяющаяся подсветка изменившихся статов (грей->зелёный + летящие
+    // +N + вспышка панели), затем RefreshStats() тихо возвращает обычный плоский вид. Вызывается ПОСЛЕ
+    // Refresh() (снимок "было" сделан заранее, до самого действия) — см. OnUpgradeStepClicked/OnAscendClicked.
+    private Image statsPanelBg;
+    private Coroutine statsFlashRoutine;
+    private Coroutine statsRevertRoutine;
+
+    private void AnimateStatGain((int hp, int mana, float dmg, int armor) before)
+    {
+        if (statsText == null || currentHero == null) return;
+
+        var after = ComputeDisplayedStats();
+        var lines = new System.Collections.Generic.List<string>();
+        var deltas = new System.Collections.Generic.List<string>();
+        bool anyChanged = false;
+
+        if (after.hp != before.hp)
+        {
+            lines.Add(UpgradeFeedbackUtility.FormatBeforeAfter("HP", before.hp.ToString(), after.hp.ToString()));
+            deltas.Add($"+{after.hp - before.hp}");
+            anyChanged = true;
+        }
+        else lines.Add($"HP: {after.hp}");
+
+        if (after.mana != before.mana)
+        {
+            lines.Add(UpgradeFeedbackUtility.FormatBeforeAfter("Mana", before.mana.ToString(), after.mana.ToString()));
+            deltas.Add($"+{after.mana - before.mana}");
+            anyChanged = true;
+        }
+        else lines.Add($"Mana: {after.mana}");
+
+        if (!Mathf.Approximately(after.dmg, before.dmg))
+        {
+            lines.Add(UpgradeFeedbackUtility.FormatBeforeAfter("Attack", UpgradeFeedbackUtility.AttackDisplayValue(before.dmg).ToString(), UpgradeFeedbackUtility.AttackDisplayValue(after.dmg).ToString()));
+            deltas.Add($"+{UpgradeFeedbackUtility.AttackDisplayValue(after.dmg) - UpgradeFeedbackUtility.AttackDisplayValue(before.dmg)}");
+            anyChanged = true;
+        }
+        else lines.Add($"Attack: {UpgradeFeedbackUtility.AttackDisplayValue(after.dmg)}");
+
+        if (after.armor != before.armor)
+        {
+            lines.Add(UpgradeFeedbackUtility.FormatBeforeAfter("Armor", before.armor.ToString(), after.armor.ToString()));
+            deltas.Add($"+{after.armor - before.armor}");
+            anyChanged = true;
+        }
+        else lines.Add($"Armor: {after.armor}");
+
+        if (!anyChanged) return; // ничего не выросло (например, вознесение подняло только потолок уровня) — RefreshStats() уже верен
+
+        statsText.text = string.Join("\n", lines);
+
+        EnsureStatsFlashPanel();
+        if (statsFlashRoutine != null) StopCoroutine(statsFlashRoutine);
+        statsFlashRoutine = UpgradeFeedbackUtility.FlashPanel(this, statsPanelBg, FloatingDamageText.PositiveGainColor);
+
+        float xOffset = -(deltas.Count - 1) * 35f; // центрируем ряд летящих цифр вокруг статов
+        foreach (var delta in deltas)
+        {
+            FloatingDamageText.Spawn(statsText.rectTransform, delta, FloatingDamageText.PositiveGainColor, xOffset);
+            xOffset += 70f;
+        }
+
+        HapticsUtility.PlayLightTap();
+        AudioManager.Instance?.PlayUpgradeSound();
+
+        if (statsRevertRoutine != null) StopCoroutine(statsRevertRoutine);
+        statsRevertRoutine = StartCoroutine(RevertStatsTextAfterDelay());
+    }
+
+    private void EnsureStatsFlashPanel()
+    {
+        if (statsPanelBg != null || statsText == null || statsText.transform.parent == null) return;
+
+        var panelObj = new GameObject("StatsFlashPanel", typeof(RectTransform));
+        var panelRect = (RectTransform)panelObj.transform;
+        panelRect.SetParent(statsText.transform.parent, false);
+        var statsRect = statsText.rectTransform;
+        panelRect.anchorMin = statsRect.anchorMin;
+        panelRect.anchorMax = statsRect.anchorMax;
+        panelRect.pivot = statsRect.pivot;
+        panelRect.anchoredPosition = statsRect.anchoredPosition;
+        panelRect.sizeDelta = statsRect.sizeDelta;
+        panelRect.SetSiblingIndex(statsText.transform.GetSiblingIndex()); // рендерится ЗА statsText, не поверх
+
+        statsPanelBg = panelObj.AddComponent<Image>();
+        statsPanelBg.color = new Color(0, 0, 0, 0); // стартует прозрачным, красится только на вспышке
+        statsPanelBg.raycastTarget = false; // чисто визуальный слой, клики под статами (если есть) не перехватывает
+    }
+
+    private IEnumerator RevertStatsTextAfterDelay()
+    {
+        yield return new WaitForSeconds(2.5f);
+        RefreshStats();
+        statsRevertRoutine = null;
+    }
+
+    // Итоговый максимум маны героя (база*бонус уровня + бонус экипировки, минус пассивка расы) —
+    // используется и для отображения статов, и для проверки "хватит ли маны" при выборе активного/
+    // пассивного навыка (раньше эти проверки сверялись с "голым" currentHero.maxResource без бонусов,
+    // из-за чего расходились с панелью статов). Сам расчёт — в HeroStatUtility.CalculateMaxMana, общий
+    // с HeroUpgradeUI (превью на отложенном уровне).
+    private int GetTotalMaxMana(int? overrideAscensionLevel = null)
     {
         if (currentHero == null) return 0;
         int level = currentOwnership != null ? currentOwnership.level : 1;
-        int ascensionLevel = currentOwnership != null ? currentOwnership.ascensionLevel : 0;
-        int total = HeroStatUtility.CalculateBaseStats(currentHero, level, ascensionLevel).mana
-            + HeroStatUtility.CalculateEquipmentBonuses(currentOwnership).mana;
-
-        // Пассивка расы, если включена, съедает фиксированную ману — та же цифра, что BattleManager
-        // вычитает при старте боя (Awake/InitializeBossTraining), чтобы панель статов не расходилась с боем.
-        if (currentOwnership != null && currentOwnership.racePassiveEnabled)
-            total = Mathf.Max(1, total - RacePassiveUtility.ManaCost);
-
-        return total;
+        int ascensionLevel = overrideAscensionLevel ?? (currentOwnership != null ? currentOwnership.ascensionLevel : 0);
+        return HeroStatUtility.CalculateMaxMana(currentHero, currentOwnership, level, ascensionLevel);
     }
 
     public void OpenItemPicker(EquipmentSlotType slotType)
@@ -667,80 +910,112 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         PopulateItems();
     }
 
-    // levelStep — сколько уровней прокачать за клик (1, 10, или int.MaxValue как маркер "до потолка
-    // текущей ступени вознесения"). Тратит РОВНО столько CurrencyType.HeroExperience, сколько нужно, чтобы
-    // дойти до целевого уровня без остатка (см. GetExperienceNeededForLevel) — либо весь доступный баланс,
-    // если его не хватает на полный шаг (тот же принцип частичной траты, что был у старой единой кнопки).
-    private void OnUpgradeStepClicked(int levelStep)
+    // Открывает HeroUpgradeUI (отложенный превью уровня + два источника оплаты — валюта и предметы опыта,
+    // см. HeroUpgradeUI.ComputeSpendPlan) вместо прямой траты по тапу. onBeforeApply/onApplied — те же
+    // before/after-снимок и AnimateStatGain, что раньше вызывались прямо здесь, просто перенесены за границу
+    // попапа (см. OnHeroUpgradeWillApply/OnHeroUpgradeApplied) — само окно ничего не анимирует, чтобы вспышка
+    // на статах не могла сработать дважды.
+    private void OnUpgradeButtonClicked()
     {
-        if (currentHero == null || currentOwnership == null || HeroCollectionManager.Instance == null || PlayerCurrencies.Instance == null) return;
-
-        int levelCap = HeroAscensionUtility.GetLevelCap(currentHero.rarity, currentOwnership.ascensionLevel);
-        int targetLevel = levelStep >= levelCap ? levelCap : Mathf.Min(currentOwnership.level + levelStep, levelCap);
-        int needed = HeroCollectionManager.Instance.GetExperienceNeededForLevel(currentHero.heroId, targetLevel);
-        if (needed <= 0) return;
-
-        int balance = PlayerCurrencies.Instance.GetBalance(CurrencyType.HeroExperience);
-        int spend = Mathf.Min(needed, balance);
-        if (spend <= 0) return;
-
-        if (PlayerCurrencies.Instance.Spend(CurrencyType.HeroExperience, spend))
-        {
-            HeroCollectionManager.Instance.GrantExperience(currentHero.heroId, spend);
-            Refresh();
-        }
+        if (currentHero == null || currentOwnership == null || heroUpgradeUI == null) return;
+        heroUpgradeUI.Open(currentHero, currentOwnership, OnHeroUpgradeWillApply, OnHeroUpgradeApplied);
     }
 
-    // 3 кнопки в один ряд (тот же слот, что раньше занимала одна "Upgrade") строим программно рядом с
-    // Close (копируя его трансформ, поделённый на 3 колонки), чтобы не редактировать вручную разметку
-    // панели героя в сцене.
+    private (int hp, int mana, float dmg, int armor) heroUpgradeStatsBefore;
+
+    private void OnHeroUpgradeWillApply() => heroUpgradeStatsBefore = ComputeDisplayedStats();
+
+    private void OnHeroUpgradeApplied()
+    {
+        Refresh();
+        AnimateStatGain(heroUpgradeStatsBefore);
+    }
+
+    // Одна кнопка "Upgrade" в том же слоте, что раньше занимали 3 степпера, строится программно рядом с
+    // Close (копируя его трансформ на всю ширину), чтобы не редактировать вручную разметку панели героя в сцене.
     private void CreateUpgradeButtonIfNeeded()
     {
-        if (heroUpgradeButtons[0] != null) return;
+        if (heroUpgradeButton != null) return;
 
         RectTransform referenceRect = closeButton != null ? closeButton.GetComponent<RectTransform>() : null;
         if (referenceRect == null) return;
 
         Vector2 rowPos = referenceRect.anchoredPosition + new Vector2(0, referenceRect.sizeDelta.y + 12f);
-        const float gap = 8f;
-        float btnWidth = (referenceRect.sizeDelta.x - gap * 2f) / 3f;
         float height = referenceRect.sizeDelta.y;
 
-        for (int i = 0; i < UpgradeSteps.Length; i++)
-        {
-            int step = UpgradeSteps[i]; // локальная копия — безопасна для замыкания кнопки ниже
-            float xOffset = (i - 1) * (btnWidth + gap);
+        var upgradeObj = new GameObject("HeroUpgradeButton", typeof(RectTransform));
+        var upgradeRect = (RectTransform)upgradeObj.transform;
+        upgradeRect.SetParent(referenceRect.parent, false);
+        upgradeRect.anchorMin = referenceRect.anchorMin;
+        upgradeRect.anchorMax = referenceRect.anchorMax;
+        upgradeRect.pivot = referenceRect.pivot;
+        upgradeRect.sizeDelta = new Vector2(referenceRect.sizeDelta.x, height);
+        upgradeRect.anchoredPosition = rowPos;
 
-            var upgradeObj = new GameObject($"HeroUpgradeButton_{UpgradeStepLabels[i]}", typeof(RectTransform));
-            var upgradeRect = (RectTransform)upgradeObj.transform;
-            upgradeRect.SetParent(referenceRect.parent, false);
-            upgradeRect.anchorMin = referenceRect.anchorMin;
-            upgradeRect.anchorMax = referenceRect.anchorMax;
-            upgradeRect.pivot = referenceRect.pivot;
-            upgradeRect.sizeDelta = new Vector2(btnWidth, height);
-            upgradeRect.anchoredPosition = rowPos + new Vector2(xOffset, 0);
+        heroUpgradeBg = upgradeObj.AddComponent<Image>();
+        ConfirmationDialog.StyleAsButton(heroUpgradeBg);
+        heroUpgradeButton = upgradeObj.AddComponent<Button>();
+        heroUpgradeButton.targetGraphic = heroUpgradeBg;
+        heroUpgradeButton.onClick.AddListener(OnUpgradeButtonClicked);
 
-            heroUpgradeBgs[i] = upgradeObj.AddComponent<Image>();
-            heroUpgradeButtons[i] = upgradeObj.AddComponent<Button>();
-            heroUpgradeButtons[i].targetGraphic = heroUpgradeBgs[i]; // без этого interactable=false ничего не красит
-            heroUpgradeButtons[i].onClick.AddListener(() => OnUpgradeStepClicked(step));
+        var textObj = new GameObject("Text", typeof(RectTransform));
+        var textRect = (RectTransform)textObj.transform;
+        textRect.SetParent(upgradeRect, false);
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+        heroUpgradeText = textObj.AddComponent<TextMeshProUGUI>();
+        heroUpgradeText.text = "Upgrade";
+        heroUpgradeText.fontStyle = FontStyles.Bold;
+        heroUpgradeText.alignment = TextAlignmentOptions.Center;
+        heroUpgradeText.enableAutoSizing = true;
+        heroUpgradeText.fontSizeMin = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
+        heroUpgradeText.fontSizeMax = 30;
 
-            var textObj = new GameObject("Text", typeof(RectTransform));
-            var textRect = (RectTransform)textObj.transform;
-            textRect.SetParent(upgradeRect, false);
-            textRect.anchorMin = Vector2.zero;
-            textRect.anchorMax = Vector2.one;
-            textRect.offsetMin = Vector2.zero;
-            textRect.offsetMax = Vector2.zero;
-            heroUpgradeTexts[i] = textObj.AddComponent<TextMeshProUGUI>();
-            heroUpgradeTexts[i].text = UpgradeStepLabels[i];
-            heroUpgradeTexts[i].alignment = TextAlignmentOptions.Center;
-            heroUpgradeTexts[i].enableAutoSizing = true;
-            heroUpgradeTexts[i].fontSizeMin = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
-            heroUpgradeTexts[i].fontSizeMax = 30;
+        upgradeObj.SetActive(false);
 
-            upgradeObj.SetActive(false);
-        }
+        CreateHeroExperienceDeepLinkIcon(referenceRect, rowPos + new Vector2(0, height + 24f));
+    }
+
+    // Тап по иконке ресурса -> "где его найти" (см. UX-бриф про быстрый доступ к ресурсу). Сидит прямо над
+    // рядом степперов — тот единственный реальный CurrencyType, что расходуется на этом экране (прокачка
+    // предметов тратит донор-предметы, не валюту).
+    private void CreateHeroExperienceDeepLinkIcon(RectTransform referenceRect, Vector2 anchoredPos)
+    {
+        const float size = 56f;
+
+        var iconObj = new GameObject("HeroExperienceDeepLink", typeof(RectTransform));
+        var iconRect = (RectTransform)iconObj.transform;
+        iconRect.SetParent(referenceRect.parent, false);
+        iconRect.anchorMin = referenceRect.anchorMin;
+        iconRect.anchorMax = referenceRect.anchorMax;
+        iconRect.pivot = referenceRect.pivot;
+        iconRect.sizeDelta = new Vector2(size, size);
+        iconRect.anchoredPosition = anchoredPos;
+
+        var img = iconObj.AddComponent<Image>();
+        img.sprite = Resources.Load<Sprite>(ConfirmationDialog.GetCurrencyIconPath(CurrencyType.HeroExperience));
+        img.preserveAspect = true;
+
+        var btn = iconObj.AddComponent<Button>();
+        btn.targetGraphic = img;
+        btn.onClick.AddListener(OnHeroExperienceDeepLinkClicked);
+    }
+
+    private void OnHeroExperienceDeepLinkClicked()
+    {
+        var canvas = FindAnyObjectByType<Canvas>();
+        if (canvas == null) return;
+
+        ConfirmationDialog.ShowActions(canvas.transform,
+            "Hero Experience is earned by battling on the World Map, or bought directly with Progress Points in the Shop.",
+            "Where to find Hero Experience",
+            new (string, bool, System.Action)[]
+            {
+                ("World Map", true, () => FindAnyObjectByType<MainMenuUI>()?.ShowWorldMap()),
+                ("Shop", true, () => FindAnyObjectByType<MainMenuUI>()?.ShowCastleAndOpenShop()),
+            });
     }
 
     // Общий билдер подписанной кнопки в том же вертикальном стеке над Upgrade — использовался и гемом-в-
@@ -822,22 +1097,64 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
             mapAvatarButtonText.text = isCurrent ? "Unset Map Avatar" : "Set as Map Avatar";
     }
 
-    private void OnAscendClicked()
+    // Клик по значку вознесения теперь ВСЕГДА открывает попап, а не тратит гемы молча (см. UX-бриф) — какой
+    // именно попап зависит от того, хватает ли гемов прямо сейчас. RefreshAscendButton уже гарантирует
+    // interactable=false, если вознесение вообще неприменимо (макс. вознесение/раса без него), так что
+    // сюда попадаем только когда relevant==true.
+    private void OpenAscendPopup()
+    {
+        if (currentHero == null || currentOwnership == null) return;
+
+        var canvas = FindAnyObjectByType<Canvas>();
+        if (canvas == null) return;
+
+        bool canAscendNow = currentOwnership.ascensionGems >= HeroAscensionUtility.GemsPerAscension;
+
+        if (!canAscendNow)
+        {
+            int needed = HeroAscensionUtility.GemsPerAscension - currentOwnership.ascensionGems;
+            ConfirmationDialog.ShowActions(canvas.transform,
+                $"{currentHero.heroName} needs {needed} more Ascension Gem(s) to ascend. Gems come from summoning a duplicate copy of a hero you already own.",
+                "Ascension",
+                new (string, bool, System.Action)[]
+                {
+                    ("Go to Altar", true, () => FindAnyObjectByType<MainMenuUI>()?.ShowCastleAndOpenAltar()),
+                });
+            return;
+        }
+
+        // Хватает гемов — показываем было/стало ПЕРЕД тратой, а не молча меняем и объясняем постфактум.
+        var before = ComputeDisplayedStats();
+        var after = ComputeDisplayedStats(currentOwnership.ascensionLevel + 1);
+
+        string message = $"Ascend {currentHero.heroName} to the next tier?\n\n" +
+            UpgradeFeedbackUtility.FormatBeforeAfter("HP", before.hp.ToString(), after.hp.ToString()) + "\n" +
+            UpgradeFeedbackUtility.FormatBeforeAfter("Mana", before.mana.ToString(), after.mana.ToString()) + "\n" +
+            UpgradeFeedbackUtility.FormatBeforeAfter("Attack", UpgradeFeedbackUtility.AttackDisplayValue(before.dmg).ToString(), UpgradeFeedbackUtility.AttackDisplayValue(after.dmg).ToString()) + "\n" +
+            UpgradeFeedbackUtility.FormatBeforeAfter("Armor", before.armor.ToString(), after.armor.ToString());
+
+        ConfirmationDialog.ShowActions(canvas.transform, message, "Ascension",
+            new (string, bool, System.Action)[] { ("Ascension", true, PerformAscend) });
+    }
+
+    private void PerformAscend()
     {
         if (currentHero == null || HeroCollectionManager.Instance == null) return;
 
+        var before = ComputeDisplayedStats();
         bool success = HeroCollectionManager.Instance.AscendHero(currentHero.heroId);
 
-        var canvas = FindAnyObjectByType<Canvas>();
-        if (canvas != null)
+        if (!success)
         {
-            string message = success
-                ? $"{currentHero.heroName} ascended! New level cap raised."
-                : "Not enough ascension gems (or already at max ascension).";
-            ConfirmationDialog.ShowInfo(canvas.transform, message);
+            // Не должно случаться (OpenAscendPopup уже проверил), но на всякий случай не молчим —
+            // например, если гемы утекли из-под ног между открытием попапа и подтверждением.
+            var canvas = FindAnyObjectByType<Canvas>();
+            if (canvas != null) ConfirmationDialog.ShowInfo(canvas.transform, "Not enough ascension gems (or already at max ascension).");
+            return;
         }
 
         Refresh();
+        AnimateStatGain(before); // сама решит, стоит ли что-то показывать; она же дёргает haptic при реальном изменении статов
     }
 
     // Клик по самому значку вознесения (не отдельная кнопка — см. project_hero_card_unification_plan).
@@ -847,6 +1164,8 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     // хватает гемов прямо сейчас — свечение крупнее и мерцает (см. Update/UpdateAscendGlowPulse).
     // Числового счётчика гемов на карточке больше нет — подсказка полностью визуальная.
     private bool ascendReadyNow;
+    private TMP_Text ascendConditionLabel;
+    private Button ascendConditionButton;
 
     private void RefreshAscendButton()
     {
@@ -856,8 +1175,10 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         bool relevant = maxAscension > 0 && currentOwnership.ascensionLevel < maxAscension;
         bool canAscendNow = relevant && currentOwnership.ascensionGems >= HeroAscensionUtility.GemsPerAscension;
 
+        // Кликабельна, пока вознесение вообще актуально (relevant), не только когда гемов хватает —
+        // клик теперь всегда открывает попап (см. OpenAscendPopup), просто с разным содержимым.
         if (ascendButton != null)
-            ascendButton.interactable = canAscendNow;
+            ascendButton.interactable = relevant;
 
         if (ascendOutline != null)
             ascendOutline.gameObject.SetActive(relevant);
@@ -876,7 +1197,57 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         }
 
         ascendReadyNow = canAscendNow; // дальше подхватывает Update() для мерцания/крупного размера
+
+        RefreshAscendConditionLabel(relevant, canAscendNow);
     }
+
+    // Видимое условие вместо "молча недоступно" (см. UX-бриф) — показывается ровно когда вознесение
+    // релевантно, но гемов не хватает; когда хватает — уже есть мерцающий glow, дублировать текстом не надо.
+    // Заодно и есть tap-target на "где взять гемы" — тот же элемент, не отдельная иконка.
+    private void RefreshAscendConditionLabel(bool relevant, bool canAscendNow)
+    {
+        if (ascendButton == null) return;
+        EnsureAscendConditionLabel();
+
+        bool showCondition = relevant && !canAscendNow;
+        ascendConditionLabel.gameObject.SetActive(showCondition);
+        if (!showCondition) return;
+
+        int needed = HeroAscensionUtility.GemsPerAscension - currentOwnership.ascensionGems;
+        ascendConditionLabel.text = $"Needs {needed} more Ascension Gem(s)";
+    }
+
+    private void EnsureAscendConditionLabel()
+    {
+        if (ascendConditionLabel != null) return;
+
+        var labelObj = new GameObject("AscendConditionLabel", typeof(RectTransform));
+        var labelRect = (RectTransform)labelObj.transform;
+        labelRect.SetParent(ascendButton.transform, false);
+        labelRect.anchorMin = new Vector2(0.5f, 0);
+        labelRect.anchorMax = new Vector2(0.5f, 0);
+        labelRect.pivot = new Vector2(0.5f, 1);
+        labelRect.sizeDelta = new Vector2(220, 60);
+        labelRect.anchoredPosition = new Vector2(0, -6);
+
+        ascendConditionLabel = labelObj.AddComponent<TextMeshProUGUI>();
+        ascendConditionLabel.fontSize = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
+        ascendConditionLabel.alignment = TextAlignmentOptions.Center;
+        ascendConditionLabel.color = new Color(1f, 0.85f, 0.4f);
+        ascendConditionLabel.enableAutoSizing = true;
+        ascendConditionLabel.fontSizeMin = 28;
+        ascendConditionLabel.fontSizeMax = 32;
+
+        ascendConditionButton = labelObj.AddComponent<Button>();
+        ascendConditionButton.transition = Selectable.Transition.None;
+        ascendConditionButton.targetGraphic = ascendConditionLabel;
+        ascendConditionButton.onClick.AddListener(OnAscendConditionClicked);
+    }
+
+    // Тот же попап, что и сам значок вознесения (см. OpenAscendPopup) — условие-лейбл просто второй, более
+    // крупный tap-target на то же действие, не отдельная логика (раньше вёл в общий "Go to Castle", теперь
+    // сразу в Altar — см. OpenAscendPopup).
+    private void OnAscendConditionClicked() => OpenAscendPopup();
 
     private const float AscendGlowIdleAlpha = 0.35f;    // "свечение 1" — просто доступно
     private const float AscendGlowReadyMinAlpha = 0.45f; // "свечение 3" — гемов хватает, мерцает между этими двумя
@@ -984,35 +1355,19 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
 
     private void RefreshUpgradeButtonTheme()
     {
-        foreach (var bg in heroUpgradeBgs)
-            if (bg != null) ConfirmationDialog.StyleAsButton(bg);
-        foreach (var text in heroUpgradeTexts)
-            if (text != null) text.color = ConfirmationDialog.ButtonTextColor;
+        if (heroUpgradeBg != null) ConfirmationDialog.StyleAsButton(heroUpgradeBg);
+        if (heroUpgradeText != null) heroUpgradeText.color = ConfirmationDialog.ButtonTextColor;
     }
 
-    // Каждая из 3 кнопок показывает собственную цену (сколько HeroExperience нужно для ЭТОГО шага) и
-    // скрывается, если шаг уже недостижим (герой уже на потолке текущей ступени вознесения) — интерактивность
-    // отдельно от видимости, чтобы игрок видел точную цену, даже если валюты пока не хватает на неё.
+    // Кнопка скрывается только когда следующий уровень вообще недостижим (потолок текущей ступени
+    // вознесения) — не по карману "прямо сейчас" ли он, это теперь решает само HeroUpgradeUI при открытии
+    // (тот же принцип, что у ascendButton.interactable = relevant, не canAscendNow, см. RefreshAscendButton).
     private void RefreshUpgradeButtonVisibility()
     {
-        if (heroUpgradeButtons[0] == null || currentHero == null || currentOwnership == null
-            || HeroCollectionManager.Instance == null || PlayerCurrencies.Instance == null) return;
+        if (heroUpgradeButton == null || currentHero == null || currentOwnership == null
+            || HeroCollectionManager.Instance == null) return;
 
-        int levelCap = HeroAscensionUtility.GetLevelCap(currentHero.rarity, currentOwnership.ascensionLevel);
-        int balance = PlayerCurrencies.Instance.GetBalance(CurrencyType.HeroExperience);
-
-        for (int i = 0; i < UpgradeSteps.Length; i++)
-        {
-            int targetLevel = UpgradeSteps[i] >= levelCap ? levelCap : Mathf.Min(currentOwnership.level + UpgradeSteps[i], levelCap);
-            int needed = HeroCollectionManager.Instance.GetExperienceNeededForLevel(currentHero.heroId, targetLevel);
-
-            bool visible = needed > 0;
-            heroUpgradeButtons[i].gameObject.SetActive(visible);
-            if (!visible) continue;
-
-            heroUpgradeButtons[i].interactable = balance > 0;
-            if (heroUpgradeTexts[i] != null)
-                heroUpgradeTexts[i].text = $"{UpgradeStepLabels[i]}\n({Mathf.Min(needed, balance)}/{needed})";
-        }
+        int needed = HeroCollectionManager.Instance.GetExperienceNeededForLevel(currentHero.heroId, currentOwnership.level + 1);
+        heroUpgradeButton.gameObject.SetActive(needed > 0);
     }
 }

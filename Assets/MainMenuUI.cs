@@ -204,6 +204,22 @@ public class MainMenuUI : MonoBehaviour
         castleUI.Open(this);
     }
 
+    // Для ресурс-дипlink-попапов (см. HeroInventoryUI) — сразу открывает Замок И Shop, а не просто Замок,
+    // откуда игроку пришлось бы ещё раз тапать Shop самому.
+    public void ShowCastleAndOpenShop()
+    {
+        ShowCastle();
+        castleUI.OpenShop();
+    }
+
+    // Тот же приём для попапа "не хватает гемов на вознесение" (см. HeroInventoryUI.OpenAscendPopup) —
+    // гемы дают дубли героев, Altar это призыв.
+    public void ShowCastleAndOpenAltar()
+    {
+        ShowCastle();
+        castleUI.OpenSummonFor(BuildingType.Altar);
+    }
+
     public void ShowWorldMap()
     {
         CancelHeroPickingIfActive();

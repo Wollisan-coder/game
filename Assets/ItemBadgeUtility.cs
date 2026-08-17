@@ -86,7 +86,7 @@ public static class ItemBadgeUtility
             badgeRect.anchorMin = new Vector2(1, 0);
             badgeRect.anchorMax = new Vector2(1, 0);
             badgeRect.pivot = new Vector2(1, 0);
-            badgeRect.sizeDelta = new Vector2(28, 18);
+            badgeRect.sizeDelta = new Vector2(40, 18); // было 28 — под префикс "Lv." (см. UX-правку про единый формат уровня)
             badgeRect.anchoredPosition = new Vector2(-2, 2);
 
             var bg = badgeObj.AddComponent<Image>();
@@ -107,7 +107,7 @@ public static class ItemBadgeUtility
         }
 
         text.transform.parent.gameObject.SetActive(level > 0);
-        if (level > 0) text.text = level.ToString();
+        if (level > 0) text.text = $"Lv.{level}"; // без пробела — бедж узкий, "Lv. X" единый формат везде, см. UX-правку
     }
 
     // Бедж количества "xN" в левом верхнем углу — показывается только когда есть несколько одинаковых копий (quantity > 1)

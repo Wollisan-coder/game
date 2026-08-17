@@ -27,6 +27,12 @@ public static class UIAssetImportSetup
         // основного прямоугольника ~25px — border 30 сверху/снизу с небольшим запасом. border — (left,
         // bottom, right, top), см. ConfirmationDialog.StyleAsRectFrame.
         SetupSprite("Assets/Resources/UI/Windo.png", new Vector4(28, 30, 24, 30));
+        // DialogWindowFrameEasy.png (505x252, тёмно-синяя заливка + тонкая серебряная рамка + уголки-скобки,
+        // 2026-08-13) — под мелкие степперы (+1/-1/+10/-10/Max), которым текущий DialogHeaderFrame (border
+        // 35/10, под широкие НИЗКИЕ кнопки с орнаментом по бокам) не подходит по пропорциям. Замерено по
+        // яркости (заливка сплошная, альфа тут ни при чём — не 9-slice по прозрачности): линия рамки ~3-5px,
+        // уголки-скобки тянутся внутрь ~15-16px с каждого края — border 20 с запасом на всех сторонах.
+        SetupSprite("Assets/Resources/UI/DialogWindowFrameEasy.png", new Vector4(20, 20, 20, 20));
 
         // Castle 2D-база (Option B) — обычные спрайты, без 9-slice (border 0), рисуются как есть с preserveAspect.
         SetupSprite("Assets/Resources/UI/Castle/BaseBackground.png", Vector4.zero);

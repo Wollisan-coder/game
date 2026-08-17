@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cee94e0f62424cf4ebf0cdcef23fe21e, type: 3}
+  m_Name: HeroExperienceItem
+  m_EditorClassIdentifier: Assembly-CSharp::ItemData
+  itemId: HeroExperienceItem
+  itemName: Hero Experience
+  category: 1
+  slotType: 0
+  icon: {fileID: 21300000, guid: a61335419f43d234f900e3876e0d0efe, type: 3}
+  description: A bundle of battle-tested experience. Use it on any hero you own
+    to instantly grant them Hero Experience toward their next level.
+  rarity: 0
+  sacrificeExperience: 10
+  heroExperienceAmount: 50

@@ -280,6 +280,7 @@ public class MutationDungeonNodeChoiceUI : MonoBehaviour
         // StyleAsRectFrame (Windo.png), не StyleAsButton — карточка портретная (280x380), DialogHeaderFrame
         // растягивается некрасиво на такой пропорции (см. ConfirmationDialog.StyleAsRectFrame).
         ConfirmationDialog.StyleAsRectFrame(cardBg, positive ? new Color(0.2f, 0.4f, 0.2f) : (Color?)null);
+        CardDepthUtility.ApplyCardDepth(cardBg); // тень + тёмный скос, см. UX-правку 2026-08-18
         var cardBtn = cardObj.AddComponent<Button>();
         cardBtn.onClick.AddListener(() => OnCardClicked(choice));
 

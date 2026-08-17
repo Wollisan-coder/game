@@ -20,7 +20,7 @@ public static class WondrousArmorTilePrefabBuilder
         var tempParent = new GameObject("TempParent", typeof(RectTransform)).transform;
 
         PickerTileUtility.BuildTile(tempParent, "WondrousArmorTile", new Color(1, 1, 1, 0.06f),
-            out Image bg, out Image icon, out TMP_Text label, out Button button);
+            out Image bg, out Image icon, out TMP_Text label, out Button button, new Vector2(149, 200)); // cellSize общей сетки ItemCollectionUI
         label.enableAutoSizing = true;
         label.fontSizeMin = 10;
         label.fontSizeMax = 14;
@@ -30,8 +30,7 @@ public static class WondrousArmorTilePrefabBuilder
         GameObject quantityBadgeRoot = quantityBadge.transform.parent.gameObject;
 
         GameObject tileRoot = bg.gameObject;
-        tileRoot.transform.SetParent(null, false);
-        ((RectTransform)tileRoot.transform).sizeDelta = new Vector2(149, 200); // cellSize общей сетки ItemCollectionUI
+        tileRoot.transform.SetParent(null, false); // sizeDelta уже 149x200 — передан в BuildTile, до CardDepthUtility внутри него
 
         var tileUI = tileRoot.AddComponent<WondrousArmorTileUI>();
         tileUI.icon = icon;

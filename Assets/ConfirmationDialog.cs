@@ -38,6 +38,7 @@ public static class ConfirmationDialog
     private static Sprite headerSprite;
     private static Sprite descriptionSprite;
     private static Sprite rectFrameSprite;
+    private static Sprite stepperFrameSprite;
     private static bool spritesLoaded;
 
     // Реальные border-значения нарезки (см. Assets/Editor/UIAssetImportSetup.cs) — кнопка/панель мельче
@@ -52,6 +53,8 @@ public static class ConfirmationDialog
     private const float MinSpriteDescriptionSize = 120f; // border панели описания — 55 со всех сторон, порог с запасом
     private const float MinRectFrameWidth = 60f;  // border Windo.png — 28/24 слева/справа, порог с запасом
     private const float MinRectFrameHeight = 70f; // border Windo.png — 30/30 сверху/снизу, порог с запасом
+    private const float MinStepperFrameWidth = 60f;  // border DialogWindowFrameEasy.png — 20 со всех сторон
+    private const float MinStepperFrameHeight = 40f; // порог с запасом, чтобы уголки-скобки не наложились друг на друга
 
     private static void EnsureSpritesLoaded()
     {
@@ -61,6 +64,7 @@ public static class ConfirmationDialog
         headerSprite = Resources.Load<Sprite>("UI/DialogHeaderFrame");
         descriptionSprite = Resources.Load<Sprite>("UI/DialogDescriptionPanel");
         rectFrameSprite = Resources.Load<Sprite>("UI/Windo");
+        stepperFrameSprite = Resources.Load<Sprite>("UI/DialogWindowFrameEasy");
     }
 
     // Общие хелперы для остального проекта — чтобы кнопки/панели вне ConfirmationDialog (CastleUI,
@@ -96,6 +100,26 @@ public static class ConfirmationDialog
         if (rectFrameSprite != null && bigEnough)
         {
             img.sprite = rectFrameSprite;
+            img.type = Image.Type.Sliced;
+            img.color = Color.white;
+        }
+        else
+        {
+            img.sprite = null;
+            img.color = fallbackColor ?? ButtonColor;
+        }
+    }
+
+    // Мелкие степперы (+1/-1/+10/-10/Max — HeroInventoryUI/ItemSacrificeUI) — DialogWindowFrameEasy.png,
+    // тёмно-синий фон вместо плоской заливки, тот же порог-фолбэк, что и у остальных Style-хелперов.
+    public static void StyleAsStepperButton(Image img, Color? fallbackColor = null)
+    {
+        EnsureSpritesLoaded();
+        var size = img.rectTransform.rect;
+        bool bigEnough = size.width >= MinStepperFrameWidth && size.height >= MinStepperFrameHeight;
+        if (stepperFrameSprite != null && bigEnough)
+        {
+            img.sprite = stepperFrameSprite;
             img.type = Image.Type.Sliced;
             img.color = Color.white;
         }

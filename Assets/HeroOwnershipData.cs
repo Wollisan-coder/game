@@ -30,6 +30,12 @@ public class HeroOwnershipData
     public int ascensionGems;
     public int ascensionLevel; // сколько раз уже вознесён (0 = база)
 
+    // "Видел бейдж прокачки" — не живое условие, а факт просмотра (см. HeroCollectionManager.
+    // HasActionableUpgrade/MarkUpgradeBadgeSeen). Сброшено (false) = бейдж покажется при следующей
+    // возможности; true выставляется при открытии HeroInventoryUI этого героя. Специально НЕ пересчитывается
+    // само по себе при росте ресурсов — иначе бейдж жёг бы постоянно, что и была жалоба (см. UX-бриф).
+    public bool upgradeBadgeSeen;
+
     // Разблокирует кнопку "гем -> Hero Voucher" (см. HeroCollectionManager.ConvertGemToVoucher) — навсегда
     // true, как только герой хоть раз дошёл до 3-го вознесения (де-факто только Orange, у Purple потолок 2).
     // Как и ascensionGems выше, НЕ сбрасывается ни при PermadeleteSquad, ни при жертве героя на ретрит

@@ -9,10 +9,19 @@ public class FloatingDamageText : MonoBehaviour
     private const float Lifetime = 2f;
     public static readonly Color EnemyDamageColor = new Color(1f, 0.35f, 0.25f); // враг получил урон
     public static readonly Color HeroDamageColor = new Color(1f, 0.15f, 0.15f);  // герой получил урон
+    public static readonly Color PositiveGainColor = new Color(0.3f, 0.85f, 0.35f); // прокачка/апгрейд
 
     public static void Spawn(RectTransform cardRect, int amount, Color color)
     {
-        if (cardRect == null || amount <= 0) return;
+        if (amount <= 0) return;
+        Spawn(cardRect, $"-{amount}", color);
+    }
+
+    // xOffset — чтобы несколько одновременных цифр (например, левелап поднимает сразу 4 стата) не сыпались
+    // ровно друг на друга; по умолчанию 0, старые вызовы (урон в бою — всегда одна цифра за раз) не задеты.
+    public static void Spawn(RectTransform cardRect, string text, Color color, float xOffset = 0)
+    {
+        if (cardRect == null || string.IsNullOrEmpty(text)) return;
 
         var obj = new GameObject("FloatingDamageText", typeof(RectTransform));
         var rect = (RectTransform)obj.transform;
@@ -21,17 +30,17 @@ public class FloatingDamageText : MonoBehaviour
         rect.anchorMax = new Vector2(0.5f, 0f);
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.sizeDelta = new Vector2(280, 120);
-        rect.anchoredPosition = Vector2.zero; // низ карточки
+        rect.anchoredPosition = new Vector2(xOffset, 0); // низ карточки
 
-        var text = obj.AddComponent<TextMeshProUGUI>();
-        text.text = $"-{amount}";
-        text.fontSize = 90;
-        text.fontStyle = FontStyles.Bold;
-        text.alignment = TextAlignmentOptions.Center;
-        text.color = color;
+        var tmp = obj.AddComponent<TextMeshProUGUI>();
+        tmp.text = text;
+        tmp.fontSize = 90;
+        tmp.fontStyle = FontStyles.Bold;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.color = color;
 
         float riseDistance = cardRect.rect.height > 0 ? cardRect.rect.height : 100f;
-        obj.AddComponent<FloatingDamageText>().Init(rect, text, riseDistance);
+        obj.AddComponent<FloatingDamageText>().Init(rect, tmp, riseDistance);
     }
 
     private RectTransform rect;

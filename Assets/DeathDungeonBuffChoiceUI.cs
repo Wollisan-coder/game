@@ -108,6 +108,7 @@ public class DeathDungeonBuffChoiceUI : MonoBehaviour
 
         var bg = cardObj.AddComponent<Image>();
         ConfirmationDialog.StyleAsPanel(bg); // DialogWindowFrame, а не DialogHeaderFrame
+        CardDepthUtility.ApplyCardDepth(bg); // тень + тёмный скос, см. UX-правку 2026-08-18
 
         var btn = cardObj.AddComponent<Button>();
         btn.onClick.AddListener(() => OnOptionClicked(buff));

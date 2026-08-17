@@ -190,14 +190,13 @@ public class HeroVoucherRedeemUI : MonoBehaviour
 
     private void Populate()
     {
-        if (titleText != null) titleText.text = $"Grant a Gem to a {rarity} hero";
+        if (titleText != null)
+            titleText.text = $"Grant a Gem to a {rarity} hero";
 
         foreach (Transform child in listContainer)
             Destroy(child.gameObject);
 
-        var heroes = heroCollectionManager.allHeroes
-            .Where(h => h != null && h.rarity == rarity)
-            .ToList();
+        var heroes = heroCollectionManager.allHeroes.Where(h => h != null && h.rarity == rarity).ToList();
 
         if (emptyLabelHolder != null)
             emptyLabelHolder.SetActive(heroes.Count == 0);

@@ -29,6 +29,8 @@ public class CastleSummonUI : MonoBehaviour
     private Button premiumX1Button;
     private Button premiumX10Button;
 
+    private SummonRevealUI summonRevealUI; // само-создаётся, портрет/редкость/катсцены для героев Алтаря (см. Pull)
+
     public void Open(BuildingData building, Transform canvasRoot, System.Action onClosed)
     {
         this.building = building;
@@ -50,6 +52,8 @@ public class CastleSummonUI : MonoBehaviour
     private void EnsureOverlay()
     {
         if (overlayRoot != null) return;
+
+        summonRevealUI = gameObject.AddComponent<SummonRevealUI>();
 
         overlayRoot = new GameObject("CastleSummonOverlay", typeof(RectTransform));
         var overlayRect = (RectTransform)overlayRoot.transform;
@@ -248,9 +252,18 @@ public class CastleSummonUI : MonoBehaviour
 
         if (IsAltar)
         {
-            var results = count == 1
-                ? SinglePullAsList(SummonService.Instance.PullHero(building.heroSummonPool, premium))
-                : SummonService.Instance.PullHeroMultiple(building.heroSummonPool, premium, count);
+            List<(HeroData hero, bool wasNewUnlock)> results;
+            if (count == 1)
+            {
+                var pull = SummonService.Instance.PullHero(building.heroSummonPool, premium);
+                results = pull.hero != null
+                    ? new List<(HeroData hero, bool wasNewUnlock)> { pull }
+                    : new List<(HeroData hero, bool wasNewUnlock)>();
+            }
+            else
+            {
+                results = SummonService.Instance.PullHeroMultiple(building.heroSummonPool, premium, count);
+            }
 
             if (results.Count > 0)
             {
@@ -258,10 +271,10 @@ public class CastleSummonUI : MonoBehaviour
                 AchievementManager.Instance?.ReportSummonsCompleted(results.Count);
             }
 
-            if (count > 1 && SummonService.Instance.LastPullWasJackpot)
-                ShowJackpotResult(results.Select(h => (h.heroName, h.rarity.ToString())));
+            if (results.Count == 0)
+                ConfirmationDialog.ShowInfo(canvasRoot, "Not enough currency for this pull.");
             else
-                ShowResult(results.Count, count, results.Select(h => (h.heroName, h.rarity.ToString())));
+                summonRevealUI.Show(canvasRoot, results, count, count > 1 && SummonService.Instance.LastPullWasJackpot, null);
         }
         else
         {
@@ -287,22 +300,9 @@ public class CastleSummonUI : MonoBehaviour
         return list;
     }
 
-    // Джекпот на x10 (0.05% шанс, см. HeroSummonPoolData.jackpotChance) — гарантирует 2 разных Orange-героя
-    // (любых открытых рас) среди результатов; отдельное окно вместо обычного списка, чтобы "shareable moment" бросался в глаза.
-    private void ShowJackpotResult(IEnumerable<(string name, string rarity)> items)
-    {
-        var grouped = items
-            .GroupBy(i => (i.name, i.rarity))
-            .Select(g => $"{g.Key.name} ({g.Key.rarity}) x{g.Count()}")
-            .ToList();
-
-        var sb = new StringBuilder("JACKPOT!\n2 Legendary heroes guaranteed!\n\nYou got:\n");
-        sb.Append(string.Join("\n", grouped));
-
-        float height = Mathf.Max(200, 150 + grouped.Count * 24);
-        ConfirmationDialog.ShowInfo(canvasRoot, sb.ToString(), height);
-    }
-
+    // Только Кузня (предметы) — герои Алтаря теперь идут через SummonRevealUI (портрет/редкость/имя +
+    // катсцены первой Orange и джекпота, см. Pull), у предметов нет "разблокировки" в том же смысле,
+    // остаются на текстовом списке. Джекпот тоже только у героев (PullItemMultiple его не поддерживает).
     private void ShowResult(int obtainedCount, int requestedCount, IEnumerable<(string name, string rarity)> items)
     {
         if (obtainedCount == 0)

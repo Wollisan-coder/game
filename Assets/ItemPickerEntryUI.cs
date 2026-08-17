@@ -10,7 +10,6 @@ public class ItemPickerEntryUI : MonoBehaviour
     public GameObject lockOverlay; // показывается, если предмет ещё не получен
     public Button selectButton;
 
-    private Image rarityFrame;
     private TMP_Text levelText;
     private TMP_Text quantityText;
 
@@ -34,7 +33,6 @@ public class ItemPickerEntryUI : MonoBehaviour
                 selectButton.onClick.AddListener(() => onClick());
         }
 
-        ItemBadgeUtility.ApplyRarityFrame(iconImage, item.GetRarityColor(), ref rarityFrame);
         ItemBadgeUtility.ApplyLevelBadge(iconImage != null ? iconImage.rectTransform : null, owned ? level : 0, ref levelText);
         ItemBadgeUtility.ApplyQuantityBadge(iconImage != null ? iconImage.rectTransform : null, owned ? quantity : 0, ref quantityText);
     }

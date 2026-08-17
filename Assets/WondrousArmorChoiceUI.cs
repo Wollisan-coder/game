@@ -94,6 +94,8 @@ public class WondrousArmorChoiceUI : MonoBehaviour
         optionsLayout.spacing = 24;
         optionsLayout.childForceExpandWidth = false;
         optionsLayout.childForceExpandHeight = false;
+        optionsLayout.childControlWidth = true; // без этого карточки не получают размер из LayoutElement.preferredWidth/Height
+        optionsLayout.childControlHeight = true;
         optionsLayout.childAlignment = TextAnchor.MiddleCenter;
         optionsContainer = optionsRect;
 
@@ -124,6 +126,7 @@ public class WondrousArmorChoiceUI : MonoBehaviour
 
         var bg = cardObj.AddComponent<Image>();
         ConfirmationDialog.StyleAsPanel(bg);
+        CardDepthUtility.ApplyCardDepth(bg); // тень + тёмный скос, см. UX-правку 2026-08-18
 
         var btn = cardObj.AddComponent<Button>();
         btn.onClick.AddListener(() => OnOptionClicked(hero));

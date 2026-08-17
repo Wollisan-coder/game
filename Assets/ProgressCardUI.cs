@@ -32,6 +32,7 @@ public static class ProgressCardUI
         bg.color = ready ? new Color(0.45f, 0.4f, 0.1f, 0.6f)
             : done ? new Color(0.15f, 0.35f, 0.15f, 0.55f)
             : new Color(0f, 0f, 0f, 0.35f);
+        CardDepthUtility.ApplyCardDepth(bg); // тень + тёмный скос, см. UX-правку 2026-08-18
 
         var titleObj = new GameObject("Title", typeof(RectTransform));
         var titleRect = (RectTransform)titleObj.transform;

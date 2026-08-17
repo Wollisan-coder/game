@@ -62,8 +62,19 @@ public class HeroCollectionUI : MonoBehaviour
         var collectionManager = HeroCollectionManager.Instance;
         if (collectionManager == null || gridContainer == null) return;
 
-        foreach (Transform child in gridContainer)
+        // Обратный проход по индексу + немедленный SetParent(null) — а не foreach+Destroy() как раньше:
+        // Destroy() отложен до конца кадра, так что старые дети ещё считались бы GridLayoutGroup'ом
+        // ПОКА этот же метод синхронно создаёт новых — на один кадр сетка видела старые+новые сразу
+        // и пересчитывала лишние ячейки, из-за чего карточки (и тени CardDepthUtility при них) визуально
+        // "съезжали" при каждом переключении фильтра, прежде чем щёлкнуть на правильную раскладку
+        // (баг 2026-08-18). SetParent(null) убирает ребёнка из gridContainer немедленно, не дожидаясь
+        // фактического уничтожения.
+        for (int i = gridContainer.childCount - 1; i >= 0; i--)
+        {
+            var child = gridContainer.GetChild(i);
+            child.SetParent(null);
             Destroy(child.gameObject);
+        }
 
         foreach (var hero in GetFilteredSortedHeroes(collectionManager))
         {

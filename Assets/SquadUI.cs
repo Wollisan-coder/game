@@ -26,6 +26,16 @@ public class SquadUI : MonoBehaviour
     private readonly List<TMP_Text> loadoutButtonTexts = new List<TMP_Text>();
     private bool headerBuilt;
 
+    // Перестраиваем слоты, когда закрывается попап инвентаря героя — иначе левелап/вознесение/экипировка,
+    // сделанные внутри попапа (в т.ч. бейдж "видел" — см. HeroCollectionManager.MarkUpgradeBadgeSeen), не
+    // будут видны на карточках отряда, пока не сменить вкладку туда-обратно вручную. Тот же приём, что и
+    // HeroCollectionUI.Start() (тот же общий inventoryUI, оба подписчика независимы).
+    private void Awake()
+    {
+        if (inventoryUI != null)
+            inventoryUI.OnClosed += RefreshSlots;
+    }
+
     // Рефреш вызывается явно из MainMenuUI.ShowSquad() (не отсюда через OnEnable) — тот единственный
     // реальный вход на этот экран и покрывает оба случая: панель только что активировалась, и повторный
     // клик по вкладке, когда она уже была активна (OnEnable тогда не срабатывает повторно, а обновить
@@ -93,6 +103,7 @@ public class SquadUI : MonoBehaviour
 
         var bg = obj.AddComponent<Image>();
         bg.color = new Color(1, 1, 1, 0.08f);
+        CardDepthUtility.ApplyCardDepth(bg); // тень + тёмный скос — иначе пустой слот визуально плоский рядом с занятыми (см. UX-правку 2026-08-18)
 
         var btn = obj.AddComponent<Button>();
         btn.onClick.AddListener(() => OnEmptySlotClicked(slotIndex));

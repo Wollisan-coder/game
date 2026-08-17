@@ -20,7 +20,6 @@ public class ItemDetailUI : MonoBehaviour
 
     private ItemData currentItem;
     private ItemOwnershipData currentStack; // null = предмет не получен (locked)
-    private Image rarityFrame;
     private TMP_Text levelBadgeText; // маленький бедж уровня прямо на портрете (см. ItemBadgeUtility.ApplyLevelBadge) — уже был в карточках каталога/пикера, тут отсутствовал
     private TMP_Text infoText;      // Rarity + Lvl + прогресс Exp (или количество — для расходных предметов)
 
@@ -68,6 +67,7 @@ public class ItemDetailUI : MonoBehaviour
         var ownership = currentStack;
         bool owned = ownership != null;
         bool isHeroVoucherItem = item.category == ItemCategory.HeroVoucher;
+        bool isHeroExperienceItem = item.category == ItemCategory.HeroExperience;
 
         if (icon != null) icon.sprite = item.icon;
         if (nameText != null)
@@ -75,7 +75,7 @@ public class ItemDetailUI : MonoBehaviour
             nameText.text = item.itemName;
             nameText.color = item.GetRarityColor();
         }
-        if (slotTypeText != null) slotTypeText.text = isHeroVoucherItem ? "Voucher" : item.slotType.ToString();
+        if (slotTypeText != null) slotTypeText.text = isHeroVoucherItem ? "Voucher" : isHeroExperienceItem ? "Consumable" : item.slotType.ToString();
         if (descriptionText != null) descriptionText.text = item.description;
 
         if (statsText != null)
@@ -84,6 +84,11 @@ public class ItemDetailUI : MonoBehaviour
             {
                 int voucherCount = ItemCollectionManager.Instance != null ? ItemCollectionManager.Instance.GetTotalQuantity(item.itemId) : 0;
                 statsText.text = $"Owned: {voucherCount} / {HeroCollectionManager.HeroVouchersPerGem} needed to grant a hero an Ascension Gem";
+            }
+            else if (isHeroExperienceItem)
+            {
+                int owned2 = ItemCollectionManager.Instance != null ? ItemCollectionManager.Instance.GetTotalQuantity(item.itemId) : 0;
+                statsText.text = $"Owned: {owned2}. Grants {item.heroExperienceAmount} Hero Experience when used on a hero of your choice.";
             }
             else
             {
@@ -115,8 +120,8 @@ public class ItemDetailUI : MonoBehaviour
         if (ownedStatusText != null)
             ownedStatusText.text = owned ? "Owned" : "Not owned";
 
-        ItemBadgeUtility.ApplyRarityFrame(icon, item.GetRarityColor(), ref rarityFrame);
-        ItemBadgeUtility.ApplyLevelBadge(icon != null ? icon.rectTransform : null, owned ? ownership.level : 0, ref levelBadgeText);
+        // Фунгибельный расходник — "уровня" у него нет, бедж бы врал (см. UX-правку 2026-08-17).
+        ItemBadgeUtility.ApplyLevelBadge(icon != null ? icon.rectTransform : null, isHeroExperienceItem ? 0 : (owned ? ownership.level : 0), ref levelBadgeText);
 
         var manager = ItemCollectionManager.Instance;
         int maxLevel = item.GetMaxLevel();
@@ -137,6 +142,12 @@ public class ItemDetailUI : MonoBehaviour
                 actionButton.gameObject.SetActive(canRedeem);
                 if (actionText != null) actionText.text = "Grant Gem";
                 actionButton.onClick.AddListener(OnRedeemClicked);
+            }
+            else if (isHeroExperienceItem)
+            {
+                // Больше не тратится отдельным попапом-пикером героя — теперь только изнутри HeroUpgradeUI
+                // (см. UX-правку 2026-08-17), этот экран его просто показывает как расходник.
+                actionButton.gameObject.SetActive(false);
             }
             else
             {
@@ -288,6 +299,8 @@ public class ItemDetailUI : MonoBehaviour
         });
     }
 
+    // Тот же экран-пикер героя, что и ваучеры (см. HeroVoucherRedeemUI.OpenForExperienceItem) — второй
+    // режим того же компонента, не отдельный попап.
     public void Close()
     {
         gameObject.SetActive(false);

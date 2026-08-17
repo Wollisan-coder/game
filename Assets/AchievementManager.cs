@@ -79,6 +79,9 @@ public class AchievementManager : MonoBehaviour
         }
     }
 
+    // Награда за уровень tierIndex (0..4) — для отображения на карточке ДО клейма (см. AchievementUI.Refresh).
+    public static int GetTierReward(int tierIndex) => TierRewards[Mathf.Clamp(tierIndex, 0, TierRewards.Length - 1)];
+
     public int GetProgress(AchievementCategory category) => progress.TryGetValue(category, out int v) ? v : 0;
     public int GetTierClaimed(AchievementCategory category) => tierClaimedCount.TryGetValue(category, out int v) ? v : 0;
     public int[] GetThresholds(AchievementCategory category) => Thresholds[category];

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -55,6 +56,24 @@ public class CastleUI : MonoBehaviour
     public void Hide()
     {
         if (panelRoot != null) panelRoot.SetActive(false);
+    }
+
+    // Открывает Shop поверх Castle напрямую — используется ресурс-дипlinks'ами с других экранов
+    // (см. HeroInventoryUI), которые хотят сразу привести игрока к обмену валют, а не просто в Замок.
+    public void OpenShop()
+    {
+        EnsurePanel();
+        exchangeUI?.Open(canvasRoot, Refresh);
+    }
+
+    // Тот же приём для конкретного здания-призыва (Altar/Forge) — по одному экземпляру каждого типа
+    // в игре, так что искать по BuildingType однозначно. Молча ничего не делает, если здание не найдено/
+    // не построено ещё — сам Castle к этому моменту уже открыт, игрок не застрянет.
+    public void OpenSummonFor(BuildingType type)
+    {
+        EnsurePanel();
+        var building = BuildingManager.Instance?.allBuildings.FirstOrDefault(b => b != null && b.buildingType == type);
+        if (building != null) summonUI?.Open(building, canvasRoot, Refresh);
     }
 
     private void EnsurePanel()
@@ -354,7 +373,7 @@ public class CastleUI : MonoBehaviour
         badgeRect.sizeDelta = new Vector2(32, 32);
         badgeRect.anchoredPosition = new Vector2(0, -15);
         var badgeImg = badgeObj.AddComponent<Image>();
-        badgeImg.sprite = GetRoundBadgeSprite();
+        badgeImg.sprite = NotificationBadgeUtility.GetRoundBadgeSprite();
         badgeImg.color = new Color(0.85f, 0.15f, 0.15f, 1f);
 
         var badgeTextObj = new GameObject("Text", typeof(RectTransform));
@@ -418,70 +437,11 @@ public class CastleUI : MonoBehaviour
         mineCapBadge = CreateAlertBadge(btnRect, new Vector2(-30, 10), new Color(0.9f, 0.6f, 0.1f, 0.95f), "MAX");
     }
 
-    // Минимальный самодостаточный маркер — круглый спрайт-заглушка + текст, без внешнего арта.
     // "!" = активная угроза шахтам (MineThreatManager.HasAnyActiveThreat), "MAX" = у хотя бы одной шахты
     // переполнен склад (BuildingManager.HasAnyMineAtCap) — оба обновляются вместе в RefreshNotificationBadges.
+    // Сам билдер переехал в NotificationBadgeUtility (общий, не Castle-специфичный).
     private GameObject CreateAlertBadge(RectTransform parent, Vector2 anchoredPosition, Color color, string label)
-    {
-        var badgeObj = new GameObject("Badge_" + label, typeof(RectTransform));
-        var badgeRect = (RectTransform)badgeObj.transform;
-        badgeRect.SetParent(parent, false);
-        badgeRect.anchorMin = new Vector2(1, 1);
-        badgeRect.anchorMax = new Vector2(1, 1);
-        badgeRect.pivot = new Vector2(1, 1);
-        badgeRect.sizeDelta = new Vector2(38, 38);
-        badgeRect.anchoredPosition = anchoredPosition;
-
-        var bg = badgeObj.AddComponent<Image>();
-        bg.sprite = GetRoundBadgeSprite();
-        bg.color = color;
-
-        var textObj = new GameObject("Text", typeof(RectTransform));
-        var textRect = (RectTransform)textObj.transform;
-        textRect.SetParent(badgeRect, false);
-        textRect.anchorMin = Vector2.zero;
-        textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = Vector2.zero;
-        textRect.offsetMax = Vector2.zero;
-        var text = textObj.AddComponent<TextMeshProUGUI>();
-        text.text = label;
-        text.fontSize = label.Length > 1 ? 12 : 24;
-        text.fontStyle = FontStyles.Bold;
-        text.alignment = TextAlignmentOptions.Center;
-        text.color = Color.white;
-
-        badgeObj.SetActive(false);
-        return badgeObj;
-    }
-
-    private static Sprite roundBadgeSprite;
-
-    // Круглый спрайт для бейджа, сгенерированный на лету — в этой версии Unity 6 Resources
-    // .GetBuiltinResource для встроенных UI-спрайтов (Knob, Checkmark и т.п.) молча возвращает null при
-    // загрузке из кода (см. feedback_unity6_no_builtin_ui_sprites), так что вместо ссылки на builtin
-    // рисуем свою текстуру с кругом один раз и кэшируем.
-    private static Sprite GetRoundBadgeSprite()
-    {
-        if (roundBadgeSprite != null) return roundBadgeSprite;
-
-        const int size = 64;
-        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
-        var center = new Vector2(size / 2f, size / 2f);
-        float radius = size / 2f - 1f;
-
-        for (int y = 0; y < size; y++)
-        {
-            for (int x = 0; x < size; x++)
-            {
-                float dist = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), center);
-                tex.SetPixel(x, y, dist <= radius ? Color.white : new Color(1f, 1f, 1f, 0f));
-            }
-        }
-        tex.Apply();
-
-        roundBadgeSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
-        return roundBadgeSprite;
-    }
+        => NotificationBadgeUtility.CreateAlertBadge(parent, anchoredPosition, color, label);
 
     private static Sprite radialGlowSprite;
 

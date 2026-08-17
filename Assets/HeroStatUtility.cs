@@ -81,6 +81,20 @@ public static class HeroStatUtility
         return bonuses;
     }
 
+    // Итоговый максимум маны (база×бонус уровня/вознесения + бонус экипировки, минус фикс. стоимость
+    // пассивки расы, если включена) — общий расчёт для HeroInventoryUI (текущий герой) и HeroUpgradeUI
+    // (превью на отложенном, ещё не подтверждённом уровне), level/ascensionLevel передаются явно, чтобы
+    // оба места могли подставить как реальные, так и гипотетические значения без мутации ownership.
+    public static int CalculateMaxMana(HeroData hero, HeroOwnershipData ownership, int level, int ascensionLevel)
+    {
+        if (hero == null) return 0;
+
+        int total = CalculateBaseStats(hero, level, ascensionLevel).mana + CalculateEquipmentBonuses(ownership).mana;
+        if (ownership != null && ownership.racePassiveEnabled)
+            total = Mathf.Max(1, total - RacePassiveUtility.ManaCost);
+        return total;
+    }
+
     // "Мощь" — единая цифра для сравнения героев в коллекции (сортировка/фильтр), считается из базовых
     // статов героя + текущей экипировки. Веса — плейсхолдер, легко поменять: мана и броня ценятся выше HP
     // за единицу, множитель урона переведён в очки как разница от базового x1.

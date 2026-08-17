@@ -17,15 +17,19 @@ MonoBehaviour:
   maxHealth: 200
   maxResource: 15
   damageMultiplier: 1
+  armor: 5
   weight: 1
   skills:
   - {fileID: 11400000, guid: 94ef69067b8960c47949650f76fd1886, type: 2}
   - {fileID: 11400000, guid: 93c1304fe7201ee4fab2dff832b0c806, type: 2}
   - {fileID: 11400000, guid: 1fe78733b0aafb14591e4eb5c02d26d7, type: 2}
   - {fileID: 11400000, guid: 0a9920552bf736144adff3611377c2fc, type: 2}
-  portrait: {fileID: 21300000, guid: 271c6c5b9aff76e4ab919b28c283bbee, type: 3}
+  portrait: {fileID: 21300000, guid: 557dc1ff37f4e6c46a84c6f5cca839e2, type: 3}
+  inventoryPortrait: {fileID: 21300000, guid: 557dc1ff37f4e6c46a84c6f5cca839e2, type: 3}
+  inventoryPortraitVideo: {fileID: 0}
   themeColor: {r: 0.8396226, g: 0.051486313, b: 0.067757785, a: 1}
   resourceType: 0
+  ascendedPortrait: {fileID: 0}
   race: 2
   rarity: 4
   description: "The closer she comes to the limit of the damage she can sustain,

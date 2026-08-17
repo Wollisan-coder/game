@@ -40,6 +40,16 @@ public class HeroMiniCardUI : MonoBehaviour
 
     public HeroData HeroData { get; private set; }
 
+    // Фоновая Image карточки (та же, что selectButton.targetGraphic) — не публичное Inspector-поле,
+    // читается напрямую с корневого GameObject, на котором сидит и этот компонент. Start(), а НЕ Awake() —
+    // HeroCollectionUI.PopulateGrid уменьшает инстанс карточки localScale=0.5 ПОСЛЕ Instantiate(), уже
+    // синхронно в том же кадре; Awake() успевает раньше этого масштабирования, и тень/скос копировали бы
+    // ещё не применённый scale=1 (баг 2026-08-18 — тень оказалась вдвое крупнее самой карточки в Collection).
+    private void Start()
+    {
+        CardDepthUtility.ApplyCardDepth(GetComponent<Image>());
+    }
+
     public void Setup(HeroData data, HeroOwnershipData ownership)
     {
         HeroData = data;
@@ -60,7 +70,24 @@ public class HeroMiniCardUI : MonoBehaviour
             raceEmblem.enabled = emblem != null;
         }
 
+        RefreshUpgradeBadge(data);
         SetLocked(false);
+    }
+
+    // "Тут есть что прокачать прямо сейчас" — тот же красный маркер, что у Castle (см.
+    // NotificationBadgeUtility), только повешен на карточку героя. Общая карточка используется и в
+    // Collection, и в Squad — бейдж автоматически появляется в обоих местах, отдельно ничего не подключал.
+    private GameObject upgradeBadge;
+
+    private void RefreshUpgradeBadge(HeroData data)
+    {
+        if (portraitImage == null) return;
+
+        if (upgradeBadge == null)
+            upgradeBadge = NotificationBadgeUtility.CreateAlertBadge(
+                (RectTransform)portraitImage.transform, new Vector2(-6, -6), new Color(0.85f, 0.1f, 0.1f, 0.95f), "!");
+
+        upgradeBadge.SetActive(HeroCollectionManager.Instance != null && HeroCollectionManager.Instance.HasActionableUpgrade(data));
     }
 
     // Только Collection — герой ещё не открыт: тёмная плашка поверх, клик выключен

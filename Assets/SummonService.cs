@@ -29,13 +29,15 @@ public class SummonService : MonoBehaviour
     }
 
     // Призыв героя. usePremium — оплата PremiumGems (с гарантом) или SummonShards (без гаранта).
-    public HeroData PullHero(HeroSummonPoolData pool, bool usePremium)
+    // wasNewUnlock — герой получен ВПЕРВЫЕ (не дубликат); нужно SummonRevealUI, чтобы решить, показывать
+    // ли катсцену первого получения (см. GrantHero).
+    public (HeroData hero, bool wasNewUnlock) PullHero(HeroSummonPoolData pool, bool usePremium)
     {
-        if (pool == null || PlayerCurrencies.Instance == null || HeroCollectionManager.Instance == null) return null;
+        if (pool == null || PlayerCurrencies.Instance == null || HeroCollectionManager.Instance == null) return (null, false);
 
         CurrencyType currency = usePremium ? CurrencyType.PremiumGems : CurrencyType.SummonShards;
         int cost = usePremium ? pool.premiumCost : pool.shardCost;
-        if (!PlayerCurrencies.Instance.Spend(currency, cost)) return null;
+        if (!PlayerCurrencies.Instance.Spend(currency, cost)) return (null, false);
 
         HeroSummonEntry result = usePremium && pool.hasPity
             ? RollWithPity(pool.poolId, pool.pityThreshold,
@@ -49,23 +51,28 @@ public class SummonService : MonoBehaviour
             // Пул пуст или сконфигурирован некорректно (entries[] пуст, либо запись без назначенного hero) —
             // вернуть валюту, а не списать её впустую за ничего.
             PlayerCurrencies.Instance.Add(currency, cost);
-            return null;
+            return (null, false);
         }
 
-        GrantHero(result.hero);
-        return result.hero;
+        bool wasNewUnlock = GrantHero(result.hero);
+        return (result.hero, wasNewUnlock);
     }
 
     // Если герой уже разблокирован — это дубликат: конвертируется в гем вознесения (или в универсальную
     // награду, если герой уже на максимуме вознесения), а не пропадает молча/повторно "разблокирует" уже открытое.
-    private void GrantHero(HeroData hero)
+    // Возвращает true, если это была ПЕРВАЯ разблокировка (не дубликат) — сигнал для катсцены первого получения.
+    private bool GrantHero(HeroData hero)
     {
-        if (hero == null || HeroCollectionManager.Instance == null) return;
+        if (hero == null || HeroCollectionManager.Instance == null) return false;
 
         if (HeroCollectionManager.Instance.IsUnlocked(hero))
+        {
             HeroCollectionManager.Instance.HandleDuplicatePull(hero);
-        else
-            HeroCollectionManager.Instance.UnlockHero(hero);
+            return false;
+        }
+
+        HeroCollectionManager.Instance.UnlockHero(hero);
+        return true;
     }
 
     // Призыв предмета. usePremium — оплата PremiumGems (с гарантом) или SummonShards (без гаранта).
@@ -117,7 +124,7 @@ public class SummonService : MonoBehaviour
     // Многократный призыв героев (например, x10). Останавливается раньше, если не хватает валюты —
     // возвращает столько результатов, сколько удалось фактически оплатить. count >= 10 — один шанс
     // на джекпот (см. HeroSummonPoolData.jackpotChance) на весь этот пул призывов.
-    public List<HeroData> PullHeroMultiple(HeroSummonPoolData pool, bool usePremium, int count)
+    public List<(HeroData hero, bool wasNewUnlock)> PullHeroMultiple(HeroSummonPoolData pool, bool usePremium, int count)
     {
         LastPullWasJackpot = false;
 
@@ -129,21 +136,22 @@ public class SummonService : MonoBehaviour
             // джекпот молча отменяется, ниже идёт обычный путь (с ранней остановкой при нехватке валюты).
         }
 
-        var results = new List<HeroData>();
+        var results = new List<(HeroData hero, bool wasNewUnlock)>();
         for (int i = 0; i < count; i++)
         {
-            var hero = PullHero(pool, usePremium);
-            if (hero == null) break;
-            results.Add(hero);
+            var pull = PullHero(pool, usePremium);
+            if (pull.hero == null) break;
+            results.Add(pull);
         }
         return results;
     }
 
-    private List<HeroData> TryPullJackpotBatch(HeroSummonPoolData pool, bool usePremium, int count)
+    private List<(HeroData hero, bool wasNewUnlock)> TryPullJackpotBatch(HeroSummonPoolData pool, bool usePremium, int count)
     {
-        // 2 Orange-героя, каждый выбирается независимо (с возвращением) — может выпасть и одна и та же
-        // карта дважды. Раса каждого должна быть уже открыта игроку (WorldMapManager.IsTerritoryOpened) —
-        // джекпот не выдаёт героя расы, до которой игрок ещё не дошёл по сюжету.
+        // 2 РАЗНЫХ Orange-героя (выбор без возвращения) — раньше каждый выбирался независимо и мог выпасть
+        // дважды один и тот же, расходясь с собственным текстом "2 different Orange heroes"/"2 Legendary
+        // heroes guaranteed" (см. UX-правку). Раса каждого должна быть уже открыта игроку
+        // (WorldMapManager.IsTerritoryOpened) — джекпот не выдаёт героя расы, до которой игрок ещё не дошёл.
         var eligibleOrangeHeroes = pool.entries
             .Where(e => e.hero != null && e.hero.rarity == Rarity.Orange)
             .Select(e => e.hero)
@@ -153,24 +161,26 @@ public class SummonService : MonoBehaviour
             // мог ещё не дойти.
             .Where(h => WorldMapManager.Instance != null && WorldMapManager.Instance.IsTerritoryOpened(h.race))
             .ToList();
-        if (eligibleOrangeHeroes.Count == 0) return null; // нет ни одного доступного Orange-героя — джекпот невозможен
+        // < 2, а не == 0 — джекпот обещает 2 РАЗНЫХ героя; с одним кандидатом это обещание всё равно не
+        // выполнить, лучше молча отменить джекпот (обычный x10 ниже), чем отдать дубль под видом джекпота.
+        if (eligibleOrangeHeroes.Count < 2) return null;
 
         CurrencyType currency = usePremium ? CurrencyType.PremiumGems : CurrencyType.SummonShards;
         int totalCost = (usePremium ? pool.premiumCost : pool.shardCost) * count;
         if (!PlayerCurrencies.Instance.Spend(currency, totalCost)) return null; // не хватает на весь x10 разом
 
-        var jackpotHeroes = new List<HeroData>
+        var pickPool = new List<HeroData>(eligibleOrangeHeroes);
+        var jackpotHeroes = new List<HeroData>();
+        for (int i = 0; i < 2; i++)
         {
-            eligibleOrangeHeroes[Mathf.Clamp((int)(Random01() * eligibleOrangeHeroes.Count), 0, eligibleOrangeHeroes.Count - 1)],
-            eligibleOrangeHeroes[Mathf.Clamp((int)(Random01() * eligibleOrangeHeroes.Count), 0, eligibleOrangeHeroes.Count - 1)],
-        };
-
-        var results = new List<HeroData>();
-        foreach (var hero in jackpotHeroes)
-        {
-            GrantHero(hero);
-            results.Add(hero);
+            int index = Mathf.Clamp((int)(Random01() * pickPool.Count), 0, pickPool.Count - 1);
+            jackpotHeroes.Add(pickPool[index]);
+            pickPool.RemoveAt(index); // без возвращения — гарантирует различность (Count>=2 уже проверен выше)
         }
+
+        var results = new List<(HeroData hero, bool wasNewUnlock)>();
+        foreach (var hero in jackpotHeroes)
+            results.Add((hero, GrantHero(hero)));
 
         // Оставшиеся пуллы этого x10 — обычный взвешенный ролл (без повторной проверки пити/джекпота,
         // валюта на них уже списана выше единым платежом).
@@ -178,8 +188,7 @@ public class SummonService : MonoBehaviour
         {
             var entry = pool.RollWeighted(usePremium, Random01);
             if (entry?.hero == null) continue;
-            GrantHero(entry.hero);
-            results.Add(entry.hero);
+            results.Add((entry.hero, GrantHero(entry.hero)));
         }
 
         if (usePremium && pool.hasPity)

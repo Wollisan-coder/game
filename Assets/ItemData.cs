@@ -15,9 +15,13 @@ public enum EquipmentSlotType
 public enum ItemCategory
 {
     Equipment,
-    HeroExperience, // больше не выдаётся/не потребляется нигде в коде (пережиток старой системы предметов-опыта,
-                     // см. project_gem_economy_v2_redesign_pending) — НЕ удалять: HeroVoucher сериализован как
-                     // int 2 в реальных ассетах (HeroVoucherOrange/Purple.asset), удаление сдвинуло бы его на 1
+    HeroExperience, // СНОВА живой с 2026-08-13 (по прямой просьбе пользователя) — расходуемый предмет,
+                     // применимый к ЛЮБОМУ герою, начисляет ItemData.heroExperienceAmount опыта как
+                     // альтернативный источник оплаты внутри HeroUpgradeUI (см. ComputeSpendPlan) — наравне
+                     // с балансом CurrencyType.HeroExperience. Раньше был мёртвым пережитком старой
+                     // системы (см. project_gem_economy_v2_redesign_pending) — история сохранена в памяти,
+                     // но актуальное поведение теперь снова реальное. В любом случае НЕ переставлять/не
+                     // удалять — HeroVoucher сериализован как int 2 в реальных ассетах.
     HeroVoucher
 }
 
@@ -38,6 +42,13 @@ public class ItemData : ScriptableObject
     [Header("Редкость и прокачка")]
     public Rarity rarity = Rarity.Green;
     public int sacrificeExperience = 10; // опыт, который предмет даёт другому предмету при пожертвовании (масштабируется уровнем предмета-донора)
+
+    // Используется только при category == HeroExperience — сколько CurrencyType.HeroExperience (левелап-
+    // опыта) начисляет герою применение ОДНОЙ единицы этого предмета, см. HeroUpgradeUI.ComputeSpendPlan.
+    // Возвращённый предмет 2026-08-13 по прямой просьбе пользователя — не путать со старой мёртвой веткой,
+    // см. комментарий у ItemCategory.HeroExperience.
+    [Header("Опыт героя (только category == HeroExperience)")]
+    public int heroExperienceAmount = 50;
 
     // Бонус характеристик экипировки (category == Equipment) больше НЕ авторится здесь — полностью
     // считается из (slotType, rarity, уровень стека) через EquipmentStatCurve.GetValue. Один слот = один

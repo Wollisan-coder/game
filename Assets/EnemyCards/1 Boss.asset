@@ -36,7 +36,9 @@ MonoBehaviour:
     heroExperience: 100
     progressPoints: 30
     currency: []
-    items: []
+    items:
+    - item: {fileID: 11400000, guid: a2a5d838b033443faf83734110b38d17, type: 2}
+      count: 3
   portrait: {fileID: -741829756, guid: babe70984279fa24eafece0ec7e61091, type: 3}
   themeColor: {r: 0.0244749, g: 0.20754719, b: 0.050476167, a: 1}
   idleFrames:

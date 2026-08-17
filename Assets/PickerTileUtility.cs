@@ -8,12 +8,17 @@ using TMPro;
 // а каждый вызывающий код донастраивает только то, что у него действительно своё (текст, рамка, бедж, клик).
 public static class PickerTileUtility
 {
+    // explicitSize — только для callers БЕЗ управляющего GridLayoutGroup (см. AscensionGemTilePrefabBuilder/
+    // WondrousArmorTilePrefabBuilder, которые раньше выставляли sizeDelta ПОСЛЕ этого вызова — CardDepthUtility
+    // ниже уже читало бы дефолтный, ещё не выставленный размер). Обычные (сеточные) вызовы оставляют null —
+    // GridLayoutGroup сам выставит sizeDelta на отложенном layout-проходе, который ApplyCardDepth форсирует сам.
     public static GameObject BuildTile(Transform parent, string name, Color bgColor,
-        out Image bg, out Image icon, out TMP_Text label, out Button button)
+        out Image bg, out Image icon, out TMP_Text label, out Button button, Vector2? explicitSize = null)
     {
         var entryObj = new GameObject(name, typeof(RectTransform));
         var entryRect = (RectTransform)entryObj.transform;
         entryRect.SetParent(parent, false);
+        if (explicitSize.HasValue) entryRect.sizeDelta = explicitSize.Value;
 
         bg = entryObj.AddComponent<Image>();
         bg.color = bgColor;
@@ -39,6 +44,8 @@ public static class PickerTileUtility
         labelRect.offsetMax = new Vector2(-4, 0);
         label = labelObj.AddComponent<TextMeshProUGUI>();
         label.alignment = TextAlignmentOptions.Center;
+
+        CardDepthUtility.ApplyCardDepth(bg); // тень + тёмный скос по периметру, см. UX-правку 2026-08-18
 
         return entryObj;
     }

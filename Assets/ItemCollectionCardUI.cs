@@ -12,9 +12,17 @@ public class ItemCollectionCardUI : MonoBehaviour
     private ItemOwnershipData stack; // null = предмет ще не отриманий (locked)
     private ItemDetailUI detailUI;
 
-    private Image rarityFrame;
     private TMP_Text levelText;
     private TMP_Text quantityText;
+
+    // Фоновая Image карточки (та же, что selectButton.targetGraphic) — не публичное Inspector-поле,
+    // читается напрямую с корневого GameObject, на котором сидит и этот компонент. Start(), не Awake() —
+    // тот же порядок, что у HeroMiniCardUI (см. её комментарий): если когда-нибудь эта карточка тоже
+    // начнёт масштабироваться вызывающим кодом после Instantiate(), Start() уже готов это подхватить.
+    private void Start()
+    {
+        CardDepthUtility.ApplyCardDepth(GetComponent<Image>());
+    }
 
     // stack — конкретный стек (уровень) этого предмета; null, если ни одной копии не получено (карточка заблокирована)
     public void Setup(ItemData data, ItemOwnershipData ownedStack, ItemDetailUI detail)
@@ -34,8 +42,9 @@ public class ItemCollectionCardUI : MonoBehaviour
             selectButton.onClick.AddListener(OnSelected);
         }
 
-        ItemBadgeUtility.ApplyRarityFrame(icon, data.GetRarityColor(), ref rarityFrame);
-        ItemBadgeUtility.ApplyLevelBadge(icon != null ? icon.rectTransform : null, owned ? stack.level : 0, ref levelText);
+        // Фунгибельный расходник (HeroExperience) — "уровня" у него нет, бедж бы врал (см. UX-правку 2026-08-17).
+        bool isHeroExperienceItem = data.category == ItemCategory.HeroExperience;
+        ItemBadgeUtility.ApplyLevelBadge(icon != null ? icon.rectTransform : null, isHeroExperienceItem ? 0 : (owned ? stack.level : 0), ref levelText);
         ItemBadgeUtility.ApplyQuantityBadge(icon != null ? icon.rectTransform : null, owned ? stack.quantity : 0, ref quantityText);
     }
 

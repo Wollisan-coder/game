@@ -191,6 +191,7 @@ public class HeroCollectionManager : MonoBehaviour
         else
         {
             data.ascensionGems++;
+            data.upgradeBadgeSeen = false; // новый гем — новая возможность, бейдж вправе показаться снова
         }
 
         SaveOwnership();
@@ -240,6 +241,7 @@ public class HeroCollectionManager : MonoBehaviour
             manager.ConsumeItem(instanceId);
 
         data.ascensionGems++;
+        data.upgradeBadgeSeen = false; // новый гем — новая возможность, бейдж вправе показаться снова
         SaveOwnership();
         return true;
     }
@@ -422,7 +424,7 @@ public class HeroCollectionManager : MonoBehaviour
     }
 
     // Обобщение GetExperienceNeededToCap на произвольный промежуточный уровень (клампится потолком текущей
-    // ступени вознесения) — используется кнопками +1/+10/Max в HeroInventoryUI (см. UpgradeSteps), чтобы
+    // ступени вознесения) — используется степпером в HeroUpgradeUI (см. SetStagedLevel/ComputeSpendPlan), чтобы
     // показать точную цену КАЖДОГО шага, а не только "докуда есть валюты" в один клик.
     public int GetExperienceNeededForLevel(string heroId, int targetLevel)
     {
@@ -444,6 +446,40 @@ public class HeroCollectionManager : MonoBehaviour
             level++;
         }
         return needed;
+    }
+
+    // Есть ли у героя доступное ПРЯМО СЕЙЧАС улучшение (хватает валюты на +1 уровень, или хватает гемов
+    // на вознесение) — чисто читающая проверка, те же условия, что уже считают HeroUpgradeUI и
+    // RefreshAscendButton, просто без побочных эффектов. Для незалоченного
+    // героя всегда false — незачем звать "прокачай" то, что игрок ещё не открыл.
+    public bool HasActionableUpgrade(HeroData hero)
+    {
+        if (hero == null) return false;
+        var data = ownership.FirstOrDefault(o => o.heroId == hero.heroId);
+        if (data == null || !data.isUnlocked || data.upgradeBadgeSeen) return false;
+
+        int neededForNextLevel = GetExperienceNeededForLevel(hero.heroId, data.level + 1);
+        bool canLevelUp = neededForNextLevel > 0
+            && PlayerCurrencies.Instance != null
+            && PlayerCurrencies.Instance.GetBalance(CurrencyType.HeroExperience) >= neededForNextLevel;
+
+        int maxAscension = HeroAscensionUtility.GetMaxAscension(hero.rarity);
+        bool canAscendNow = data.ascensionLevel < maxAscension
+            && data.ascensionGems >= HeroAscensionUtility.GemsPerAscension;
+
+        return canLevelUp || canAscendNow;
+    }
+
+    // Вызывается, когда игрок открывает инвентарь героя (см. HeroInventoryUI.Open) — "увидел, что есть
+    // прокачка, сам решает, тратить или нет" (см. UX-бриф), а не постоянно горящий бейдж. Не проверяет,
+    // было ли ЧТО показать — дёшево вызывать безусловно, лишняя запись в false->false не вредит.
+    public void MarkUpgradeBadgeSeen(string heroId)
+    {
+        var data = ownership.FirstOrDefault(o => o.heroId == heroId);
+        if (data == null || data.upgradeBadgeSeen) return;
+
+        data.upgradeBadgeSeen = true;
+        SaveOwnership();
     }
 
     // Экипирован ли этот конкретный стек (по instanceId) хоть на одном герое сейчас.

@@ -180,6 +180,8 @@ public class AchievementUI : MonoBehaviour
         foreach (Transform child in content)
             Destroy(child.gameObject);
 
+        string rewardIconPath = ConfirmationDialog.GetCurrencyIconPath(CurrencyType.SummonShards);
+
         float yTop = 0f;
         foreach (AchievementCategory category in System.Enum.GetValues(typeof(AchievementCategory)))
         {
@@ -195,8 +197,10 @@ public class AchievementUI : MonoBehaviour
             string title = $"[{tierLabel}] {AchievementManager.GetDescription(category)}";
 
             var capturedCategory = category;
+            // Награда за СЛЕДУЮЩИЙ неклеймленный уровень (tier — уже клеймленный, maxed — берём последний, показать нечего кроме как что уже забрано)
+            int rewardAmount = AchievementManager.GetTierReward(maxed ? thresholds.Length - 1 : tier);
             ProgressCardUI.Create(content, yTop, title, current, levelFloor, target, maxed, ready,
-                () => { manager.ClaimCategory(capturedCategory); Refresh(); });
+                () => { manager.ClaimCategory(capturedCategory); Refresh(); }, rewardIconPath, rewardAmount);
             yTop -= ProgressCardUI.CardHeight + ProgressCardUI.CardSpacing;
         }
 

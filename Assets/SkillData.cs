@@ -62,6 +62,10 @@ public class SkillData : ScriptableObject
 {
     public string skillName;
     [TextArea] public string description;
+    // Короткая версия для основного экрана (текстовая стена — то, чего просит избегать UX-бриф). Пусто —
+    // код сам обрежет description до ~80 символов; заполнено — используется как есть. Полный текст всегда
+    // доступен по тапу, см. HeroInventoryUI.SetSkillInfoText.
+    [TextArea(1, 2)] public string shortSummary;
 
     public ResourceType costType;
     public int cost;

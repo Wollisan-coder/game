@@ -19,7 +19,7 @@ public static class AscensionGemTilePrefabBuilder
         var tempParent = new GameObject("TempParent", typeof(RectTransform)).transform;
 
         PickerTileUtility.BuildTile(tempParent, "AscensionGemTile", new Color(1, 1, 1, 0.06f),
-            out Image bg, out Image icon, out TMP_Text label, out Button button);
+            out Image bg, out Image icon, out TMP_Text label, out Button button, new Vector2(150, 200));
         label.fontSize = 14; // = размер, который раньше ставился вручную в DeathDungeonEntryUI.BuildAscensionGemTile
 
         Image rarityFrame = null;
@@ -30,8 +30,7 @@ public static class AscensionGemTilePrefabBuilder
         GameObject quantityBadgeRoot = quantityBadge.transform.parent.gameObject;
 
         GameObject tileRoot = bg.gameObject;
-        tileRoot.transform.SetParent(null, false);
-        ((RectTransform)tileRoot.transform).sizeDelta = new Vector2(150, 200);
+        tileRoot.transform.SetParent(null, false); // sizeDelta уже 150x200 — передан в BuildTile, до CardDepthUtility внутри него
 
         var tileUI = tileRoot.AddComponent<AscensionGemTileUI>();
         tileUI.icon = icon;

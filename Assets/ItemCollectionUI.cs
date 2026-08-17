@@ -300,8 +300,15 @@ public class ItemCollectionUI : MonoBehaviour
         var collectionManager = ItemCollectionManager.Instance;
         if (collectionManager == null) return;
 
-        foreach (Transform child in gridContainer)
+        // Обратный проход по индексу + немедленный SetParent(null) — см. HeroCollectionUI.PopulateGrid
+        // за подробным объяснением (тот же баг 2026-08-18: отложенный Destroy() давал GridLayoutGroup'у
+        // на один кадр увидеть старые+новые ячейки разом, карточки/тени "съезжали" при смене фильтра).
+        for (int i = gridContainer.childCount - 1; i >= 0; i--)
+        {
+            var child = gridContainer.GetChild(i);
+            child.SetParent(null);
             Destroy(child.gameObject);
+        }
 
         var matchingItems = collectionManager.allItems
             .Where(MatchesCurrentTab)
@@ -343,12 +350,12 @@ public class ItemCollectionUI : MonoBehaviour
             CreateCard(item, stack);
 
         // Consumables/All — сверху ваучеры (ItemData, уже в cards выше), плюс всё, что НЕ ItemData:
-        // Hero Experience и Armor Shards (баланс валют) + Ascension Gems и Wondrous Armor (по герою) —
-        // добавляются отдельно в конец той же сетки.
+        // Armor Shards (баланс валюты) + Ascension Gems и Wondrous Armor (по герою) — добавляются отдельно
+        // в конец той же сетки. Hero Experience сюда больше не добавляется — теперь это ItemData-карточка
+        // (уже попадает в cards выше) вместо отдельной плитки баланса, см. UX-правку 2026-08-17 (дублирование).
         var filter = tabs[selectedTabIndex].filter;
         if (filter == TopFilter.All || filter == TopFilter.Consumables)
         {
-            CreateHeroExperienceTile();
             CreateArmorShardsTile();
             AscensionGemGridUtility.Populate(gridContainer, heroManager, PopulateGrid);
             WondrousArmorGridUtility.Populate(gridContainer, heroManager, PopulateGrid);
@@ -360,21 +367,6 @@ public class ItemCollectionUI : MonoBehaviour
         GameObject cardObj = Instantiate(itemCardPrefab, gridContainer);
         var card = cardObj.GetComponent<ItemCollectionCardUI>();
         card.Setup(item, stack, detailUI);
-    }
-
-    // Карточка-плитка баланса CurrencyType.HeroExperience — отдельный префаб CurrencyBalanceTile (см.
-    // CurrencyBalanceTileUI), не привязана к герою. Иконка задаётся в самом префабе (Inspector), код её
-    // не трогает — раньше код грузил спрайт по Resources-пути и затирал то, что вручную ставили в префабе.
-    private void CreateHeroExperienceTile()
-    {
-        var prefab = Resources.Load<GameObject>("UI/CurrencyBalanceTile");
-        if (prefab == null) return;
-
-        int balance = PlayerCurrencies.Instance != null ? PlayerCurrencies.Instance.GetBalance(CurrencyType.HeroExperience) : 0;
-
-        GameObject tileObj = Instantiate(prefab, gridContainer);
-        tileObj.name = "HeroExperienceBalance";
-        tileObj.GetComponent<CurrencyBalanceTileUI>()?.Setup("Hero Experience", balance);
     }
 
     // Карточка-плитка баланса CurrencyType.ArmorShards — отдельный префаб ArmorShardsTile (см.
