@@ -518,6 +518,17 @@ public class HeroCollectionManager : MonoBehaviour
             squad.Add(null);
     }
 
+    // Коммит нового состава отряда одним куском — используется SquadEditPopupUI.OnApplyClicked (пересборка
+    // всего отряда за один заход в отдельном попапе, см. правку 2026-08-19). В отличие от AssignToSlot,
+    // ничего не проверяет (вес/разблокировку) — эти проверки уже сделаны на стороне попапа при каждом тогле.
+    public void SetSquad(List<HeroData> newSquad)
+    {
+        squad.Clear();
+        squad.AddRange(newSquad);
+        EnsureSquadSize();
+        SaveSquad();
+    }
+
     // Сколько будет весить отряд, если именно сейчас назначить hero в slotBeingEdited (с учётом переноса героя из другого слота)
     public int GetProjectedSquadWeight(HeroData hero)
     {

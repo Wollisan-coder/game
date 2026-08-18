@@ -15,9 +15,10 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     public TMP_Text levelText;
     public TMP_Text descriptionText;
 
-    [Header("Рамка редкости — общий ассет RarityFrameSet на всю игру")]
+    [Header("Рамка редкости — тёмная плашка + светящийся кант + аббревиатура ранга, см. RarityUtility")]
     public Image rarityFrame;
-    public RarityFrameSet rarityFrameSet;
+    private Image rarityKantGlow;
+    private TMP_Text rarityTierLabel;
 
     [Header("Эмблема расы — общий ассет RaceEmblemSet на всю игру")]
     public Image raceEmblem;
@@ -114,7 +115,16 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     private void Awake()
     {
         if (closeButton != null)
+        {
             closeButton.onClick.AddListener(Close);
+
+            // Кнопка "назад" в сцене осталась дефолтной (белый UISprite, текст "Button" из стандартного
+            // Unity Button) — приводим к тому же золотому стилю, что Equip Best/Upgrade на этом же экране.
+            var closeBg = closeButton.GetComponent<Image>();
+            if (closeBg != null) ConfirmationDialog.StyleAsButton(closeBg);
+            var closeLabel = closeButton.GetComponentInChildren<TMP_Text>();
+            if (closeLabel != null) closeLabel.text = "Back";
+        }
 
         if (racePassiveToggleButton != null)
             racePassiveToggleButton.onClick.AddListener(OnRacePassiveToggleClicked);
@@ -166,12 +176,19 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     }
 
     // Переходит к предыдущему/следующему (по направлению) разблокированному герою в том же порядке,
-    // что и в коллекции (HeroCollectionManager.Instance.allHeroes), с переходом по кругу.
+    // что и в сетке коллекции — берём её последний отображённый порядок (после поиска/фильтров/
+    // сортировки, см. HeroCollectionUI.LastDisplayedOrder), а не сырой HeroCollectionManager.allHeroes
+    // (баг 2026-08-19: свайп и сетка расходились по порядку). Если коллекция в этой сессии ещё ни разу
+    // не открывалась (Inventory открыт откуда-то ещё, например Squad) — откат на старый порядок.
     private void NavigateHero(int direction)
     {
         if (currentHero == null || HeroCollectionManager.Instance == null) return;
 
-        var unlocked = HeroCollectionManager.Instance.allHeroes.Where(h => HeroCollectionManager.Instance.IsUnlocked(h)).ToList();
+        var baseOrder = HeroCollectionUI.LastDisplayedOrder != null && HeroCollectionUI.LastDisplayedOrder.Count > 0
+            ? HeroCollectionUI.LastDisplayedOrder
+            : HeroCollectionManager.Instance.allHeroes.ToList(); // .ToList() — тернарник иначе не находит общий тип с List<HeroData> выше
+
+        var unlocked = baseOrder.Where(h => h != null && HeroCollectionManager.Instance.IsUnlocked(h)).ToList();
         if (unlocked.Count < 2) return;
 
         int index = unlocked.FindIndex(h => h.heroId == currentHero.heroId);
@@ -276,7 +293,7 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         if (healthText != null) healthText.text = $"HP: {currentHero.maxHealth}";
         if (descriptionText != null) descriptionText.text = currentHero.description;
 
-        RarityUtility.ApplyFrame(rarityFrame, rarityFrameSet, currentHero.rarity);
+        RarityUtility.ApplyFrame(rarityFrame, currentHero.rarity, ref rarityKantGlow, ref rarityTierLabel);
         HeroAscensionUtility.ApplyOverlay(ascensionOverlay, ascensionOverlaySet, currentHero.rarity, currentOwnership != null ? currentOwnership.ascensionLevel : 0);
         WondrousArmorSkinSet.Apply(wondrousArmorOverlay, wondrousArmorSkinSet, currentHero.heroId, currentOwnership != null && currentOwnership.wondrousArmorWorn);
 
@@ -668,7 +685,9 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         btnRect.anchorMax = referenceRect.anchorMax;
         btnRect.pivot = new Vector2(0.5f, 1);
         btnRect.sizeDelta = new Vector2(260, 60);
-        btnRect.anchoredPosition = referenceRect.anchoredPosition + new Vector2(0, -(referenceRect.sizeDelta.y + 16f));
+        // Жёстко (0,-230), не вычислено от referenceRect — вычисленная позиция расходилась с фактической
+        // (пользователь сверял вживую в Play Mode, см. правку 2026-08-18), проще и надёжнее зафиксировать точно.
+        btnRect.anchoredPosition = new Vector2(0f, -230f);
 
         var btnImg = btnObj.AddComponent<Image>();
         ConfirmationDialog.StyleAsButton(btnImg);
@@ -756,23 +775,27 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         if (statsText == null || currentHero == null) return;
 
         var s = ComputeDisplayedStats();
-        statsText.text = $"HP: {s.hp}\nMana: {s.mana}\nAttack: {UpgradeFeedbackUtility.AttackDisplayValue(s.dmg)}\nArmor: {s.armor}";
+        statsText.text = $"HP: {s.hp}\nMana: {s.mana}\nAttack: {UpgradeFeedbackUtility.AttackDisplayValue(s.dmg)}\nArmor: {s.armor}\nMight: {s.might}";
     }
 
     // Вынесено из RefreshStats — переиспользуется AnimateStatGain для снимка "было"/"стало" без дублирования
     // самого расчёта (тот же HeroStatUtility, что и раньше, ничего в цифрах не поменялось). overrideAscensionLevel
     // — для превью "а что если вознестись" (см. OpenAscendPopup) БЕЗ реальной мутации currentOwnership.
-    private (int hp, int mana, float dmg, int armor) ComputeDisplayedStats(int? overrideAscensionLevel = null)
+    // might — та же "Мощь", что и в коллекции (HeroStatUtility.CalculatePower), level/ascensionLevel те же,
+    // что уже используются ниже для остальных статов, поэтому считается от них же, а не от currentOwnership напрямую.
+    private (int hp, int mana, float dmg, int armor, int might) ComputeDisplayedStats(int? overrideAscensionLevel = null)
     {
-        if (currentHero == null) return (0, 0, 0f, 0);
+        if (currentHero == null) return (0, 0, 0f, 0, 0);
 
-        var baseStats = HeroStatUtility.CalculateBaseStats(currentHero,
-            currentOwnership != null ? currentOwnership.level : 1,
-            overrideAscensionLevel ?? (currentOwnership != null ? currentOwnership.ascensionLevel : 0));
+        int level = currentOwnership != null ? currentOwnership.level : 1;
+        int ascensionLevel = overrideAscensionLevel ?? (currentOwnership != null ? currentOwnership.ascensionLevel : 0);
+
+        var baseStats = HeroStatUtility.CalculateBaseStats(currentHero, level, ascensionLevel);
         var bonuses = HeroStatUtility.CalculateEquipmentBonuses(currentOwnership); // экипировка не зависит от вознесения
+        int might = HeroStatUtility.CalculatePower(currentHero, currentOwnership, level, ascensionLevel);
 
         return (baseStats.health + bonuses.health, GetTotalMaxMana(overrideAscensionLevel),
-            baseStats.damageMultiplier + bonuses.damageMultiplier, baseStats.armor + bonuses.armor);
+            baseStats.damageMultiplier + bonuses.damageMultiplier, baseStats.armor + bonuses.armor, might);
     }
 
     // "Было -> стало" — короткая, самоотменяющаяся подсветка изменившихся статов (грей->зелёный + летящие
@@ -782,7 +805,7 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     private Coroutine statsFlashRoutine;
     private Coroutine statsRevertRoutine;
 
-    private void AnimateStatGain((int hp, int mana, float dmg, int armor) before)
+    private void AnimateStatGain((int hp, int mana, float dmg, int armor, int might) before)
     {
         if (statsText == null || currentHero == null) return;
 
@@ -822,6 +845,14 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
             anyChanged = true;
         }
         else lines.Add($"Armor: {after.armor}");
+
+        if (after.might != before.might)
+        {
+            lines.Add(UpgradeFeedbackUtility.FormatBeforeAfter("Might", before.might.ToString(), after.might.ToString()));
+            deltas.Add($"+{after.might - before.might}");
+            anyChanged = true;
+        }
+        else lines.Add($"Might: {after.might}");
 
         if (!anyChanged) return; // ничего не выросло (например, вознесение подняло только потолок уровня) — RefreshStats() уже верен
 
@@ -921,7 +952,7 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         heroUpgradeUI.Open(currentHero, currentOwnership, OnHeroUpgradeWillApply, OnHeroUpgradeApplied);
     }
 
-    private (int hp, int mana, float dmg, int armor) heroUpgradeStatsBefore;
+    private (int hp, int mana, float dmg, int armor, int might) heroUpgradeStatsBefore;
 
     private void OnHeroUpgradeWillApply() => heroUpgradeStatsBefore = ComputeDisplayedStats();
 
@@ -1131,7 +1162,8 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
             UpgradeFeedbackUtility.FormatBeforeAfter("HP", before.hp.ToString(), after.hp.ToString()) + "\n" +
             UpgradeFeedbackUtility.FormatBeforeAfter("Mana", before.mana.ToString(), after.mana.ToString()) + "\n" +
             UpgradeFeedbackUtility.FormatBeforeAfter("Attack", UpgradeFeedbackUtility.AttackDisplayValue(before.dmg).ToString(), UpgradeFeedbackUtility.AttackDisplayValue(after.dmg).ToString()) + "\n" +
-            UpgradeFeedbackUtility.FormatBeforeAfter("Armor", before.armor.ToString(), after.armor.ToString());
+            UpgradeFeedbackUtility.FormatBeforeAfter("Armor", before.armor.ToString(), after.armor.ToString()) + "\n" +
+            UpgradeFeedbackUtility.FormatBeforeAfter("Might", before.might.ToString(), after.might.ToString());
 
         ConfirmationDialog.ShowActions(canvas.transform, message, "Ascension",
             new (string, bool, System.Action)[] { ("Ascension", true, PerformAscend) });
@@ -1164,8 +1196,6 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     // хватает гемов прямо сейчас — свечение крупнее и мерцает (см. Update/UpdateAscendGlowPulse).
     // Числового счётчика гемов на карточке больше нет — подсказка полностью визуальная.
     private bool ascendReadyNow;
-    private TMP_Text ascendConditionLabel;
-    private Button ascendConditionButton;
 
     private void RefreshAscendButton()
     {
@@ -1197,57 +1227,7 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
         }
 
         ascendReadyNow = canAscendNow; // дальше подхватывает Update() для мерцания/крупного размера
-
-        RefreshAscendConditionLabel(relevant, canAscendNow);
     }
-
-    // Видимое условие вместо "молча недоступно" (см. UX-бриф) — показывается ровно когда вознесение
-    // релевантно, но гемов не хватает; когда хватает — уже есть мерцающий glow, дублировать текстом не надо.
-    // Заодно и есть tap-target на "где взять гемы" — тот же элемент, не отдельная иконка.
-    private void RefreshAscendConditionLabel(bool relevant, bool canAscendNow)
-    {
-        if (ascendButton == null) return;
-        EnsureAscendConditionLabel();
-
-        bool showCondition = relevant && !canAscendNow;
-        ascendConditionLabel.gameObject.SetActive(showCondition);
-        if (!showCondition) return;
-
-        int needed = HeroAscensionUtility.GemsPerAscension - currentOwnership.ascensionGems;
-        ascendConditionLabel.text = $"Needs {needed} more Ascension Gem(s)";
-    }
-
-    private void EnsureAscendConditionLabel()
-    {
-        if (ascendConditionLabel != null) return;
-
-        var labelObj = new GameObject("AscendConditionLabel", typeof(RectTransform));
-        var labelRect = (RectTransform)labelObj.transform;
-        labelRect.SetParent(ascendButton.transform, false);
-        labelRect.anchorMin = new Vector2(0.5f, 0);
-        labelRect.anchorMax = new Vector2(0.5f, 0);
-        labelRect.pivot = new Vector2(0.5f, 1);
-        labelRect.sizeDelta = new Vector2(220, 60);
-        labelRect.anchoredPosition = new Vector2(0, -6);
-
-        ascendConditionLabel = labelObj.AddComponent<TextMeshProUGUI>();
-        ascendConditionLabel.fontSize = 28; // жёсткий пол проекта — ConfirmationDialog.MinTextFontSize
-        ascendConditionLabel.alignment = TextAlignmentOptions.Center;
-        ascendConditionLabel.color = new Color(1f, 0.85f, 0.4f);
-        ascendConditionLabel.enableAutoSizing = true;
-        ascendConditionLabel.fontSizeMin = 28;
-        ascendConditionLabel.fontSizeMax = 32;
-
-        ascendConditionButton = labelObj.AddComponent<Button>();
-        ascendConditionButton.transition = Selectable.Transition.None;
-        ascendConditionButton.targetGraphic = ascendConditionLabel;
-        ascendConditionButton.onClick.AddListener(OnAscendConditionClicked);
-    }
-
-    // Тот же попап, что и сам значок вознесения (см. OpenAscendPopup) — условие-лейбл просто второй, более
-    // крупный tap-target на то же действие, не отдельная логика (раньше вёл в общий "Go to Castle", теперь
-    // сразу в Altar — см. OpenAscendPopup).
-    private void OnAscendConditionClicked() => OpenAscendPopup();
 
     private const float AscendGlowIdleAlpha = 0.35f;    // "свечение 1" — просто доступно
     private const float AscendGlowReadyMinAlpha = 0.45f; // "свечение 3" — гемов хватает, мерцает между этими двумя

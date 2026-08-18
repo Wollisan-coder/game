@@ -16,7 +16,8 @@ public static class ItemBadgeUtility
     // сплошной прямоугольник позади иконки, что на предметах с прозрачными краями (много "воздуха" вокруг
     // 3D-рендера) выглядело как грубая цветная плашка на весь тайл (жалоба пользователя 2026-08-12).
     // Никакого нового арт-файла не нужно — текстура генерируется в рантайме один раз и кэшируется.
-    private static Sprite GetBorderSprite()
+    // public — переиспользуется SquadEditPopupUI (зелёная рамка выбранного героя, см. SetCardSelected).
+    public static Sprite GetBorderSprite()
     {
         if (borderSprite != null) return borderSprite;
 

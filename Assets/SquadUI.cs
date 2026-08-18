@@ -75,11 +75,7 @@ public class SquadUI : MonoBehaviour
         if (card.selectButton != null)
         {
             card.selectButton.onClick.RemoveAllListeners();
-            card.selectButton.onClick.AddListener(() =>
-            {
-                if (inventoryUI != null)
-                    inventoryUI.Open(hero);
-            });
+            card.selectButton.onClick.AddListener(OpenSquadEditPopup);
         }
 
         if (card.removeButton != null)
@@ -106,7 +102,7 @@ public class SquadUI : MonoBehaviour
         CardDepthUtility.ApplyCardDepth(bg); // тень + тёмный скос — иначе пустой слот визуально плоский рядом с занятыми (см. UX-правку 2026-08-18)
 
         var btn = obj.AddComponent<Button>();
-        btn.onClick.AddListener(() => OnEmptySlotClicked(slotIndex));
+        btn.onClick.AddListener(OpenSquadEditPopup);
 
         var textObj = new GameObject("Text", typeof(RectTransform));
         var textRect = (RectTransform)textObj.transform;
@@ -122,14 +118,25 @@ public class SquadUI : MonoBehaviour
         text.color = new Color(1, 1, 1, 0.4f);
     }
 
-    private void OnEmptySlotClicked(int slotIndex)
+    // Единая точка входа в пересборку отряда — раньше пустой слот открывал Collection в режиме выбора
+    // ОДНОГО героя в ЭТОТ слот, а занятый слот открывал HeroInventoryUI (статы/прокачка). Теперь оба случая
+    // ведут в один и тот же попап (SquadEditPopupUI) — весь состав отряда собирается за один заход поверх
+    // экрана Squad, без перехода на вкладку Collection (см. UX-правку 2026-08-19). Посмотреть статы/
+    // прокачать героя из отряда теперь нельзя впрямую — тот путь остался в Collection.
+    private SquadEditPopupUI squadEditPopup;
+
+    private void OpenSquadEditPopup()
     {
-        if (HeroCollectionManager.Instance == null) return;
+        if (squadEditPopup == null)
+        {
+            var canvas = GetComponentInParent<Canvas>();
+            var popupObj = new GameObject("SquadEditPopupUI", typeof(RectTransform));
+            popupObj.transform.SetParent(canvas != null ? canvas.transform : transform, false);
+            squadEditPopup = popupObj.AddComponent<SquadEditPopupUI>();
+            squadEditPopup.OnApplied += RefreshSlots;
+        }
 
-        HeroCollectionManager.Instance.StartEditingSlot(slotIndex);
-
-        if (mainMenuUI != null)
-            mainMenuUI.ShowCollection();
+        squadEditPopup.Open(heroCardPrefab);
     }
 
     // --- Мощь отряда + переключатель вариантов — построены один раз поверх заголовка "Squad"

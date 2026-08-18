@@ -427,15 +427,16 @@ public class HeroUpgradeUI : MonoBehaviour
     // Тот же расчёт, что HeroInventoryUI.ComputeDisplayedStats (тот же HeroStatUtility, чтобы цифры нигде
     // не разъезжались), но параметризован уровнем напрямую — превью здесь идёт по ОТЛОЖЕННОМУ stagedLevel,
     // ownership.level не мутируется до подтверждения (см. ApplyUpgrade).
-    private (int hp, int mana, float dmg, int armor) ComputeStatsAtLevel(int level)
+    private (int hp, int mana, float dmg, int armor, int might) ComputeStatsAtLevel(int level)
     {
-        if (hero == null || ownership == null) return (0, 0, 0f, 0);
+        if (hero == null || ownership == null) return (0, 0, 0f, 0, 0);
 
         var baseStats = HeroStatUtility.CalculateBaseStats(hero, level, ownership.ascensionLevel);
         var bonuses = HeroStatUtility.CalculateEquipmentBonuses(ownership);
         int mana = HeroStatUtility.CalculateMaxMana(hero, ownership, level, ownership.ascensionLevel);
+        int might = HeroStatUtility.CalculatePower(hero, ownership, level, ownership.ascensionLevel);
 
-        return (baseStats.health + bonuses.health, mana, baseStats.damageMultiplier + bonuses.damageMultiplier, baseStats.armor + bonuses.armor);
+        return (baseStats.health + bonuses.health, mana, baseStats.damageMultiplier + bonuses.damageMultiplier, baseStats.armor + bonuses.armor, might);
     }
 
     // Красит строку серый->зелёный только там, где стат реально меняется — Attack сравнивается уже в
@@ -464,6 +465,7 @@ public class HeroUpgradeUI : MonoBehaviour
                 FormatStatLine("Mana", before.mana, after.mana),
                 FormatStatLine("Attack", beforeAtk, afterAtk),
                 FormatStatLine("Armor", before.armor, after.armor),
+                FormatStatLine("Might", before.might, after.might),
             });
         }
 

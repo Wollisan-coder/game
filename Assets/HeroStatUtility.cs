@@ -95,14 +95,20 @@ public static class HeroStatUtility
         return total;
     }
 
-    // "Мощь" — единая цифра для сравнения героев в коллекции (сортировка/фильтр), считается из базовых
-    // статов героя + текущей экипировки. Веса — плейсхолдер, легко поменять: мана и броня ценятся выше HP
-    // за единицу, множитель урона переведён в очки как разница от базового x1.
+    // "Мощь" — единая цифра для сравнения героев в коллекции (сортировка/фильтр) и для отображения на
+    // карточке героя как "Might" (см. UX-правку 2026-08-18). Веса — плейсхолдер, легко поменять: мана и
+    // броня ценятся выше HP за единицу, множитель урона переведён в очки как разница от базового x1.
     public static int CalculatePower(HeroData hero, HeroOwnershipData ownership)
+        => CalculatePower(hero, ownership, ownership?.level ?? 1, ownership?.ascensionLevel ?? 0);
+
+    // Явные level/ascensionLevel — тот же приём, что CalculateMaxMana выше: превью гипотетического
+    // уровня/вознесения (HeroUpgradeUI, OpenAscendPopup) без мутации ownership. Экипировка от
+    // level/ascensionLevel не зависит, поэтому bonuses всегда считается от РЕАЛЬНОГО ownership.
+    public static int CalculatePower(HeroData hero, HeroOwnershipData ownership, int level, int ascensionLevel)
     {
         if (hero == null) return 0;
 
-        var baseStats = CalculateBaseStats(hero, ownership?.level ?? 1, ownership?.ascensionLevel ?? 0);
+        var baseStats = CalculateBaseStats(hero, level, ascensionLevel);
         var bonuses = CalculateEquipmentBonuses(ownership);
 
         int health = baseStats.health + bonuses.health;

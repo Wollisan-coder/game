@@ -32,6 +32,11 @@ public class HeroCollectionUI : MonoBehaviour
     private int sortFieldIndex = 0;    // индекс в SortOptions
     private bool sortDescending = false;
 
+    // Последний отображённый в сетке порядок (после поиска/фильтров/сортировки) — читает
+    // HeroInventoryUI.NavigateHero, чтобы свайп шёл в том же порядке, что герой видел в сетке слева
+    // направо, а не в порядке сырого HeroCollectionManager.allHeroes (баг, найденный 2026-08-19).
+    public static List<HeroData> LastDisplayedOrder { get; private set; }
+
     // PopulateGrid() НЕ вызывается отсюда — только явно из MainMenuUI.ShowCollection() при каждом
     // открытии экрана (тот же приём и по той же причине, что и SquadUI.RefreshSlots/ShowSquad — вызов
     // и здесь, и из Start() означал бы двойную пересборку грида на самом первом заходе).
@@ -76,7 +81,10 @@ public class HeroCollectionUI : MonoBehaviour
             Destroy(child.gameObject);
         }
 
-        foreach (var hero in GetFilteredSortedHeroes(collectionManager))
+        var displayOrder = GetFilteredSortedHeroes(collectionManager);
+        LastDisplayedOrder = displayOrder;
+
+        foreach (var hero in displayOrder)
         {
             var wrapper = new GameObject(hero.heroName + "_Slot", typeof(RectTransform));
             wrapper.transform.SetParent(gridContainer, false);

@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 98f2a619572e0984c9fe8cc8f1ab4142, type: 3}
+  m_Name: Elfs_Aglaea
+  m_EditorClassIdentifier: Assembly-CSharp::HeroData
+  heroId: Elfs_Aglaea
+  heroName: Aglaea
+  maxHealth: 200
+  maxResource: 15
+  damageMultiplier: 1.1
+  armor: 5
+  weight: 1
+  skills:
+  - {fileID: 11400000, guid: 4e35a42a90a54514dae8fcb929c1fb87, type: 2}
+  portrait: {fileID: 21300000, guid: 0a8ad300be9e79c488d75e7c7a10eaed, type: 3}
+  inventoryPortrait: {fileID: 21300000, guid: 0a8ad300be9e79c488d75e7c7a10eaed, type: 3}
+  inventoryPortraitVideo: {fileID: 0}
+  themeColor: {r: 0.081016265, g: 0.8392157, b: 0.050980408, a: 1}
+  resourceType: 2
+  ascendedPortrait: {fileID: 0}
+  race: 0
+  rarity: 4
+  description: "Aglaea holds the sun in her palm as calmly as she'd hold a blade
+    \u2014 neither the lightning nor her armor of golden suns will waver until she
+    decides otherwise."

@@ -10,10 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 98f2a619572e0984c9fe8cc8f1ab4142, type: 3}
-  m_Name: Emma
+  m_Name: Elfs_Britta
   m_EditorClassIdentifier: Assembly-CSharp::HeroData
-  heroId: Emma
-  heroName: Emma
+  heroId: Elfs_Britta
+  heroName: Britta
   maxHealth: 200
   maxResource: 15
   damageMultiplier: 1.1
@@ -21,12 +21,14 @@ MonoBehaviour:
   weight: 1
   skills:
   - {fileID: 11400000, guid: 4e35a42a90a54514dae8fcb929c1fb87, type: 2}
-  portrait: {fileID: 21300000, guid: 9bb77ee39259fb740ba34c357b41be8e, type: 3}
-  inventoryPortrait: {fileID: 21300000, guid: 0e521d4f046bdf44a8b26dad09cf03be, type: 3}
-  inventoryPortraitVideo: {fileID: 32900000, guid: 846e66980ce43db4bbd2501dcc0ed371, type: 3}
-  themeColor: {r: 0.8392157, g: 0.72124124, b: 0.050980408, a: 1}
+  portrait: {fileID: 21300000, guid: 81c334b19b4ef4b4689a0e2b8f4217ab, type: 3}
+  inventoryPortrait: {fileID: 21300000, guid: 81c334b19b4ef4b4689a0e2b8f4217ab, type: 3}
+  inventoryPortraitVideo: {fileID: 0}
+  themeColor: {r: 0.081016265, g: 0.8392157, b: 0.050980408, a: 1}
   resourceType: 2
   ascendedPortrait: {fileID: 0}
   race: 0
   rarity: 4
-  description: 
+  description: "Britta is a rune-elf. Cold, precise, sparing with words \u2014 she'd
+    rather read the future in the runes than argue about it. In battle she relies
+    not on reflexes, but on having already calculated everything in advance. "

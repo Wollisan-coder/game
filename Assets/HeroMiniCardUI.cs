@@ -16,9 +16,10 @@ public class HeroMiniCardUI : MonoBehaviour
     public TMP_Text nameText;
     public TMP_Text levelText;
 
-    [Header("Рамка редкости — общий ассет RarityFrameSet на всю игру")]
+    [Header("Рамка редкости — тёмная плашка + светящийся кант + аббревиатура ранга, см. RarityUtility")]
     public Image rarityFrame;
-    public RarityFrameSet rarityFrameSet;
+    private Image rarityKantGlow;
+    private TMP_Text rarityTierLabel;
 
     [Header("Эмблема расы — общий ассет RaceEmblemSet на всю игру")]
     public Image raceEmblem;
@@ -59,7 +60,7 @@ public class HeroMiniCardUI : MonoBehaviour
         if (nameText != null) nameText.text = data.heroName;
         if (levelText != null) levelText.text = ownership != null ? $"Lv. {ownership.level}" : "";
 
-        RarityUtility.ApplyFrame(rarityFrame, rarityFrameSet, data.rarity);
+        RarityUtility.ApplyFrame(rarityFrame, data.rarity, ref rarityKantGlow, ref rarityTierLabel);
         HeroAscensionUtility.ApplyOverlay(ascensionOverlay, ascensionOverlaySet, data.rarity, ownership != null ? ownership.ascensionLevel : 0);
         WondrousArmorSkinSet.Apply(wondrousArmorOverlay, wondrousArmorSkinSet, data.heroId, ownership != null && ownership.wondrousArmorWorn);
 
