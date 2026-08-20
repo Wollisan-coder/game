@@ -168,7 +168,8 @@ public class WondrousArmorChoiceUI : MonoBehaviour
         raceRect.offsetMin = new Vector2(20, 20);
         raceRect.offsetMax = new Vector2(-20, -360);
         var raceText = raceObj.AddComponent<TextMeshProUGUI>();
-        raceText.text = hero.race.ToString();
+        // Race.None — Blue-редкость без расы (см. UX-правку 2026-08-19) — пустая строка вместо буквального "None"
+        raceText.text = hero.race == Race.None ? "" : hero.race.ToString();
         raceText.alignment = TextAlignmentOptions.Center;
         raceText.color = new Color(1, 1, 1, 0.9f);
         raceText.enableAutoSizing = true;

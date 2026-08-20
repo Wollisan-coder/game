@@ -34,9 +34,10 @@ public class HeroData : ScriptableObject
     [Header("Раса (для фильтра в коллекции — см. HeroCollectionUI)")]
     public Race race;
 
-    // White исключён из выдачи (Алтарь/Кузня больше не спавнят её) — новые ассеты по умолчанию создаются с Green
+    // White исключён из выдачи (Алтарь/Кузня больше не спавнят её). Green у героев больше не используется
+    // (только у предметов) — новые ассеты по умолчанию создаются с Blue, самой нижней реальной редкостью героя.
     [Header("Редкость (влияет на шанс выпадения в Алтаре)")]
-    public Rarity rarity = Rarity.Green;
+    public Rarity rarity = Rarity.Blue;
 
     [Header("Опис")]
     [TextArea(3, 6)] public string description;

@@ -87,7 +87,14 @@ public class MineThreatManager : MonoBehaviour
                 ? HeroCollectionManager.Instance.allHeroes.FirstOrDefault(h => h != null && h.heroId == heroId)
                 : null;
 
-            if (hero != null)
+            if (hero != null && hero.race == Race.None)
+            {
+                // Blue-редкость — герой без расы (см. UX-правку 2026-08-19). Угроза привязана к расе
+                // территории — герою без расы физически нечего блокировать, выбрасываем из очереди без
+                // создания/мерджа угрозы; кап MaxActiveThreats тут ни при чём (не создаём угрозу — ждать нечего).
+                queuedHeroIds.RemoveAt(0);
+            }
+            else if (hero != null)
             {
                 var existing = activeThreats.FirstOrDefault(t => t.race == hero.race);
 

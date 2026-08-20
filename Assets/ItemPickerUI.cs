@@ -27,6 +27,10 @@ public class ItemPickerUI : MonoBehaviour
         if (closeButton != null) closeButton.onClick.AddListener(Close);
         if (unequipButton != null) unequipButton.onClick.AddListener(OnUnequipClicked);
 
+        // Корневой объект в сцене уже несёт полноэкранное затемнение (Image) — ему просто не хватало
+        // Button'а на тап-мимо-закрытие (аудит попапов 2026-08-19). Ничего в сцене не трогаем, довешиваем в коде.
+        PopupCloseUtility.AddTapOutsideToClose(gameObject, transform.Find("Window") as RectTransform, Close);
+
         CreateUpgradeButtonIfNeeded();
 
         // Панель уже сохранена выключенной в сцене (m_IsActive: 0) — не гасим её здесь ещё раз:

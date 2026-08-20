@@ -614,6 +614,16 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     {
         if (currentHero == null) return;
 
+        // Blue-редкость — герой без расы (Race.None, см. UX-правку 2026-08-19: удаление Green-редкости).
+        // Расовой пассивки у него нет вообще — прячем весь блок целиком, а не показываем текст/тоггл про
+        // фейковую пассивку случайно попавшей расы (по умолчанию было бы Elves, см. HeroData.race).
+        bool raceless = currentHero.race == Race.None;
+        if (racePassiveInfoText != null) racePassiveInfoText.gameObject.SetActive(!raceless);
+        if (racePassiveInfoBg != null) racePassiveInfoBg.gameObject.SetActive(!raceless);
+        if (racePassiveToggleButton != null) racePassiveToggleButton.gameObject.SetActive(!raceless);
+        if (racePassiveToggleHighlight != null) racePassiveToggleHighlight.gameObject.SetActive(!raceless);
+        if (raceless) return;
+
         bool enabled = currentOwnership != null && currentOwnership.racePassiveEnabled;
 
         if (racePassiveInfoText != null)

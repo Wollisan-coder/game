@@ -54421,6 +54421,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HeroCollectionManager
   allHeroes:
+  - {fileID: 11400000, guid: a27e539eefb988f4d97dca4637fd1432, type: 2}
+  - {fileID: 11400000, guid: 47b1778da16d44748ac957ad9969e80e, type: 2}
+  - {fileID: 11400000, guid: cba21118d1e66f2419bc456ea3b600e3, type: 2}
+  - {fileID: 11400000, guid: ef82325651130854c8af6c5a9d70df43, type: 2}
+  - {fileID: 11400000, guid: ffbd67b2872109744b51a88917d932d9, type: 2}
   - {fileID: 11400000, guid: 48e0238e82240cb4ca22589b686a0506, type: 2}
   - {fileID: 11400000, guid: 5d74b6e67c2f5cf4b8d380ad54238f63, type: 2}
   - {fileID: 11400000, guid: 049adfd0ce7264f4593fef509f7cb9bb, type: 2}
@@ -54429,12 +54434,15 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 440fadfd874c5b14da366c2efa536568, type: 2}
   - {fileID: 11400000, guid: b69db743d0faf8d4ab0531e8be379c0a, type: 2}
   - {fileID: 11400000, guid: b6886606cd26c2140b36857e7e9a603b, type: 2}
-  - {fileID: 11400000, guid: a9e45072e4d43f24facaf452dc60c313, type: 2}
+  - {fileID: 11400000, guid: cdc8204247b9b644fbfb2207d8cf3fed, type: 2}
   - {fileID: 11400000, guid: 1db420ccd1d303b4ea3ea4bfb64ac34f, type: 2}
   - {fileID: 11400000, guid: b2a4b34b39fe90145ad70315282ba7fd, type: 2}
   - {fileID: 11400000, guid: 82a928462fdf8d142ace0c6d2e9d2d6a, type: 2}
-  - {fileID: 11400000, guid: 47b1778da16d44748ac957ad9969e80e, type: 2}
   - {fileID: 11400000, guid: 668e107e554aa664f88597819daf1fa6, type: 2}
+  - {fileID: 11400000, guid: 504401c305f239045ad7459f630f2f7e, type: 2}
+  - {fileID: 11400000, guid: f0bd3ac7777d3ea4db8dee0e7d119b3c, type: 2}
+  - {fileID: 11400000, guid: c53e08b8b483778469672e18d7fdfb3b, type: 2}
+  - {fileID: 11400000, guid: 941842bb11acc114896d6d43d8b65516, type: 2}
   ownership: []
   heroVoucherItems:
   - {fileID: 0}

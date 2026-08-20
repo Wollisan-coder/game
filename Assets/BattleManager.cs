@@ -753,10 +753,10 @@ public class BattleManager : MonoBehaviour
         AdvanceToEnemyResponseOrEnd();
     }
 
-    // Общий "конец хода игрока" учёт — тики баффов/дебаффов/пассивок рас. Раньше жил только здесь
-    // (путь геммов), из-за чего ход, потраченный на скилл вместо матча (TryUseSkill), вообще не тикал эти
-    // таймеры: баффы/дебаффы длились на ход дольше положенного, пассивки рас (щит Фей, чип-урон драконов
-    // и т.п.) не срабатывали в такой ход. Теперь вызывается из обоих путей.
+    // Общий "конец хода игрока" учёт — тики баффов/дебаффов/пассивок рас. Всегда вызывается из пути
+    // реального матча (ResolvePlayerTurn); из TryUseSkill — только в Boss Training (там скилл и есть весь
+    // ход целиком), в обычном бою скилл больше не ходом не считается, тик приходит только с матчем (см.
+    // UX-правку 2026-08-19).
     private void AdvanceTurnTimers()
     {
         // Блокировка маны действовала ровно один ход — снимаем её для следующего
@@ -836,9 +836,9 @@ public class BattleManager : MonoBehaviour
         ApplyRacePassivesPerTurn();
     }
 
-    // Общая развилка "что дальше после хода игрока" — раньше была отдельно продублирована в ResolvePlayerTurn
-    // (путь геммов) и TryUseSkill (путь скилла); версия из TryUseSkill не учитывала freeExtraTurnsRemaining,
-    // из-за чего скилл сразу после эффекта "бесплатный лишний ход" всё равно отдавал ход врагу.
+    // Общая развилка "что дальше после хода игрока" — вызывается из ResolvePlayerTurn (путь настоящего
+    // матча, всегда) и из TryUseSkill (путь скилла, но только в Boss Training — см. её комментарий; в
+    // обычном бою скилл сам по себе сюда больше не ведёт, см. UX-правку 2026-08-19).
     private void AdvanceToEnemyResponseOrEnd()
     {
         if (isBossTraining)
@@ -1403,7 +1403,9 @@ public class BattleManager : MonoBehaviour
         AchievementManager.Instance?.ReportEnemyDefeated();
 
         if (RaceQuestManager.Instance != null)
-            foreach (var race in activeHeroes.Select(h => h.data.race).Distinct())
+            // Race.None — герои Blue-редкости без расы (см. UX-правку 2026-08-19), их присутствие в отряде
+            // не должно продвигать квесты расы, которая им не принадлежит.
+            foreach (var race in activeHeroes.Select(h => h.data.race).Distinct().Where(r => r != Race.None))
                 RaceQuestManager.Instance.ReportBattleWon(race);
 
         // Mine Defense (кусок 5) — полностью свой хвост, никакой обычной награды (см. project_death_dungeon_concept:
@@ -1818,21 +1820,26 @@ public class BattleManager : MonoBehaviour
 
         OnStateChanged?.Invoke();
 
-        bool skipsImmediateEnemyTurn =
+        // Обычный бой: скилл больше НИКОГДА сам не передаёт ход врагу — ходом игрока считается только
+        // настоящий свайп фишек (см. ResolvePlayerTurn). Раньше почти любой скилл, кроме горстки "полевых"
+        // (см. список ниже), сразу отдавал ход — баг, пойманный пользователем 2026-08-19: скилл должен
+        // быть бесплатным действием ДО хода, а не заменой самого хода.
+        // Boss Training — отдельный случай, поведение НЕ менялось: скилл ТАМ и есть весь ход целиком (ни у
+        // ИИ-героя, ни у игрока-босса в его окне нет отдельного свайпа), поэтому сохранена старая "полевая"
+        // семёрка — эти типы сами вызывают каскад, который потом сам придёт к концу хода через ResolvePlayerTurn,
+        // повторный вызов здесь задвоил бы его.
+        bool advanceImmediately = isBossTraining && !(
             skill.effectType == SkillEffectType.ConvertAndDestroyRed ||
             skill.effectType == SkillEffectType.DestroyRows ||
             skill.effectType == SkillEffectType.DestroyRandomGems ||
             skill.effectType == SkillEffectType.DestroyHarmfulTile ||
             skill.effectType == SkillEffectType.FavorableReshuffle ||
             skill.effectType == SkillEffectType.ExtraTurn ||
-            skill.effectType == SkillEffectType.DoubleFreeTurn;
+            skill.effectType == SkillEffectType.DoubleFreeTurn);
 
-        if (!skipsImmediateEnemyTurn)
+        if (advanceImmediately)
         {
-            // В Boss Training нет обычного врага (currentEnemy == null) — EnemyTurnRoutine там бессмысленна
-            // (PickEnemySkill вернёт null и отработает BasicEnemyAttack по playerHP, чего быть не должно).
-            // AdvanceTurnTimers() — тот же тик баффов/дебаффов/пассивок рас, что и после гемм-матча
-            // (см. ResolvePlayerTurn), раньше здесь пропускался целиком.
+            // AdvanceTurnTimers() — тот же тик баффов/дебаффов/пассивок рас, что и после гемм-матча (см. ResolvePlayerTurn).
             AdvanceTurnTimers();
             AdvanceToEnemyResponseOrEnd();
         }

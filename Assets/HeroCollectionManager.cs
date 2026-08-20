@@ -122,10 +122,12 @@ public class HeroCollectionManager : MonoBehaviour
         {
             if (!ownership.Any(o => o.heroId == hero.heroId))
             {
+                // Blue — новая базовая редкость героя без расы, выдаётся всем сразу при старте, а не через
+                // Алтарь/ваучеры (см. UX-правку 2026-08-19: удаление Green-редкости у героев).
                 ownership.Add(new HeroOwnershipData
                 {
                     heroId = hero.heroId,
-                    isUnlocked = false
+                    isUnlocked = hero.rarity == Rarity.Blue
                 });
             }
         }

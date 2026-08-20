@@ -665,7 +665,7 @@ public IEnumerator PlayDestroyAnimation()
     foreach (var item in toDestroy)
         Destroy(item.gameObject);
 
-    yield return StartCoroutine(CollapseGrid());
+    yield return StartCoroutine(CollapseGrid(isSkillDestroy));
 }
 
     private struct MatchRun
@@ -838,8 +838,12 @@ public IEnumerator PlayDestroyAnimation()
         yield return GetItemAt(x, y - 1);
     }
 
-    // Логика падения фишек вниз и генерация новых сверху
-    private IEnumerator CollapseGrid()
+    // Логика падения фишек вниз и генерация новых сверху. isSkillDestroy пробрасывается сюда из
+    // ProcessMatches — если весь этот каскад (в т.ч. цепные матчи от осыпавшихся фишек, см. рекурсивный
+    // вызов ProcessMatches ниже) начался со скилла, а не со свайпа игрока, конец каскада НЕ должен
+    // резолвиться как ход игрока (баг с Elves_T1_DestroyRandomGems, найденный пользователем 2026-08-19 —
+    // ход должен считаться только по настоящему свайпу, см. BattleManager.TryUseSkill).
+    private IEnumerator CollapseGrid(bool isSkillDestroy = false)
 {
     for (int x = 0; x < width; x++)
     {
@@ -878,14 +882,19 @@ public IEnumerator PlayDestroyAnimation()
     List<Item> newMatches = FindMatches();
     if (newMatches.Count > 0)
     {
-        yield return StartCoroutine(ProcessMatches(newMatches));
+        yield return StartCoroutine(ProcessMatches(newMatches, isSkillDestroy));
     }
     else
     {
-        // Каскады завершились — это реальный конец хода игрока
+        // Каскады завершились — это реальный конец хода игрока, НО только если сам каскад начался с
+        // настоящего свайпа, а не со скилла (isSkillDestroy) — иначе скилл вроде DestroyRandomGems
+        // отдавал бы ход врагу через этот путь, даже когда BattleManager.TryUseSkill уже корректно
+        // не делает этого сам (см. правку 2026-08-19). Boss Training — исключение из исключения: там
+        // скилл и есть весь ход (см. тот же комментарий в TryUseSkill), поэтому для него сохранено
+        // старое поведение — каскад от скилла ходом резолвится, как и раньше.
         // Не гейтим на turnMatchedTypes.Count>0: матч из одних Trap-фишек не пишет в этот словарь
         // (уходит в прямой урон герою), но ход всё равно должен резолвиться как реальный.
-        if (battleManager != null)
+        if (battleManager != null && (!isSkillDestroy || battleManager.isBossTraining))
         {
             TickFrozenTiles();
             TickHarmfulTiles();

@@ -61,6 +61,9 @@ public class MutationDungeonNodeChoiceUI : MonoBehaviour
         var windowBg = windowObj.AddComponent<Image>();
         ConfirmationDialog.StyleAsPanel(windowBg);
 
+        // Тап мимо окна = как кнопка Hide ниже — прячет оверлей, НЕ трогая ран (аудит попапов 2026-08-19).
+        PopupCloseUtility.AddTapOutsideToClose(overlayRoot, windowRect, Close);
+
         var titleObj = new GameObject("Title", typeof(RectTransform));
         var titleRect = (RectTransform)titleObj.transform;
         titleRect.SetParent(windowRect, false);

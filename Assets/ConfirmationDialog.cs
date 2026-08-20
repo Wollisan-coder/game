@@ -220,6 +220,9 @@ public static class ConfirmationDialog
         {
             Object.Destroy(overlay);
         });
+
+        // Тап мимо окна = как "Cancel" — просто закрыть, onConfirm НЕ вызывается (аудит 2026-08-19).
+        PopupCloseUtility.AddTapOutsideToClose(overlay, windowRect, () => Object.Destroy(overlay));
     }
 
     // Как Show(), но с настраиваемым текстом кнопки подтверждения вместо фиксированного "Yes" — для
@@ -238,6 +241,9 @@ public static class ConfirmationDialog
         {
             Object.Destroy(overlay);
         });
+
+        // Тап мимо окна = как "Cancel" — просто закрыть, onConfirm НЕ вызывается (аудит 2026-08-19).
+        PopupCloseUtility.AddTapOutsideToClose(overlay, windowRect, () => Object.Destroy(overlay));
     }
 
     // Как ShowChoice(), но с ЛЮБЫМ числом именованных НЕЗАВИСИМЫХ действий в один ряд (не да/нет-выбор,
@@ -268,6 +274,9 @@ public static class ConfirmationDialog
         {
             Object.Destroy(overlay);
         });
+
+        // Тап мимо окна = как "Close" — просто закрыть, ни одно из actions НЕ вызывается (аудит 2026-08-19).
+        PopupCloseUtility.AddTapOutsideToClose(overlay, windowRect, () => Object.Destroy(overlay));
     }
 
     // Информационное сообщение с единственной кнопкой "Ok" — без варианта выбора.
@@ -283,6 +292,15 @@ public static class ConfirmationDialog
         var (overlay, windowRect) = BuildBase(parent, message, windowHeight, title, iconPath);
 
         CreateButton(windowRect, "Ok", new Vector2(0.5f, 0.12f), ButtonColor, () =>
+        {
+            Object.Destroy(overlay);
+            onClosed?.Invoke();
+        });
+
+        // Тап мимо окна = как "Ok" (а не тихий сброс) — у ShowInfo только один исход, и onClosed часто
+        // несёт реальное продолжение (например переход на другую сцену после победы), тихое закрытие
+        // без вызова коллбэка оставило бы игрока в подвешенном состоянии (аудит 2026-08-19).
+        PopupCloseUtility.AddTapOutsideToClose(overlay, windowRect, () =>
         {
             Object.Destroy(overlay);
             onClosed?.Invoke();

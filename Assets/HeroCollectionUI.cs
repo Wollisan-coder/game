@@ -12,7 +12,8 @@ public class HeroCollectionUI : MonoBehaviour
     public GameObject heroCardUIPrefab;
     public HeroInventoryUI inventoryUI; // общий попап на всю сцену, назначить в Inspector
 
-    private static readonly Rarity[] RarityOptions = { Rarity.Green, Rarity.Blue, Rarity.Purple, Rarity.Orange };
+    // Green у героев больше не используется (см. UX-правку 2026-08-19) — только у предметов, там не трогали.
+    private static readonly Rarity[] RarityOptions = { Rarity.Blue, Rarity.Purple, Rarity.Orange };
     private static readonly Race[] RaceOptions = (Race[])System.Enum.GetValues(typeof(Race));
 
     // Rarity как отдельное поле сортировки убрали — уже есть выделенный фильтр по редкости,

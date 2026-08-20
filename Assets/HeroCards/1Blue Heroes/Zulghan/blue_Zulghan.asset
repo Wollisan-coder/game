@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 98f2a619572e0984c9fe8cc8f1ab4142, type: 3}
+  m_Name: blue_Zulghan
+  m_EditorClassIdentifier: Assembly-CSharp::HeroData
+  heroId: blue_Zulghan
+  heroName: Zulghan
+  maxHealth: 50
+  maxResource: 0
+  damageMultiplier: 1
+  armor: 2
+  weight: 0
+  skills: []
+  portrait: {fileID: 21300000, guid: 2c9eaeb478bd9cc469a25457327ddb31, type: 3}
+  inventoryPortrait: {fileID: 21300000, guid: 2c9eaeb478bd9cc469a25457327ddb31, type: 3}
+  inventoryPortraitVideo: {fileID: 0}
+  themeColor: {r: 0.8396226, g: 0.051486313, b: 0.067757785, a: 1}
+  resourceType: 0
+  ascendedPortrait: {fileID: 0}
+  race: 8
+  rarity: 2
+  description: "Zulghan walks into battle in feathers and runes, as if she's already
+    come back victorious \u2014 axe on her shoulder, a look that settled things before
+    the first blow."

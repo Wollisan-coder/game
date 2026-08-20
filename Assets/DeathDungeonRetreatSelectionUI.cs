@@ -68,6 +68,9 @@ public class DeathDungeonRetreatSelectionUI : MonoBehaviour
         var windowBg = windowObj.AddComponent<Image>();
         ConfirmationDialog.StyleAsPanel(windowBg);
 
+        // Тап мимо окна = как кнопка Cancel ниже — ничего не коммитится до "Confirm Retreat" (аудит попапов 2026-08-19).
+        PopupCloseUtility.AddTapOutsideToClose(overlayRoot, windowRect, Close);
+
         var titleObj = new GameObject("Title", typeof(RectTransform));
         var titleRect = (RectTransform)titleObj.transform;
         titleRect.SetParent(windowRect, false);
