@@ -16,8 +16,9 @@ MonoBehaviour:
   itemName: Sword
   category: 0
   slotType: 0
-  icon: {fileID: 21300000, guid: 43318c2ca0bc34448a5d0bf82cda3ad6, type: 3}
-  description: 
+  icon: {fileID: 21300000, guid: 52e270cbebc80ed489da7534204f0add, type: 3}
+  description: "A legendary pair \u2014 no one has yet counted how many strikes they
+    land in a single breath of their wielder."
   rarity: 4
   sacrificeExperience: 10
-  heroExperienceValue: 0
+  heroExperienceAmount: 50

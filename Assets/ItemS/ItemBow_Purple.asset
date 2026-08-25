@@ -16,8 +16,9 @@ MonoBehaviour:
   itemName: Bow
   category: 0
   slotType: 0
-  icon: {fileID: 21300000, guid: 61630a335de780d42b6168566c0161a5, type: 3}
-  description: 
+  icon: {fileID: 21300000, guid: 2c3f6e912c21b3a4bb423adb5a445ded, type: 3}
+  description: "A weapon woven with the forest itself \u2014 the arrow finds its
+    mark before it leaves the string."
   rarity: 3
   sacrificeExperience: 10
-  heroExperienceValue: 0
+  heroExperienceAmount: 50

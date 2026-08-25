@@ -30,9 +30,11 @@ public class ItemCollectionManager : MonoBehaviour
     public bool HasSacrificeCandidates(string excludeInstanceId)
     {
         var heroManager = HeroCollectionManager.Instance;
+        // Тот же набор категорий, что ItemSacrificeUI.GetCandidates() — иначе кнопка Upgrade осталась бы
+        // скрытой для игрока, у которого есть только предметы ItemExperience и нет обычной экипировки-донора.
         return ownership.Any(o => o.instanceId != excludeInstanceId
             && (heroManager == null || !heroManager.IsItemEquippedAnywhere(o.instanceId))
-            && GetItemById(o.itemId)?.category == ItemCategory.Equipment);
+            && (GetItemById(o.itemId)?.category == ItemCategory.Equipment || GetItemById(o.itemId)?.category == ItemCategory.ItemExperience));
     }
 
     // Все стеки конкретного предмета (может быть несколько — по одному на каждый уникальный уровень/опыт)
@@ -112,6 +114,45 @@ public class ItemCollectionManager : MonoBehaviour
         return allItems.FirstOrDefault(i => i.itemId == id);
     }
 
+    // "Сдача" вместо сжигаемого излишка при прокачке предмета жертвоприношением (см. SacrificeItem.wastedExperience,
+    // вызывается из ItemSacrificeUI.ApplySacrifice суммой totalXp за весь пакет). Разбивает totalXp на минимальный
+    // набор ItemData категории ItemExperience — КРУПНЫЙ номинал вперёд (в отличие от HeroUpgradeUI.ComputeSpendPlan,
+    // где мелкий вперёд при ТРАТЕ — здесь наоборот, при ВЫДАЧЕ меньше предметов лучше). Список номиналов полностью
+    // на данных (allItems), новый номинал не требует правок кода. Остаток МЕНЬШЕ самого мелкого номинала
+    // округляется ВВЕРХ до одного целого предмета — по прямой просьбе пользователя 2026-08-20 игрок никогда
+    // не теряет опыт на округлении, только выигрывает.
+    // Возвращает false, если номиналы ItemExperience ещё не заведены в allItems (см. комментарий у ItemCategory.
+    // ItemExperience) — вызывающий (ItemSacrificeUI) использует это, чтобы не обещать игроку конвертацию,
+    // которая на самом деле не произошла.
+    public bool GrantExperienceAsItems(int totalXp)
+    {
+        if (totalXp <= 0) return false;
+
+        var denominations = allItems
+            .Where(i => i != null && i.category == ItemCategory.ItemExperience && i.sacrificeExperience > 0)
+            .OrderByDescending(i => i.sacrificeExperience)
+            .ToList();
+        if (denominations.Count == 0) return false; // номиналы ещё не заведены в allItems — отдавать нечем
+
+        int remaining = totalXp;
+        for (int i = 0; i < denominations.Count; i++)
+        {
+            var item = denominations[i];
+            bool isSmallestDenomination = i == denominations.Count - 1;
+
+            int count = remaining / item.sacrificeExperience;
+            if (isSmallestDenomination && remaining % item.sacrificeExperience > 0)
+                count += 1; // самый мелкий номинал — округляем нецелый остаток вверх, не теряем опыт
+
+            if (count <= 0) continue;
+
+            AddItemCopy(item, count);
+            remaining -= count * item.sacrificeExperience;
+        }
+
+        return true;
+    }
+
     // Все предметы-экипировка определённого типа слота — и полученные, и ещё нет (для показа "наличия").
     // Расходные предметы (category == HeroExperience и т.п.) сюда не попадают — их нельзя экипировать.
     // Отсортировано по редкости (White -> Orange), в пределах одной редкости — по названию.
@@ -175,6 +216,13 @@ public class ItemCollectionManager : MonoBehaviour
     public int CalculateSacrificeGain(ItemData fuelData, int fuelLevel, int fuelExperience, ItemData targetData)
     {
         if (fuelData == null || targetData == null) return 0;
+
+        // ItemExperience — фиксированная валюта (см. GrantExperienceAsItems), не "донор с вложенным опытом
+        // ниже редкости цели". Она стоит White (0), поэтому мердж-ветка ниже приняла бы её почти за любую
+        // цель и посчитала бы CumulativeExperience(fuelLevel=1)+0 = 0 вместо реальной цены — обходим её
+        // явно, всегда плоская ставка sacrificeExperience (найдено при реализации 2026-08-20).
+        if (fuelData.category == ItemCategory.ItemExperience)
+            return fuelData.sacrificeExperience;
 
         return fuelData.rarity < targetData.rarity
             ? CumulativeExperience(fuelLevel) + fuelExperience

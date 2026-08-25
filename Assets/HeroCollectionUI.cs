@@ -14,7 +14,10 @@ public class HeroCollectionUI : MonoBehaviour
 
     // Green у героев больше не используется (см. UX-правку 2026-08-19) — только у предметов, там не трогали.
     private static readonly Rarity[] RarityOptions = { Rarity.Blue, Rarity.Purple, Rarity.Orange };
-    private static readonly Race[] RaceOptions = (Race[])System.Enum.GetValues(typeof(Race));
+    // Race.None (безрасовые герои, см. UX-правку 2026-08-19) не показываем отдельным пунктом фильтра —
+    // как и Green выше для редкости, "нет расы" не нужна игроку как фильтр-кнопка с буквальной надписью
+    // "None" (найдено на аудите 2026-08-20).
+    private static readonly Race[] RaceOptions = ((Race[])System.Enum.GetValues(typeof(Race))).Where(r => r != Race.None).ToArray();
 
     // Rarity как отдельное поле сортировки убрали — уже есть выделенный фильтр по редкости,
     // сортировка по ней внутри уже отфильтрованного списка бессмысленна и только путала (казалось,

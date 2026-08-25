@@ -42,9 +42,9 @@ public class ItemCollectionCardUI : MonoBehaviour
             selectButton.onClick.AddListener(OnSelected);
         }
 
-        // Фунгибельный расходник (HeroExperience) — "уровня" у него нет, бедж бы врал (см. UX-правку 2026-08-17).
-        bool isHeroExperienceItem = data.category == ItemCategory.HeroExperience;
-        ItemBadgeUtility.ApplyLevelBadge(icon != null ? icon.rectTransform : null, isHeroExperienceItem ? 0 : (owned ? stack.level : 0), ref levelText);
+        // Фунгибельный расходник (HeroExperience/ItemExperience) — "уровня" у него нет, бедж бы врал (см. UX-правку 2026-08-17).
+        bool isFungibleExperienceItem = data.category == ItemCategory.HeroExperience || data.category == ItemCategory.ItemExperience;
+        ItemBadgeUtility.ApplyLevelBadge(icon != null ? icon.rectTransform : null, isFungibleExperienceItem ? 0 : (owned ? stack.level : 0), ref levelText);
         ItemBadgeUtility.ApplyQuantityBadge(icon != null ? icon.rectTransform : null, owned ? stack.quantity : 0, ref quantityText);
     }
 

@@ -759,9 +759,14 @@ public class BattleManager : MonoBehaviour
     // UX-правку 2026-08-19).
     private void AdvanceTurnTimers()
     {
-        // Блокировка маны действовала ровно один ход — снимаем её для следующего
+        // Блокировка маны действовала ровно один реальный ход — снимаем её для следующего. Тем же ходом
+        // очищается и список скиллов, скастованных до этого свайпа (см. skillsCastSinceLastRealTurn) —
+        // со следующего свайпа всё снова доступно.
         foreach (var hero in activeHeroes)
+        {
             hero.blockManaGainThisTurn = false;
+            hero.skillsCastSinceLastRealTurn.Clear();
+        }
 
         if (damageMultiplierTurnsRemaining > 0)
         {
@@ -1785,14 +1790,40 @@ public class BattleManager : MonoBehaviour
         if (hero.stunnedTurnsRemaining > 0 || hero.skillBlockedTurnsRemaining > 0)
             return false; // герой оглушён (StunRandomHero) или скилл заблокирован (BlockHeroSkill)
 
+        // Один и тот же скилл нельзя скастовать второй раз до реального хода (свайпа) — скилл больше не
+        // завершает ход сам (см. advanceImmediately ниже), поэтому без этого гейта, например,
+        // FullManaRefill кастуется на себя бесконечно и бесплатно (полностью отменяет свою же стоимость
+        // следующим кастом), а вместе с пассивкой Людей (см. ниже) — даёт практически неограниченный
+        // ресурс всей команде за один ход игрока. Найдено на еженедельном аудите 2026-08-20. Несколько
+        // РАЗНЫХ скиллов подряд по-прежнему разрешены — см. skillsCastSinceLastRealTurn.
+        if (hero.skillsCastSinceLastRealTurn.Contains(skill))
+            return false;
+
         int actualCost = Mathf.RoundToInt(skill.cost * (1f - hero.costReductionPercent));
 
         if (hero.currentResource < actualCost)
             return false;
 
+        // Раньше эта семёрка типов была единственной, что не завершала ход сразу (skipsImmediateEnemyTurn),
+        // и единственной, для кого блокировка маны ниже вообще успевала на что-то повлиять — для всех
+        // остальных типов AdvanceTurnTimers шёл синхронно следующей же строкой и тут же снимал флаг same-frame.
+        // Теперь скилл никогда не завершает ход сразу в обычном бою, поэтому блокировку маны намеренно
+        // оставляем только для этой же семёрки — иначе она неожиданно расползается на все ~32 типа скиллов
+        // и съедает ману с ближайшего реального свайпа после ЛЮБОГО скилла, что ломает сам новый флоу
+        // "бесплатный скилл, потом свайп" (тоже найдено на аудите 2026-08-20).
+        bool isBoardAffectingSkill = skill.effectType == SkillEffectType.ConvertAndDestroyRed ||
+            skill.effectType == SkillEffectType.DestroyRows ||
+            skill.effectType == SkillEffectType.DestroyRandomGems ||
+            skill.effectType == SkillEffectType.DestroyHarmfulTile ||
+            skill.effectType == SkillEffectType.FavorableReshuffle ||
+            skill.effectType == SkillEffectType.ExtraTurn ||
+            skill.effectType == SkillEffectType.DoubleFreeTurn;
+
         hero.costReductionPercent = 0f; // скидка (ReduceAllyNextSkillCost) тратится вместе с этим использованием
         hero.currentResource -= actualCost;
-        hero.blockManaGainThisTurn = true; // этому герою нельзя пополнить ману в этот ход
+        if (isBoardAffectingSkill)
+            hero.blockManaGainThisTurn = true; // этому герою нельзя пополнить ману на ближайшем реальном свайпе
+        hero.skillsCastSinceLastRealTurn.Add(skill);
         hero.lastUsedSkill = skill; // для CopyAllyLastSkill
         lastSkillCaster = hero; // команда в целом — кто реально кастовал последним (см. CopyAllyLastSkill)
 
@@ -1811,31 +1842,24 @@ public class BattleManager : MonoBehaviour
             RaceQuestManager.Instance?.ReportPassiveTriggered(Race.Humans);
         }
 
-        // Этот ход потрачен на скилл, а не на матч — 0 подходящих гемм за ход (читается, например,
-        // Beastfolk-скиллом DamageScalingWithMatches на СЛЕДУЮЩЕМ вызове; иначе он мог бы раз за разом
-        // отталкиваться от протухшего большого значения с давнего матч-хода). Ставим ПОСЛЕ ApplySkillEffect —
-        // если кастуемый скилл сам и есть DamageScalingWithMatches, он должен успеть прочитать значение
-        // предыдущего хода, а не уже обнулённое текущим.
-        lastTurnMatchCount = 0;
+        // lastTurnMatchCount больше НЕ обнуляется здесь. Раньше это защищало DamageScalingWithMatches от
+        // повторного каста того же скилла на одном и том же протухшем большом значении — но эту накрутку
+        // теперь уже закрывает skillsCastSinceLastRealTurn выше (тот же скилл дважды до свайпа просто не
+        // пройдёт гейт). Обнуление здесь било по легитимному кейсу "скастовать другой скилл, потом
+        // DamageScalingWithMatches" — он бы всегда читал 0 вместо реального значения последнего свайпа
+        // (найдено на аудите 2026-08-20).
 
         OnStateChanged?.Invoke();
 
         // Обычный бой: скилл больше НИКОГДА сам не передаёт ход врагу — ходом игрока считается только
         // настоящий свайп фишек (см. ResolvePlayerTurn). Раньше почти любой скилл, кроме горстки "полевых"
-        // (см. список ниже), сразу отдавал ход — баг, пойманный пользователем 2026-08-19: скилл должен
+        // (см. isBoardAffectingSkill выше), сразу отдавал ход — баг, пойманный пользователем 2026-08-19: скилл должен
         // быть бесплатным действием ДО хода, а не заменой самого хода.
         // Boss Training — отдельный случай, поведение НЕ менялось: скилл ТАМ и есть весь ход целиком (ни у
         // ИИ-героя, ни у игрока-босса в его окне нет отдельного свайпа), поэтому сохранена старая "полевая"
         // семёрка — эти типы сами вызывают каскад, который потом сам придёт к концу хода через ResolvePlayerTurn,
         // повторный вызов здесь задвоил бы его.
-        bool advanceImmediately = isBossTraining && !(
-            skill.effectType == SkillEffectType.ConvertAndDestroyRed ||
-            skill.effectType == SkillEffectType.DestroyRows ||
-            skill.effectType == SkillEffectType.DestroyRandomGems ||
-            skill.effectType == SkillEffectType.DestroyHarmfulTile ||
-            skill.effectType == SkillEffectType.FavorableReshuffle ||
-            skill.effectType == SkillEffectType.ExtraTurn ||
-            skill.effectType == SkillEffectType.DoubleFreeTurn);
+        bool advanceImmediately = isBossTraining && !isBoardAffectingSkill;
 
         if (advanceImmediately)
         {

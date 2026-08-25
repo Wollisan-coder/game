@@ -16,8 +16,9 @@ MonoBehaviour:
   itemName: Hammer
   category: 0
   slotType: 0
-  icon: {fileID: 21300000, guid: 0ccb7544269e66e4d94b1c349a8788c2, type: 3}
-  description: 
+  icon: {fileID: 21300000, guid: fa4ac75f01af10d41bee1080f0314958, type: 3}
+  description: "A weapon marked with ancestral runes \u2014 every blow carries the
+    weight of a whole lineage."
   rarity: 3
   sacrificeExperience: 10
-  heroExperienceValue: 0
+  heroExperienceAmount: 50

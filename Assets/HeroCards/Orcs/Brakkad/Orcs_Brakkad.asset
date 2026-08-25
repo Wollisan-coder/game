@@ -25,7 +25,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 1fe78733b0aafb14591e4eb5c02d26d7, type: 2}
   portrait: {fileID: 21300000, guid: 9e4eb24a8bbd236489fa8ca2f2d15707, type: 3}
   inventoryPortrait: {fileID: 21300000, guid: 9e4eb24a8bbd236489fa8ca2f2d15707, type: 3}
-  inventoryPortraitVideo: {fileID: 0}
+  inventoryPortraitVideo: {fileID: 32900000, guid: a6be8fc4cf0ac1148b7e20948dc0ea02, type: 3}
   themeColor: {r: 0.8396226, g: 0.051486313, b: 0.067757785, a: 1}
   resourceType: 0
   ascendedPortrait: {fileID: 0}

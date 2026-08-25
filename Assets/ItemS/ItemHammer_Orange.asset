@@ -16,8 +16,9 @@ MonoBehaviour:
   itemName: Hammer
   category: 0
   slotType: 0
-  icon: {fileID: 21300000, guid: 0ccb7544269e66e4d94b1c349a8788c2, type: 3}
-  description: 
+  icon: {fileID: 21300000, guid: a572da30dea260a4a9ebdee4e334a020, type: 3}
+  description: "The last king's hammer \u2014 they say the mountain shook when it
+    was forged."
   rarity: 4
   sacrificeExperience: 10
-  heroExperienceValue: 0
+  heroExperienceAmount: 50

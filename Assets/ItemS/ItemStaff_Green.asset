@@ -16,8 +16,8 @@ MonoBehaviour:
   itemName: Staff
   category: 0
   slotType: 0
-  icon: {fileID: 21300000, guid: 18a5db08da7a764449339b5088bddca0, type: 3}
-  description: 
+  icon: {fileID: 21300000, guid: 26e832985e440b840a91d843dd27fc86, type: 3}
+  description: "A plain staff of dry wood \u2014 holds a spell, but only just."
   rarity: 1
   sacrificeExperience: 10
-  heroExperienceValue: 0
+  heroExperienceAmount: 50

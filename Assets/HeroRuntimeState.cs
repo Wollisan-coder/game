@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 [System.Serializable]
@@ -17,6 +18,12 @@ public class HeroRuntimeState
     public int armor;               // heroData.armor * бонус от уровня + бонусы от экипировки
 
     public bool blockManaGainThisTurn; // true после использования навыка — пропускает следующее начисление маны
+
+    // Скиллы, уже скастованные этим героем с последнего РЕАЛЬНОГО хода (свайпа) — скилл больше не завершает
+    // ход сам (см. BattleManager.TryUseSkill, правка 2026-08-19), поэтому до свайпа можно скастовать несколько
+    // РАЗНЫХ скиллов подряд, но не один и тот же дважды (иначе, например, FullManaRefill кастуется на себя
+    // бесконечно и бесплатно — баг найден на еженедельном аудите 2026-08-20). Очищается в AdvanceTurnTimers().
+    public HashSet<SkillData> skillsCastSinceLastRealTurn = new HashSet<SkillData>();
 
     // Скопировано из HeroOwnershipData.racePassiveEnabled на момент входа в бой — сама пассивка расы
     // применяется только если это true (см. BattleManager.HasLivingHeroOfRace/GetLivingHeroOfRace).

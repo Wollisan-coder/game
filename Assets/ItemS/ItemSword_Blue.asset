@@ -16,8 +16,9 @@ MonoBehaviour:
   itemName: Sword
   category: 0
   slotType: 0
-  icon: {fileID: 21300000, guid: 43318c2ca0bc34448a5d0bf82cda3ad6, type: 3}
-  description: 
+  icon: {fileID: 21300000, guid: a1bc61e53a620114d86f18e5fca5160a, type: 3}
+  description: A pair of blades that move so in sync, they seem forged by a single
+    strike.
   rarity: 2
   sacrificeExperience: 10
-  heroExperienceValue: 0
+  heroExperienceAmount: 50

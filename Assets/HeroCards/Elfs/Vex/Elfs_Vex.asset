@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 98f2a619572e0984c9fe8cc8f1ab4142, type: 3}
+  m_Name: Elfs_Vex
+  m_EditorClassIdentifier: Assembly-CSharp::HeroData
+  heroId: Elfs_Vex
+  heroName: Vex
+  maxHealth: 200
+  maxResource: 15
+  damageMultiplier: 1.1
+  armor: 5
+  weight: 1
+  skills:
+  - {fileID: 11400000, guid: 4e35a42a90a54514dae8fcb929c1fb87, type: 2}
+  portrait: {fileID: 21300000, guid: a7b752497c8d09345b42bcde548a76c1, type: 3}
+  inventoryPortrait: {fileID: 21300000, guid: a7b752497c8d09345b42bcde548a76c1, type: 3}
+  inventoryPortraitVideo: {fileID: 32900000, guid: ff3fef28a3bc41448b80185555366381, type: 3}
+  themeColor: {r: 0.021359911, g: 0.9056604, b: 0.2332897, a: 1}
+  resourceType: 2
+  ascendedPortrait: {fileID: 0}
+  race: 0
+  rarity: 4
+  description: 

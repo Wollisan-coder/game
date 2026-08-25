@@ -22,7 +22,14 @@ public enum ItemCategory
                      // системы (см. project_gem_economy_v2_redesign_pending) — история сохранена в памяти,
                      // но актуальное поведение теперь снова реальное. В любом случае НЕ переставлять/не
                      // удалять — HeroVoucher сериализован как int 2 в реальных ассетах.
-    HeroVoucher
+    HeroVoucher,
+    // Добавлено 2026-08-20 по прямой просьбе пользователя — фунгибельный расходник для прокачки ПРЕДМЕТОВ
+    // (не героев, см. HeroExperience выше). Фиксированная цена в ItemData.sacrificeExperience (донор всегда
+    // level=1, множитель "* fuelLevel" в CalculateSacrificeGain вырождается в 1 — новых полей не нужно) —
+    // подбирается в ItemSacrificeUI как обычный донор наравне с экипировкой (см. GetCandidates). Также
+    // минтится автоматически как "сдача" вместо сжигаемого wastedExperience при жертвоприношении, см.
+    // ItemCollectionManager.GrantExperienceAsItems / ItemSacrificeUI.ApplySacrifice.
+    ItemExperience
 }
 
 [CreateAssetMenu(fileName = "NewItem", menuName = "Battle/Item")]

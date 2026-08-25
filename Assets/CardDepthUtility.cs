@@ -81,7 +81,10 @@ public static class CardDepthUtility
         shadowRect.anchorMin = cardRect.anchorMin;
         shadowRect.anchorMax = cardRect.anchorMax;
         shadowRect.pivot = cardRect.pivot;
-        shadowRect.anchoredPosition = cardRect.anchoredPosition + ShadowOffset;
+        // Смещение тени масштабируется вместе с карточкой (Vector2.Scale) — иначе на уменьшенных карточках
+        // (например HeroMiniCardUI в Collection-сетке, localScale=0.5) фиксированный пиксельный оффсет
+        // "отклеивался" от карточки вдвое заметнее, чем на полноразмерных (найдено на аудите 2026-08-20).
+        shadowRect.anchoredPosition = cardRect.anchoredPosition + Vector2.Scale(ShadowOffset, cardRect.localScale);
         shadowRect.sizeDelta = cardRect.sizeDelta + new Vector2(ShadowOutset * 2f, ShadowOutset * 2f);
         shadowRect.localScale = cardRect.localScale; // напр. HeroMiniCardUI в Collection-сетке уменьшен localScale=0.5
 

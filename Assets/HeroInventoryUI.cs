@@ -647,8 +647,16 @@ public class HeroInventoryUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
     {
         if (itemsContainer == null || itemSlotPrefab == null) return;
 
-        foreach (Transform child in itemsContainer)
+        // Обратный проход по индексу + немедленный SetParent(null), не foreach+Destroy() — та же причина,
+        // что у HeroCollectionUI.PopulateGrid (баг 2026-08-18, найден повторно на аудите 2026-08-20):
+        // Destroy() отложен до конца кадра, поэтому VerticalLayoutGroup на itemsContainer на один кадр
+        // видел старые+новые слоты одновременно и раскладку "распирало" при каждом свайпе героя/экипировке.
+        for (int i = itemsContainer.childCount - 1; i >= 0; i--)
+        {
+            var child = itemsContainer.GetChild(i);
+            child.SetParent(null);
             Destroy(child.gameObject);
+        }
 
         foreach (var slotType in AllSlotTypes)
         {

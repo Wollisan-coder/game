@@ -16,8 +16,9 @@ MonoBehaviour:
   itemName: Accessory
   category: 0
   slotType: 2
-  icon: {fileID: 21300000, guid: caa7ff5109772c74bbd632b19f496db3, type: 3}
-  description: 
+  icon: {fileID: 21300000, guid: 40711cb36bd2b9944b829ca44ab47c1e, type: 3}
+  description: Earrings forged for those who need protection not of the body, but
+    of fate.
   rarity: 4
   sacrificeExperience: 10
-  heroExperienceValue: 0
+  heroExperienceAmount: 50

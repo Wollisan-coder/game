@@ -16,8 +16,9 @@ MonoBehaviour:
   itemName: Staff
   category: 0
   slotType: 0
-  icon: {fileID: 21300000, guid: 18a5db08da7a764449339b5088bddca0, type: 3}
-  description: 
+  icon: {fileID: 21300000, guid: a05f42c18776b914a864e32658e01fe4, type: 3}
+  description: A carved staff that's already channeled another's will into battle
+    more than once.
   rarity: 2
   sacrificeExperience: 10
-  heroExperienceValue: 0
+  heroExperienceAmount: 50

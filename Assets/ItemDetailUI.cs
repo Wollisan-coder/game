@@ -68,6 +68,7 @@ public class ItemDetailUI : MonoBehaviour
         bool owned = ownership != null;
         bool isHeroVoucherItem = item.category == ItemCategory.HeroVoucher;
         bool isHeroExperienceItem = item.category == ItemCategory.HeroExperience;
+        bool isItemExperienceItem = item.category == ItemCategory.ItemExperience;
 
         if (icon != null) icon.sprite = item.icon;
         if (nameText != null)
@@ -75,7 +76,7 @@ public class ItemDetailUI : MonoBehaviour
             nameText.text = item.itemName;
             nameText.color = item.GetRarityColor();
         }
-        if (slotTypeText != null) slotTypeText.text = isHeroVoucherItem ? "Voucher" : isHeroExperienceItem ? "Consumable" : item.slotType.ToString();
+        if (slotTypeText != null) slotTypeText.text = isHeroVoucherItem ? "Voucher" : (isHeroExperienceItem || isItemExperienceItem) ? "Consumable" : item.slotType.ToString();
         if (descriptionText != null) descriptionText.text = item.description;
 
         if (statsText != null)
@@ -89,6 +90,11 @@ public class ItemDetailUI : MonoBehaviour
             {
                 int owned2 = ItemCollectionManager.Instance != null ? ItemCollectionManager.Instance.GetTotalQuantity(item.itemId) : 0;
                 statsText.text = $"Owned: {owned2}. Grants {item.heroExperienceAmount} Hero Experience when used on a hero of your choice.";
+            }
+            else if (isItemExperienceItem)
+            {
+                int owned3 = ItemCollectionManager.Instance != null ? ItemCollectionManager.Instance.GetTotalQuantity(item.itemId) : 0;
+                statsText.text = $"Owned: {owned3}. Gives {item.sacrificeExperience} experience when sacrificed to upgrade another item.";
             }
             else
             {
@@ -121,7 +127,7 @@ public class ItemDetailUI : MonoBehaviour
             ownedStatusText.text = owned ? "Owned" : "Not owned";
 
         // Фунгибельный расходник — "уровня" у него нет, бедж бы врал (см. UX-правку 2026-08-17).
-        ItemBadgeUtility.ApplyLevelBadge(icon != null ? icon.rectTransform : null, isHeroExperienceItem ? 0 : (owned ? ownership.level : 0), ref levelBadgeText);
+        ItemBadgeUtility.ApplyLevelBadge(icon != null ? icon.rectTransform : null, (isHeroExperienceItem || isItemExperienceItem) ? 0 : (owned ? ownership.level : 0), ref levelBadgeText);
 
         var manager = ItemCollectionManager.Instance;
         int maxLevel = item.GetMaxLevel();
@@ -147,6 +153,13 @@ public class ItemDetailUI : MonoBehaviour
             {
                 // Больше не тратится отдельным попапом-пикером героя — теперь только изнутри HeroUpgradeUI
                 // (см. UX-правку 2026-08-17), этот экран его просто показывает как расходник.
+                actionButton.gameObject.SetActive(false);
+            }
+            else if (isItemExperienceItem)
+            {
+                // Сам по себе не "прокачивается" (не экипировка) — тратится как донор ИЗ окна другого предмета
+                // (ItemSacrificeUI.GetCandidates), этот экран его просто показывает как расходник, как и
+                // HeroExperience выше.
                 actionButton.gameObject.SetActive(false);
             }
             else

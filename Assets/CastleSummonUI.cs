@@ -272,7 +272,7 @@ public class CastleSummonUI : MonoBehaviour
             }
 
             if (results.Count == 0)
-                ConfirmationDialog.ShowInfo(canvasRoot, "Not enough currency for this pull.");
+                ConfirmationDialog.ShowInfo(canvasRoot, PullFailureMessage());
             else
                 summonRevealUI.Show(canvasRoot, results, count, count > 1 && SummonService.Instance.LastPullWasJackpot, null);
         }
@@ -300,6 +300,14 @@ public class CastleSummonUI : MonoBehaviour
         return list;
     }
 
+    // Различает настоящую нехватку валюты от пула, который отдал пустой ролл (см.
+    // SummonService.LastPullFailedFromBadPoolData) — раньше обе причины показывали игроку одно и то же
+    // "Not enough currency for this pull.", даже когда у него объективно хватало денег (найдено 2026-08-20).
+    private string PullFailureMessage() =>
+        SummonService.Instance != null && SummonService.Instance.LastPullFailedFromBadPoolData
+            ? "This summon pool isn't set up correctly (no valid results). Nothing was charged — try again later or report this."
+            : "Not enough currency for this pull.";
+
     // Только Кузня (предметы) — герои Алтаря теперь идут через SummonRevealUI (портрет/редкость/имя +
     // катсцены первой Orange и джекпота, см. Pull), у предметов нет "разблокировки" в том же смысле,
     // остаются на текстовом списке. Джекпот тоже только у героев (PullItemMultiple его не поддерживает).
@@ -307,7 +315,7 @@ public class CastleSummonUI : MonoBehaviour
     {
         if (obtainedCount == 0)
         {
-            ConfirmationDialog.ShowInfo(canvasRoot, "Not enough currency for this pull.");
+            ConfirmationDialog.ShowInfo(canvasRoot, PullFailureMessage());
             return;
         }
 

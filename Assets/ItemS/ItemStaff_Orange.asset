@@ -16,8 +16,9 @@ MonoBehaviour:
   itemName: Staff
   category: 0
   slotType: 0
-  icon: {fileID: 21300000, guid: 18a5db08da7a764449339b5088bddca0, type: 3}
-  description: 
+  icon: {fileID: 21300000, guid: 754ae935094b892418fb25648cd1b6a4, type: 3}
+  description: "A legendary staff \u2014 they say the spell leaves it before its
+    wielder even finishes speaking."
   rarity: 4
   sacrificeExperience: 10
-  heroExperienceValue: 0
+  heroExperienceAmount: 50

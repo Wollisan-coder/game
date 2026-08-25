@@ -400,7 +400,10 @@ public class ItemSacrificeUI : MonoBehaviour
                                                             // другой уровень того же предмета вполне годится как топливо
             .Where(o => heroManager == null || !heroManager.IsItemEquippedAnywhere(o.instanceId)) // экипированные на герое предметы — не топливо
             .Select(o => (ownership: o, data: itemCollectionManager.GetItemById(o.itemId)))
-            .Where(c => c.data != null && c.data.category == ItemCategory.Equipment) // предметы опыта героя сюда не годятся
+            // Экипировка — обычные доноры; ItemExperience (см. ItemCollectionManager.GrantExperienceAsItems) —
+            // тоже валидный донор с фиксированной ценой (sacrificeExperience). Опыт героя (HeroExperience) сюда
+            // по-прежнему не годится — тратится отдельно, только внутри HeroUpgradeUI.
+            .Where(c => c.data != null && (c.data.category == ItemCategory.Equipment || c.data.category == ItemCategory.ItemExperience))
             .ToList();
     }
 
@@ -525,8 +528,53 @@ public class ItemSacrificeUI : MonoBehaviour
     // а не сбрасываются на "baseLevel+шаг" при каждом клике. -1/-10 не уводят превью ниже baseLevel.
     private void AdjustPreviewTarget(int levelDelta)
     {
+        if (levelDelta < 0)
+        {
+            DecreasePreviewTarget(-levelDelta);
+            return;
+        }
+
         var preview = itemCollectionManager.SimulateExperienceGain(baseLevel, baseExperience, SumSelectedXp(), maxLevel);
         QuickSelectToLevel(preview.level + levelDelta);
+    }
+
+    // -1/-10: в отличие от QuickSelectToLevel (жадный набор С НУЛЯ от committed baseLevel), здесь СНИМАЕМ
+    // уже выбранные единицы по одной, начиная с самой "дорогой" (наибольший gain за единицу этого донора).
+    // Причина: жадный набор всегда округляет ВВЕРХ до целых предметов — если один донор с большим gain
+    // с запасом перекрывает сразу несколько уровней, пересбор С НУЛЯ под чуть меньшую цель (та же сортировка,
+    // тот же пул) мог отобрать РОВНО ТОТ ЖЕ набор доноров — округление то же самое — и -1/-10 визуально
+    // ничего не менял (кнопка нажималась, но уровень не сдвигался — баг найден пользователем 2026-08-20).
+    // Снятие реальных единиц гарантирует фактическое изменение выбора при каждом клике, пока есть что снимать.
+    private void DecreasePreviewTarget(int levels)
+    {
+        var current = itemCollectionManager.SimulateExperienceGain(baseLevel, baseExperience, SumSelectedXp(), maxLevel);
+        int targetLevel = Mathf.Max(baseLevel, current.level - levels);
+
+        while (selectedDonorCounts.Count > 0)
+        {
+            var preview = itemCollectionManager.SimulateExperienceGain(baseLevel, baseExperience, SumSelectedXp(), maxLevel);
+            if (preview.level <= targetLevel) break;
+
+            string mostValuableId = null;
+            int mostValuableGain = -1;
+            foreach (var donorId in selectedDonorCounts.Keys)
+            {
+                var ownership = itemCollectionManager.GetStackByInstanceId(donorId);
+                var data = ownership != null ? itemCollectionManager.GetItemById(ownership.itemId) : null;
+                if (data == null) continue;
+
+                int gain = itemCollectionManager.CalculateSacrificeGain(data, ownership.level, ownership.experience, targetItemData);
+                if (gain > mostValuableGain) { mostValuableGain = gain; mostValuableId = donorId; }
+            }
+
+            if (mostValuableId == null) break; // ни один оставшийся донор не резолвится — не зацикливаемся
+
+            selectedDonorCounts[mostValuableId]--;
+            if (selectedDonorCounts[mostValuableId] <= 0)
+                selectedDonorCounts.Remove(mostValuableId);
+        }
+
+        Populate();
     }
 
     // Абсолютный целевой уровень — сбрасывает текущее выделение и жадно набирает донор-предметы заново.
@@ -716,7 +764,15 @@ public class ItemSacrificeUI : MonoBehaviour
         }
 
         if (totalWasted > 0)
-            ConfirmationDialog.ShowInfo(canvasRoot, $"Experience above max level lost: {totalWasted}");
+        {
+            // Излишек больше не сгорает — конвертируется в предметы ItemExperience (см.
+            // ItemCollectionManager.GrantExperienceAsItems) и возвращается в инвентарь. Если номиналы ещё
+            // не заведены в allItems, метод вернёт false — сообщаем как раньше, не обещая лишнего.
+            bool converted = itemCollectionManager.GrantExperienceAsItems(totalWasted);
+            ConfirmationDialog.ShowInfo(canvasRoot, converted
+                ? $"Excess experience ({totalWasted}) returned to your inventory as Item Experience."
+                : $"Experience above max level lost: {totalWasted}");
+        }
     }
 
     // Отдельный прозрачный слой поверх окна — НЕ трогаем сам windowBg напрямую (он стилизован через

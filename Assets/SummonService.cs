@@ -28,11 +28,21 @@ public class SummonService : MonoBehaviour
         Load();
     }
 
+    // UI (CastleSummonUI) читает это сразу после PullHero/PullHeroMultiple/PullItem, чтобы отличить
+    // настоящую нехватку валюты от пула, который вернул пустой ролл (entries[] пуст либо все hero/item
+    // ссылки битые) — раньше обе причины показывали игроку одинаковое "Not enough currency for this pull.",
+    // даже когда у него объективно хватало денег (найдено 2026-08-20 — Altar_HeroPool.asset ссылался на
+    // 4 давно удалённых плейсхолдер-героя). Тот же приём, что LastPullWasJackpot. Сбрасывается в начале
+    // каждого вызова PullHero/PullItem, чтобы не тянуть значение от предыдущего, не связанного вызова.
+    public bool LastPullFailedFromBadPoolData { get; private set; }
+
     // Призыв героя. usePremium — оплата PremiumGems (с гарантом) или SummonShards (без гаранта).
     // wasNewUnlock — герой получен ВПЕРВЫЕ (не дубликат); нужно SummonRevealUI, чтобы решить, показывать
     // ли катсцену первого получения (см. GrantHero).
     public (HeroData hero, bool wasNewUnlock) PullHero(HeroSummonPoolData pool, bool usePremium)
     {
+        LastPullFailedFromBadPoolData = false;
+
         if (pool == null || PlayerCurrencies.Instance == null || HeroCollectionManager.Instance == null) return (null, false);
 
         CurrencyType currency = usePremium ? CurrencyType.PremiumGems : CurrencyType.SummonShards;
@@ -51,6 +61,7 @@ public class SummonService : MonoBehaviour
             // Пул пуст или сконфигурирован некорректно (entries[] пуст, либо запись без назначенного hero) —
             // вернуть валюту, а не списать её впустую за ничего.
             PlayerCurrencies.Instance.Add(currency, cost);
+            LastPullFailedFromBadPoolData = true;
             return (null, false);
         }
 
@@ -78,6 +89,8 @@ public class SummonService : MonoBehaviour
     // Призыв предмета. usePremium — оплата PremiumGems (с гарантом) или SummonShards (без гаранта).
     public ItemData PullItem(ItemSummonPoolData pool, bool usePremium)
     {
+        LastPullFailedFromBadPoolData = false;
+
         if (pool == null || PlayerCurrencies.Instance == null || ItemCollectionManager.Instance == null) return null;
 
         CurrencyType currency = usePremium ? CurrencyType.PremiumGems : CurrencyType.SummonShards;
@@ -94,6 +107,7 @@ public class SummonService : MonoBehaviour
         if (result == null || result.item == null)
         {
             PlayerCurrencies.Instance.Add(currency, cost); // пул пуст/сконфигурирован некорректно — валюта не сгорает впустую
+            LastPullFailedFromBadPoolData = true;
             return null;
         }
 
@@ -166,7 +180,8 @@ public class SummonService : MonoBehaviour
         if (eligibleOrangeHeroes.Count < 2) return null;
 
         CurrencyType currency = usePremium ? CurrencyType.PremiumGems : CurrencyType.SummonShards;
-        int totalCost = (usePremium ? pool.premiumCost : pool.shardCost) * count;
+        int perPullCost = usePremium ? pool.premiumCost : pool.shardCost;
+        int totalCost = perPullCost * count;
         if (!PlayerCurrencies.Instance.Spend(currency, totalCost)) return null; // не хватает на весь x10 разом
 
         var pickPool = new List<HeroData>(eligibleOrangeHeroes);
@@ -187,7 +202,15 @@ public class SummonService : MonoBehaviour
         for (int i = results.Count; i < count; i++)
         {
             var entry = pool.RollWeighted(usePremium, Random01);
-            if (entry?.hero == null) continue;
+            if (entry?.hero == null)
+            {
+                // Пустая запись пула (entries[] без назначенного hero) — тот же принцип, что и в PullHero:
+                // возвращаем стоимость именно этого пулла, а не сжигаем валюту молча (найдено на аудите
+                // 2026-08-20 — до этой правки джекпотный x10 списывал полную стоимость, даже если один из
+                // "рядовых" роллов молча проваливался).
+                PlayerCurrencies.Instance.Add(currency, perPullCost);
+                continue;
+            }
             results.Add((entry.hero, GrantHero(entry.hero)));
         }
 

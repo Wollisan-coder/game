@@ -245,7 +245,10 @@ public class HeroCardUI : MonoBehaviour
             // Реальная стоимость (со скидкой от ReduceAllyNextSkillCost), а не полная — иначе кнопка
             // может остаться недоступной, хотя BattleManager.TryUseSkill уже разрешил бы каст по скидке.
             int actualCost = Mathf.RoundToInt(primarySkill.cost * (1f - heroState.costReductionPercent));
-            activateButton.interactable = !isDead && heroState.currentResource >= actualCost;
+            // Тот же гейт, что и TryUseSkill (skillsCastSinceLastRealTurn) — иначе кнопка выглядит нажимаемой,
+            // но тап по уже скастованному в этом окне скиллу молча ничего не делает (найдено на аудите 2026-08-20).
+            bool alreadyCastThisWindow = heroState.skillsCastSinceLastRealTurn.Contains(primarySkill);
+            activateButton.interactable = !isDead && !alreadyCastThisWindow && heroState.currentResource >= actualCost;
         }
 
         if (portraitImage != null)
