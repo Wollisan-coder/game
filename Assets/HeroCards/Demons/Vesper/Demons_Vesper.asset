@@ -10,10 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 98f2a619572e0984c9fe8cc8f1ab4142, type: 3}
-  m_Name: Demons_Abraxis
+  m_Name: Demons_Vesper
   m_EditorClassIdentifier: Assembly-CSharp::HeroData
-  heroId: Demons_Abraxis
-  heroName: Abraxis
+  heroId: Demons_Vesper
+  heroName: Vesper
   maxHealth: 100
   maxResource: 15
   damageMultiplier: 1
@@ -21,13 +21,14 @@ MonoBehaviour:
   weight: 1
   skills:
   - {fileID: 11400000, guid: 99462a8abfca4754a832e8de8464db46, type: 2}
-  portrait: {fileID: 21300000, guid: 880f7eb434f1b5c469884c935238c3b8, type: 3}
-  inventoryPortrait: {fileID: 21300000, guid: 880f7eb434f1b5c469884c935238c3b8, type: 3}
-  inventoryPortraitVideo: {fileID: 32900000, guid: 53afca5889c8979448d90426bddd278e, type: 3}
+  portrait: {fileID: 21300000, guid: 1f63742a27ebb1349a361cf5b720f6ee, type: 3}
+  inventoryPortrait: {fileID: 21300000, guid: 1f63742a27ebb1349a361cf5b720f6ee, type: 3}
+  inventoryPortraitVideo: {fileID: 32900000, guid: 8dac17e34f2e9e64cb9665ef00ba8801, type: 3}
   themeColor: {r: 0.3490566, g: 0.3490566, b: 0.3490566, a: 1}
   resourceType: 1
   ascendedPortrait: {fileID: 0}
   race: 4
   rarity: 4
-  description: "Abraxis smiles like she already knows the answer to a question you
-    haven't asked yet \u2014 and she's usually right."
+  description: "Vesper rarely wastes words where a single look will do \u2014 she's
+    the type who makes a room go quiet just by walking in, and does it without any
+    effort at all."

@@ -10,10 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 98f2a619572e0984c9fe8cc8f1ab4142, type: 3}
-  m_Name: Demons_Abraxis
+  m_Name: Furry_Sku and Mer
   m_EditorClassIdentifier: Assembly-CSharp::HeroData
-  heroId: Demons_Abraxis
-  heroName: Abraxis
+  heroId: Furry_Sku and Mer
+  heroName: Sku and Mer
   maxHealth: 100
   maxResource: 15
   damageMultiplier: 1
@@ -21,13 +21,14 @@ MonoBehaviour:
   weight: 1
   skills:
   - {fileID: 11400000, guid: 99462a8abfca4754a832e8de8464db46, type: 2}
-  portrait: {fileID: 21300000, guid: 880f7eb434f1b5c469884c935238c3b8, type: 3}
-  inventoryPortrait: {fileID: 21300000, guid: 880f7eb434f1b5c469884c935238c3b8, type: 3}
-  inventoryPortraitVideo: {fileID: 32900000, guid: 53afca5889c8979448d90426bddd278e, type: 3}
-  themeColor: {r: 0.3490566, g: 0.3490566, b: 0.3490566, a: 1}
+  portrait: {fileID: 21300000, guid: 190cfa42f3489054b890fcc59bb6128a, type: 3}
+  inventoryPortrait: {fileID: 21300000, guid: 190cfa42f3489054b890fcc59bb6128a, type: 3}
+  inventoryPortraitVideo: {fileID: 0}
+  themeColor: {r: 0.113018245, g: 0.050980408, b: 0.8392157, a: 1}
   resourceType: 1
   ascendedPortrait: {fileID: 0}
-  race: 4
-  rarity: 4
-  description: "Abraxis smiles like she already knows the answer to a question you
-    haven't asked yet \u2014 and she's usually right."
+  race: 3
+  rarity: 3
+  description: Sku and Mer are twins, and no one has seen them apart in years. One
+    starts a sentence, the other finishes it; one decides, the other agrees before
+    she even hears it.
